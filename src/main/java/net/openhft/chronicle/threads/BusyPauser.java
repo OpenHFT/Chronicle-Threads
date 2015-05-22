@@ -34,11 +34,9 @@ public enum BusyPauser implements Pauser {
 
     @Override
     public void pause(long maxPauseNS) {
-
     }
 
     @Override
     public void unpause() {
     }
-
 }
