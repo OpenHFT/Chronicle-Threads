@@ -44,5 +44,5 @@ public enum HandlerPriority {
     /**
      * Task is a blocking operation, added to a cached thread pool
      */
-    BLOCKING;
+    BLOCKING
 }
