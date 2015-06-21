@@ -16,14 +16,15 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
 import org.jetbrains.annotations.NotNull;
 
-import javax.xml.ws.WebServiceException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+
+import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
 /**
  * Event "Loop" for blocking tasks. Created by peter.lawrey on 26/01/15.
@@ -32,6 +33,9 @@ public class BlockingEventLoop implements EventLoop {
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
+    private Thread thread = null;
+    private volatile boolean closed;
+    private EventHandler handler;
 
     public BlockingEventLoop(EventLoop parent, String name) {
         this.parent = parent;
@@ -40,9 +44,12 @@ public class BlockingEventLoop implements EventLoop {
 
     @Override
     public void addHandler(@NotNull EventHandler handler) {
+        closeQuietly(this.handler);
+        this.handler = handler;
         service.submit(() -> {
+            thread = Thread.currentThread();
             handler.eventLoop(parent);
-            while (!handler.isDead())
+            while (!closed && !handler.isDead())
                 handler.runOnce();
         });
     }
@@ -53,18 +60,24 @@ public class BlockingEventLoop implements EventLoop {
 
     @Override
     public void stop() {
-        service.shutdown();
     }
 
     @Override
-    public void close() throws WebServiceException {
-        service.shutdown();
+    public void close() {
+        closed = true;
+        closeQuietly(this.handler);
+        service.shutdownNow();
         try {
-            if (service.awaitTermination(1000, TimeUnit.MILLISECONDS))
-                service.shutdownNow();
-            service.awaitTermination(100, TimeUnit.MILLISECONDS);
+            if (thread != null)
+                thread.join(100);
         } catch (InterruptedException e) {
-            service.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        if (thread.isAlive()) {
+            StackTraceElement[] stackTrace = thread.getStackTrace();
+            StringBuilder sb = new StringBuilder(thread + " still running ");
+            Jvm.trimStackTrace(sb, stackTrace);
+            System.out.println(sb);
         }
     }
 }

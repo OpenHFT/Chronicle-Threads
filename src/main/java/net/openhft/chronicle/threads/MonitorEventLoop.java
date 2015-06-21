@@ -100,11 +100,9 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public void close() throws WebServiceException {
-        service.shutdown();
+        service.shutdownNow();
         try {
-            if (service.awaitTermination(1000, TimeUnit.MILLISECONDS))
-                service.shutdownNow();
-            service.awaitTermination(100, TimeUnit.MILLISECONDS);
+            service.awaitTermination(20, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             service.shutdownNow();
         }
