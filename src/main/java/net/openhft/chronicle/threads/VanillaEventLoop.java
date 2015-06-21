@@ -45,8 +45,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private final Pauser pauser;
     private final long timerIntervalNS;
     private final String name;
-    private long loopStartNS;
     private long lastTimerNS;
+    private volatile long loopStartNS;
     private volatile boolean running = true;
     @Nullable
     private volatile Thread thread = null;
@@ -109,6 +109,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 } else {
                     count++;
                     runDaemonHandlers();
+                    // reset the loop timeout.
+                    loopStartNS = Long.MAX_VALUE;
                     pauser.pause();
                 }
             }
