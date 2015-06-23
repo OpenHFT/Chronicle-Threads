@@ -73,7 +73,7 @@ public class BlockingEventLoop implements EventLoop {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        if (thread.isAlive()) {
+        if (thread != null && thread.isAlive()) {
             StackTraceElement[] stackTrace = thread.getStackTrace();
             StringBuilder sb = new StringBuilder(thread + " still running ");
             Jvm.trimStackTrace(sb, stackTrace);
