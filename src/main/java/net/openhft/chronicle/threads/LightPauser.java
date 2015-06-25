@@ -18,6 +18,8 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.annotation.ForceInline;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -40,6 +42,7 @@ public class LightPauser implements Pauser {
     }
 
     @Override
+    @ForceInline
     public void reset() {
         pauseStart = count = 0;
     }
@@ -74,6 +77,7 @@ public class LightPauser implements Pauser {
     }
 
     @Override
+    @ForceInline
     public void unpause() {
         if (pausing.get())
             LockSupport.unpark(thread);

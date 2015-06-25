@@ -17,6 +17,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.annotation.ForceInline;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
@@ -30,6 +31,7 @@ public enum Threads {
 
     static final Field GROUP = Jvm.getField(Thread.class, "group");
 
+    @ForceInline
     public static <R> R withThreadGroup(ThreadGroup tg, Callable<R> callable) {
         Thread thread = Thread.currentThread();
         ThreadGroup tg0 = thread.getThreadGroup();
@@ -43,6 +45,7 @@ public enum Threads {
         }
     }
 
+    @ForceInline
     public static void setThreadGroup(Thread thread, ThreadGroup tg) {
         try {
             GROUP.set(thread, tg);

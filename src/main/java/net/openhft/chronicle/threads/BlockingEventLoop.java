@@ -50,7 +50,7 @@ public class BlockingEventLoop implements EventLoop {
             thread = Thread.currentThread();
             handler.eventLoop(parent);
             while (!closed && !handler.isDead())
-                handler.runOnce();
+                handler.action();
         });
     }
 

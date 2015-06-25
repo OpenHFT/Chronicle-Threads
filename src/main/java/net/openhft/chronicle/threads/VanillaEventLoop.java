@@ -130,7 +130,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         for (int i = 0; i < highHandlers.size(); i++) {
             EventHandler handler = highHandlers.get(i);
             try {
-                busy |= handler.runOnce();
+                busy |= handler.action();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -146,7 +146,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         for (int j = i; j < mediumHandlers.size(); j += 10) {
             EventHandler handler = mediumHandlers.get(j);
             try {
-                busy |= handler.runOnce();
+                busy |= handler.action();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -161,7 +161,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         for (int i = 0; i < timerHandlers.size(); i++) {
             EventHandler handler = timerHandlers.get(i);
             try {
-                handler.runOnce();
+                handler.action();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -175,7 +175,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         for (int i = 0; i < daemonHandlers.size(); i++) {
             EventHandler handler = daemonHandlers.get(i);
             try {
-                handler.runOnce();
+                handler.action();
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -93,7 +93,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         for (int i = 0; i < handlers.size(); i++) {
             EventHandler handler = handlers.get(i);
             try {
-                busy |= handler.runOnce();
+                busy |= handler.action();
             } catch (Exception e) {
                 e.printStackTrace();
             }

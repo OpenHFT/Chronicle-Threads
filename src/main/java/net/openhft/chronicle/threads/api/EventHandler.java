@@ -35,7 +35,7 @@ public interface EventHandler {
      *
      * @return true if you expect more work very soon.
      */
-    boolean runOnce();
+    boolean action();
 
     default boolean isDead() {
         return false;

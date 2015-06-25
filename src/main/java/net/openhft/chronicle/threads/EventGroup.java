@@ -95,7 +95,7 @@ public class EventGroup implements EventLoop {
         long lastInterval = 1;
 
         @Override
-        public boolean runOnce() {
+        public boolean action() {
             long blockingTime = System.nanoTime() - core.loopStartNS();
             long blockingInterval = blockingTime / (MONITOR_INTERVAL / 2);
 
