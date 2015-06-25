@@ -64,6 +64,11 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         service.submit(this);
     }
 
+    @Override
+    public void unpause() {
+        pauser.unpause();
+    }
+
     public void stop() {
         running = false;
     }

@@ -26,5 +26,7 @@ public interface EventLoop extends Closeable {
 
     void start();
 
+    void unpause();
+
     void stop();
 }

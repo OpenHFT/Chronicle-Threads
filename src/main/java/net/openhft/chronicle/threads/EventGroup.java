@@ -34,11 +34,18 @@ public class EventGroup implements EventLoop {
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, NANOSECONDS.convert(1, SECONDS)));
     final VanillaEventLoop core;
     final BlockingEventLoop blocking = new BlockingEventLoop(this, "blocking-event-loop");
+    private final LightPauser pauser;
 
     public EventGroup(boolean daemon) {
+        pauser = new LightPauser(NANOSECONDS.convert(20, MICROSECONDS), NANOSECONDS.convert(200, MICROSECONDS));
         core = new VanillaEventLoop(this, "core-event-loop",
-                new LightPauser(NANOSECONDS.convert(20, MICROSECONDS), NANOSECONDS.convert(200, MICROSECONDS)),
+                pauser,
                 NANOSECONDS.convert(100, MICROSECONDS), daemon);
+    }
+
+    @Override
+    public void unpause() {
+        pauser.unpause();
     }
 
     public void addHandler(@NotNull EventHandler handler) {

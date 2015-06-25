@@ -59,6 +59,11 @@ public class BlockingEventLoop implements EventLoop {
     }
 
     @Override
+    public void unpause() {
+
+    }
+
+    @Override
     public void stop() {
     }
 

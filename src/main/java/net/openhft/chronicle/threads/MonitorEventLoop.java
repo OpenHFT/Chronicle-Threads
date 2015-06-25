@@ -50,6 +50,11 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         service.submit(this);
     }
 
+    @Override
+    public void unpause() {
+        pauser.unpause();
+    }
+
     public void stop() {
         running = false;
     }

@@ -18,6 +18,8 @@
 
 package net.openhft.chronicle.threads;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -39,12 +41,14 @@ public class NamedThreadFactory implements ThreadFactory {
     }
 
     @Override
-    public Thread newThread(Runnable r) {
+    @NotNull
+    public Thread newThread(@NotNull Runnable r) {
         int id = this.id.getAndIncrement();
-        String nameN = id == 0 ? name : (name + '-' + id);
+        String nameN = Threads.threadGroupPrefix() + (id == 0 ? this.name : (this.name + '-' + id));
         Thread t = new Thread(r, nameN);
         if (daemon != null)
             t.setDaemon(daemon);
         return t;
     }
+
 }
