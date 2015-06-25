@@ -57,6 +57,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         this.name = name;
         this.pauser = pauser;
         this.timerIntervalNS = timerIntervalNS;
+        loopStartNS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
     }
 
@@ -95,7 +96,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     public void run() {
         try {
             thread = Thread.currentThread();
-            int count = 0;
             while (running.get()) {
                 boolean busy = false;
                 for (int i = 0; i < 10; i++) {
@@ -109,11 +109,9 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 }
                 acceptNewHandlers();
                 if (busy) {
-                    count = 0;
                     pauser.reset();
 
                 } else {
-                    count++;
                     runDaemonHandlers();
                     // reset the loop timeout.
                     loopStartNS = Long.MAX_VALUE;

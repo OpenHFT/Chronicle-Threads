@@ -29,7 +29,7 @@ import static java.util.concurrent.TimeUnit.*;
  * Created by peter.lawrey on 22/01/15.
  */
 public class EventGroup implements EventLoop {
-    static final long MONITOR_INTERVAL = NANOSECONDS.convert(100, MILLISECONDS);
+    static final long MONITOR_INTERVAL = NANOSECONDS.convert(200, MILLISECONDS);
 
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, NANOSECONDS.convert(1, SECONDS)));
     final VanillaEventLoop core;
