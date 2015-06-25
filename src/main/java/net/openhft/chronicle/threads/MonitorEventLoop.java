@@ -19,6 +19,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
+import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
 import javax.xml.ws.WebServiceException;
@@ -94,11 +95,12 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
             EventHandler handler = handlers.get(i);
             try {
                 busy |= handler.action();
+            } catch (InvalidEventHandlerException e) {
+                handlers.remove(i--);
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            if (handler.isDead())
-                handlers.remove(i--);
         }
         return busy;
     }

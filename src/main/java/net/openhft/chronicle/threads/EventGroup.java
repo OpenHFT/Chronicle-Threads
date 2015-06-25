@@ -96,11 +96,17 @@ public class EventGroup implements EventLoop {
 
         @Override
         public boolean action() {
-            long blockingTime = System.nanoTime() - core.loopStartNS();
+            long loopStartNS = core.loopStartNS();
+            if (loopStartNS <= 0 || loopStartNS == Long.MAX_VALUE)
+                return false;
+            long blockingTime = System.nanoTime() - loopStartNS;
             long blockingInterval = blockingTime / (MONITOR_INTERVAL / 2);
 
             if (blockingInterval > lastInterval && !Jvm.IS_DEBUG && core.isAlive()) {
-                core.dumpRunningState(core.name() + " thread has blocked for " + MILLISECONDS.convert(blockingTime, NANOSECONDS) + " ms.");
+                core.dumpRunningState(core.name() + " thread has blocked for "
+                                + MILLISECONDS.convert(blockingTime, NANOSECONDS) + " ms.",
+                        // check we are still in the loop.
+                        () -> core.loopStartNS() == loopStartNS);
 
             } else {
                 lastInterval = Math.max(1, blockingInterval);

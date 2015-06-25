@@ -19,6 +19,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
+import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ExecutorService;
@@ -49,8 +50,12 @@ public class BlockingEventLoop implements EventLoop {
         service.submit(() -> {
             thread = Thread.currentThread();
             handler.eventLoop(parent);
-            while (!closed && !handler.isDead())
-                handler.action();
+            try {
+                while (!closed)
+                    handler.action();
+            } catch (InvalidEventHandlerException e) {
+                // expected
+            }
         });
     }
 

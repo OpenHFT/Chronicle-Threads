@@ -20,6 +20,7 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
+import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,6 +31,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 
 /**
  * Created by peter.lawrey on 22/01/15.
@@ -130,11 +132,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             EventHandler handler = highHandlers.get(i);
             try {
                 busy |= handler.action();
+            } catch (InvalidEventHandlerException e) {
+                highHandlers.remove(i--);
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            if (handler.isDead())
-                highHandlers.remove(i--);
         }
         return busy;
     }
@@ -146,11 +149,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             EventHandler handler = mediumHandlers.get(j);
             try {
                 busy |= handler.action();
+            } catch (InvalidEventHandlerException e) {
+                mediumHandlers.remove(i--);
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            if (handler.isDead())
-                mediumHandlers.remove(j--);
         }
         return busy;
     }
@@ -161,11 +165,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             EventHandler handler = timerHandlers.get(i);
             try {
                 handler.action();
+            } catch (InvalidEventHandlerException e) {
+                timerHandlers.remove(i--);
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            if (handler.isDead())
-                timerHandlers.remove(i--);
         }
     }
 
@@ -175,11 +180,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             EventHandler handler = daemonHandlers.get(i);
             try {
                 handler.action();
+            } catch (InvalidEventHandlerException e) {
+                daemonHandlers.remove(i--);
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            if (handler.isDead())
-                daemonHandlers.remove(i--);
         }
     }
 
@@ -216,13 +222,14 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         return name;
     }
 
-    public void dumpRunningState(@NotNull String message) {
+    public void dumpRunningState(@NotNull String message, BooleanSupplier finalCheck) {
         Thread thread = this.thread;
         if (thread == null) return;
         StringBuilder out = new StringBuilder(message);
         Jvm.trimStackTrace(out, thread.getStackTrace());
         // TODO use a logger.
-        System.out.println(out);
+        if (finalCheck.getAsBoolean())
+            System.out.println(out);
     }
 
     @Override

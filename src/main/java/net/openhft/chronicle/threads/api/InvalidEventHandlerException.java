@@ -16,25 +16,8 @@
 
 package net.openhft.chronicle.threads.api;
 
-import net.openhft.chronicle.threads.HandlerPriority;
-
 /**
- * Created by peter.lawrey on 22/01/15.
+ * Created by peter on 25/06/15.
  */
-@FunctionalInterface
-public interface EventHandler {
-    default void eventLoop(EventLoop eventLoop) {
-    }
-
-    default HandlerPriority priority() {
-        return HandlerPriority.MEDIUM;
-    }
-
-    /**
-     * perform all tasks once and return ASAP.
-     *
-     * @return true if you expect more work very soon.
-     * @throws InvalidEventHandlerException when it is not longer valid.
-     */
-    boolean action() throws InvalidEventHandlerException;
+public class InvalidEventHandlerException extends Exception {
 }
