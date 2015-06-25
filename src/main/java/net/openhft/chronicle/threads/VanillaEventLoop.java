@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -47,7 +48,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private final String name;
     private long lastTimerNS;
     private volatile long loopStartNS;
-    private volatile boolean running = true;
+    private volatile AtomicBoolean running = new AtomicBoolean();
     @Nullable
     private volatile Thread thread = null;
 
@@ -60,8 +61,9 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void start() {
-        running = true;
-        service.submit(this);
+
+        if (!running.getAndSet(true))
+            service.submit(this);
     }
 
     @Override
@@ -70,7 +72,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void stop() {
-        running = false;
+        running.set(false);
     }
 
     public void addHandler(@NotNull EventHandler handler) {
@@ -94,7 +96,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         try {
             thread = Thread.currentThread();
             int count = 0;
-            while (running) {
+            while (running.get()) {
                 boolean busy = false;
                 for (int i = 0; i < 10; i++) {
                     loopStartNS = System.nanoTime();
@@ -107,7 +109,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 }
                 acceptNewHandlers();
                 if (busy) {
-                    System.out.println("b " + count);
                     count = 0;
                     pauser.reset();
 
