@@ -33,6 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
+import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
+
 /**
  * Created by peter.lawrey on 22/01/15.
  */
@@ -134,6 +136,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
                 highHandlers.remove(i--);
+                closeQuietly(handler);
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -151,6 +154,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
                 mediumHandlers.remove(i--);
+                closeQuietly(handler);
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -167,6 +171,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 handler.action();
             } catch (InvalidEventHandlerException e) {
                 timerHandlers.remove(i--);
+                closeQuietly(handler);
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -182,6 +187,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 handler.action();
             } catch (InvalidEventHandlerException e) {
                 daemonHandlers.remove(i--);
+                closeQuietly(handler);
 
             } catch (Exception e) {
                 e.printStackTrace();

@@ -37,7 +37,9 @@ public class EventGroup implements EventLoop {
     private final LightPauser pauser;
 
     public EventGroup(boolean daemon) {
-        pauser = new LightPauser(NANOSECONDS.convert(20, MICROSECONDS), NANOSECONDS.convert(200, MICROSECONDS));
+        pauser = new LightPauser(
+                NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
+                NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
         core = new VanillaEventLoop(this, "core-event-loop",
                 pauser,
                 NANOSECONDS.convert(100, MICROSECONDS), daemon);

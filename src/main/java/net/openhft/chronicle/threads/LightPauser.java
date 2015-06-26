@@ -69,7 +69,6 @@ public class LightPauser implements Pauser {
         pausing.set(true);
         doPause(maxPauseNS);
         pausing.set(false);
-        reset();
     }
 
     protected void doPause(long maxPauseNS) {

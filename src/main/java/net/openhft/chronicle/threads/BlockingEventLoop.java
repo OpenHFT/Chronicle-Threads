@@ -55,6 +55,11 @@ public class BlockingEventLoop implements EventLoop {
                     handler.action();
             } catch (InvalidEventHandlerException e) {
                 // expected
+            } catch (Throwable t) {
+                t.printStackTrace();
+            } finally {
+                if (Jvm.isDebug())
+                    System.out.println("handler " + handler + " done.");
             }
         });
     }
