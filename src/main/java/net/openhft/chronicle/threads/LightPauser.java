@@ -66,6 +66,7 @@ public class LightPauser implements Pauser {
         if (maxPauseNS < 10000)
             return;
         thread = Thread.currentThread();
+
         pausing.set(true);
         doPause(maxPauseNS);
         pausing.set(false);
