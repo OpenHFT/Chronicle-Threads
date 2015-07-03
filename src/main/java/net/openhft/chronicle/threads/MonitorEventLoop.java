@@ -91,15 +91,17 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     @HotMethod
     private boolean runHandlers() {
         boolean busy = false;
-        for (int i = 0; i < handlers.size(); i++) {
-            EventHandler handler = handlers.get(i);
-            try {
-                busy |= handler.action();
-            } catch (InvalidEventHandlerException e) {
-                handlers.remove(i--);
+        synchronized (handlers) {
+            for (int i = 0; i < handlers.size(); i++) {
+                EventHandler handler = handlers.get(i);
+                try {
+                    busy |= handler.action();
+                } catch (InvalidEventHandlerException e) {
+                    handlers.remove(i--);
 
-            } catch (Exception e) {
-                e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
         return busy;
