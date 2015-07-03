@@ -61,7 +61,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     public void addHandler(@NotNull EventHandler handler) {
-        synchronized (handler) {
+        synchronized (handlers) {
             handlers.add(handler);
             handler.eventLoop(parent);
         }
