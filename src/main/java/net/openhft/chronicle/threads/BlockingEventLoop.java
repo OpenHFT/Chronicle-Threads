@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
@@ -81,7 +82,16 @@ public class BlockingEventLoop implements EventLoop {
     public void close() {
         closed = true;
         closeQuietly(this.handler);
-        service.shutdownNow();
+        service.shutdown();
+
+        try {
+            if( !(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
+                service.shutdownNow();
+        } catch (InterruptedException e) {
+            service.shutdownNow();
+        }
+
+
         try {
             if (thread != null)
                 thread.join(100);

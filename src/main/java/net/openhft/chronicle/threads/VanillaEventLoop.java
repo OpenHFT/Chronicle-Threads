@@ -242,7 +242,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     public void close() {
         service.shutdown();
         try {
-            if (service.awaitTermination(500, TimeUnit.MILLISECONDS))
+            if (!(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
                 service.shutdownNow();
         } catch (InterruptedException e) {
             service.shutdownNow();
