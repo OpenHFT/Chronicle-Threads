@@ -94,6 +94,8 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         // assumed to be synchronized in run()
         for (int i = 0; i < handlers.size(); i++) {
             EventHandler handler = handlers.get(i);
+            // TODO shouldn't need this.
+            if (handler == null) continue;
             try {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
