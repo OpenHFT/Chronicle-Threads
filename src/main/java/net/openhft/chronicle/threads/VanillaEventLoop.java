@@ -66,7 +66,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void start() {
-
         if (!running.getAndSet(true))
             service.submit(this);
     }
@@ -207,16 +206,19 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         HandlerPriority t1 = handler.priority();
         switch (t1 == null ? HandlerPriority.MEDIUM : t1) {
             case HIGH:
+                if (!highHandlers.contains(handler))
                 highHandlers.add(handler);
                 break;
 
             case MEDIUM:
+                if (!mediumHandlers.contains(handler))
                 mediumHandlers.add(handler);
                 break;
 
             case TIMER:
             case DAEMON:
-                daemonHandlers.add(handler);
+                if (!daemonHandlers.contains(handler))
+                    daemonHandlers.add(handler);
                 break;
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");

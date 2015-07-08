@@ -46,6 +46,7 @@ public class BlockingEventLoop implements EventLoop {
 
     @Override
     public void addHandler(@NotNull EventHandler handler) {
+        // remove the
         closeQuietly(this.handler);
         this.handler = handler;
         service.submit(() -> {
