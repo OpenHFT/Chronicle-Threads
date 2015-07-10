@@ -16,6 +16,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.util.Time;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
 import org.jetbrains.annotations.NotNull;
@@ -28,7 +29,7 @@ import static java.util.concurrent.TimeUnit.*;
  * Created by peter.lawrey on 22/01/15.
  */
 public class EventGroup implements EventLoop {
-    static final long MONITOR_INTERVAL = NANOSECONDS.convert(200, MILLISECONDS);
+    static final long MONITOR_INTERVAL_MS = 200;
 
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, NANOSECONDS.convert(1, SECONDS)));
     final VanillaEventLoop core;
@@ -40,8 +41,7 @@ public class EventGroup implements EventLoop {
                 NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
                 NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
         core = new VanillaEventLoop(this, "core-event-loop",
-                pauser,
-                NANOSECONDS.convert(100, MICROSECONDS), daemon);
+                pauser, 1, daemon);
     }
 
     @Override
@@ -97,17 +97,17 @@ public class EventGroup implements EventLoop {
 
         @Override
         public boolean action() {
-            long loopStartNS = core.loopStartNS();
-            if (loopStartNS <= 0 || loopStartNS == Long.MAX_VALUE)
+            long loopStartMS = core.loopStartMS();
+            if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE)
                 return false;
-            long blockingTime = System.nanoTime() - loopStartNS;
-            long blockingInterval = blockingTime / (MONITOR_INTERVAL / 2);
+            long blockingTimeMS = Time.currentTimeMillis() - loopStartMS;
+            long blockingInterval = blockingTimeMS / (MONITOR_INTERVAL_MS / 2);
 
             if (blockingInterval > lastInterval && !Jvm.IS_DEBUG && core.isAlive()) {
                 core.dumpRunningState(core.name() + " thread has blocked for "
-                                + MILLISECONDS.convert(blockingTime, NANOSECONDS) + " ms.",
+                                + blockingTimeMS + " ms.",
                         // check we are still in the loop.
-                        () -> core.loopStartNS() == loopStartNS);
+                        () -> core.loopStartMS() == loopStartMS);
 
             } else {
                 lastInterval = Math.max(1, blockingInterval);

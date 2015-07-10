@@ -18,6 +18,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
+import net.openhft.chronicle.core.util.Time;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
 import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
@@ -48,20 +49,20 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private final List<EventHandler> daemonHandlers = new ArrayList<>();
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     private final Pauser pauser;
-    private final long timerIntervalNS;
+    private final long timerIntervalMS;
     private final String name;
     private long lastTimerNS;
-    private volatile long loopStartNS;
+    private volatile long loopStartMS;
     private volatile AtomicBoolean running = new AtomicBoolean();
     @Nullable
     private volatile Thread thread = null;
 
-    public VanillaEventLoop(EventLoop parent, String name, Pauser pauser, long timerIntervalNS, boolean daemon) {
+    public VanillaEventLoop(EventLoop parent, String name, Pauser pauser, long timerIntervalMS, boolean daemon) {
         this.parent = parent;
         this.name = name;
         this.pauser = pauser;
-        this.timerIntervalNS = timerIntervalNS;
-        loopStartNS = Long.MAX_VALUE;
+        this.timerIntervalMS = timerIntervalMS;
+        loopStartMS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
     }
 
@@ -90,8 +91,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         }
     }
 
-    public long loopStartNS() {
-        return loopStartNS;
+    public long loopStartMS() {
+        return loopStartMS;
     }
 
     @Override
@@ -102,12 +103,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             while (running.get()) {
                 boolean busy = false;
                 for (int i = 0; i < 10; i++) {
-                    loopStartNS = System.nanoTime();
+                    loopStartMS = Time.currentTimeMillis();
                     busy |= runAllHighHandlers();
                     busy |= runOneTenthLowHandler(i);
                 }
-                if (lastTimerNS + timerIntervalNS < loopStartNS) {
-                    lastTimerNS = loopStartNS;
+                if (lastTimerNS + timerIntervalMS < loopStartMS) {
+                    lastTimerNS = loopStartMS;
                     runTimerHandlers();
                 }
                 acceptNewHandlers();
@@ -117,7 +118,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 } else {
                     runDaemonHandlers();
                     // reset the loop timeout.
-                    loopStartNS = Long.MAX_VALUE;
+                    loopStartMS = Long.MAX_VALUE;
                     pauser.pause();
                 }
             }
