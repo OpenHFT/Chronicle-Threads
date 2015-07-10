@@ -19,6 +19,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.annotation.ForceInline;
+import net.openhft.chronicle.core.util.Time;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
@@ -73,7 +74,7 @@ public class LightPauser implements Pauser {
     }
 
     protected void doPause(long maxPauseNS) {
-        LockSupport.parkNanos(Math.max(maxPauseNS, parkPeriodNS));
+        Time.parkNanos(Math.max(maxPauseNS, parkPeriodNS));
     }
 
     @Override
