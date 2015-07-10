@@ -30,8 +30,10 @@ public class LightPauserTest {
         Thread thread = new Thread() {
             @Override
             public void run() {
-                while (!Thread.interrupted())
+                while (!Thread.interrupted()) {
                     pauser.pause();
+                    Thread.yield();
+                }
             }
         };
         thread.start();
