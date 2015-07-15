@@ -16,6 +16,7 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
@@ -63,7 +64,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public void addHandler(@NotNull EventHandler handler) {
         synchronized (handlers) {
             if (!handlers.contains(handler))
-            handlers.add(handler);
+                handlers.add(handler);
             handler.eventLoop(parent);
         }
     }
@@ -72,6 +73,10 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     @HotMethod
     public void run() {
         try {
+            // don't do any monitoring for the first 2000 ms.
+            for (int i = 0; i < 40; i++)
+                if (running)
+                    Jvm.pause(50);
             while (running) {
                 boolean busy;
                 synchronized (handlers) {
