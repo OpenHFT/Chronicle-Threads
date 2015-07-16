@@ -18,6 +18,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.util.Time;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
@@ -25,8 +26,9 @@ import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -43,10 +45,10 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
-    private final List<EventHandler> highHandlers = new ArrayList<>();
-    private final List<EventHandler> mediumHandlers = new ArrayList<>();
-    private final List<EventHandler> timerHandlers = new ArrayList<>();
-    private final List<EventHandler> daemonHandlers = new ArrayList<>();
+    private final List<EventHandler> highHandlers = new CopyOnWriteArrayList<>();
+    private final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
+    private final List<EventHandler> timerHandlers = new CopyOnWriteArrayList<>();
+    private final List<EventHandler> daemonHandlers = new CopyOnWriteArrayList<>();
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     private final Pauser pauser;
     private final long timerIntervalMS;
@@ -243,6 +245,11 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
     @Override
     public void close() {
+        highHandlers.forEach(Closeable::closeQuietly);
+        mediumHandlers.forEach(Closeable::closeQuietly);
+        daemonHandlers.forEach(Closeable::closeQuietly);
+        timerHandlers.forEach(Closeable::closeQuietly);
+        Optional.ofNullable(newHandler.get()).ifPresent(Closeable::closeQuietly);
         service.shutdown();
         try {
             if (!(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
@@ -250,6 +257,11 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         } catch (InterruptedException e) {
             service.shutdownNow();
         }
+        highHandlers.clear();
+        mediumHandlers.clear();
+        daemonHandlers.clear();
+        timerHandlers.clear();
+        newHandler.set(null);
     }
 
     public boolean isAlive() {
