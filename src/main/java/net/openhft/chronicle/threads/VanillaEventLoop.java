@@ -58,6 +58,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private volatile AtomicBoolean running = new AtomicBoolean();
     @Nullable
     private volatile Thread thread = null;
+    private volatile Throwable closedHere = null;
 
     public VanillaEventLoop(EventLoop parent, String name, Pauser pauser, long timerIntervalMS, boolean daemon) {
         this.parent = parent;
@@ -69,6 +70,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void start() {
+        if (closedHere != null)
+            throw new IllegalStateException("Event Group has been closed", closedHere);
         if (!running.getAndSet(true))
             service.submit(this);
     }
@@ -245,6 +248,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
     @Override
     public void close() {
+        closedHere = new Throwable("Closed here");
         highHandlers.forEach(Closeable::closeQuietly);
         mediumHandlers.forEach(Closeable::closeQuietly);
         daemonHandlers.forEach(Closeable::closeQuietly);
