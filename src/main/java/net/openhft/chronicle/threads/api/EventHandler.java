@@ -17,6 +17,7 @@
 package net.openhft.chronicle.threads.api;
 
 import net.openhft.chronicle.threads.HandlerPriority;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Created by peter.lawrey on 22/01/15.
@@ -26,6 +27,7 @@ public interface EventHandler {
     default void eventLoop(EventLoop eventLoop) {
     }
 
+    @NotNull
     default HandlerPriority priority() {
         return HandlerPriority.MEDIUM;
     }

@@ -21,6 +21,7 @@ import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
 import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,6 +36,7 @@ public class BlockingEventLoop implements EventLoop {
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
+    @Nullable
     private Thread thread = null;
     private volatile boolean closed;
     private EventHandler handler;

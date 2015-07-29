@@ -32,7 +32,7 @@ public enum Threads {
     static final Field GROUP = Jvm.getField(Thread.class, "group");
 
     @ForceInline
-    public static <R> R withThreadGroup(ThreadGroup tg, Callable<R> callable) {
+    public static <R> R withThreadGroup(ThreadGroup tg, @NotNull Callable<R> callable) {
         Thread thread = Thread.currentThread();
         ThreadGroup tg0 = thread.getThreadGroup();
         setThreadGroup(thread, tg);

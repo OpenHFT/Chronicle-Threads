@@ -32,8 +32,10 @@ public class EventGroup implements EventLoop {
     static final long MONITOR_INTERVAL_MS = 200;
 
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, NANOSECONDS.convert(1, SECONDS)));
+    @NotNull
     final VanillaEventLoop core;
     final BlockingEventLoop blocking = new BlockingEventLoop(this, "blocking-event-loop");
+    @NotNull
     private final LightPauser pauser;
 
     public EventGroup(boolean daemon) {

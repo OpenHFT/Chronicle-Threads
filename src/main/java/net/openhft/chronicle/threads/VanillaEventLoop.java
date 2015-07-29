@@ -55,9 +55,11 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private final String name;
     private long lastTimerNS;
     private volatile long loopStartMS;
+    @NotNull
     private volatile AtomicBoolean running = new AtomicBoolean();
     @Nullable
     private volatile Thread thread = null;
+    @Nullable
     private volatile Throwable closedHere = null;
 
     public VanillaEventLoop(EventLoop parent, String name, Pauser pauser, long timerIntervalMS, boolean daemon) {
@@ -236,7 +238,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         return name;
     }
 
-    public void dumpRunningState(@NotNull String message, BooleanSupplier finalCheck) {
+    public void dumpRunningState(@NotNull String message, @NotNull BooleanSupplier finalCheck) {
         Thread thread = this.thread;
         if (thread == null) return;
         StringBuilder out = new StringBuilder(message);
