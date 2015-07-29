@@ -25,6 +25,8 @@ import net.openhft.chronicle.threads.api.EventLoop;
 import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +44,7 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * Created by peter.lawrey on 22/01/15.
  */
 public class VanillaEventLoop implements EventLoop, Runnable {
+    private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
@@ -215,12 +218,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         switch (t1 == null ? HandlerPriority.MEDIUM : t1) {
             case HIGH:
                 if (!highHandlers.contains(handler))
-                highHandlers.add(handler);
+                    highHandlers.add(handler);
                 break;
 
             case MEDIUM:
                 if (!mediumHandlers.contains(handler))
-                mediumHandlers.add(handler);
+                    mediumHandlers.add(handler);
                 break;
 
             case TIMER:
@@ -243,9 +246,9 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         if (thread == null) return;
         StringBuilder out = new StringBuilder(message);
         Jvm.trimStackTrace(out, thread.getStackTrace());
-        // TODO use a logger.
-        if (finalCheck.getAsBoolean())
-            System.out.println(out);
+
+        if (finalCheck.getAsBoolean() && LOG.isInfoEnabled())
+            LOG.info(out.toString());
     }
 
     @Override

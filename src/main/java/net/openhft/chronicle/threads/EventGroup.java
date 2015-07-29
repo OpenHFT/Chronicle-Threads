@@ -20,6 +20,8 @@ import net.openhft.chronicle.core.util.Time;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -30,7 +32,7 @@ import static java.util.concurrent.TimeUnit.*;
  */
 public class EventGroup implements EventLoop {
     static final long MONITOR_INTERVAL_MS = 200;
-
+    private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, NANOSECONDS.convert(1, SECONDS)));
     @NotNull
     final VanillaEventLoop core;
