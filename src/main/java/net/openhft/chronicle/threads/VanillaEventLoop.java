@@ -163,7 +163,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             try {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
-                mediumHandlers.remove(i--);
+                mediumHandlers.remove(j);
                 closeQuietly(handler);
 
             } catch (Exception e) {
