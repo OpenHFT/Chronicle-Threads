@@ -133,7 +133,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 }
             }
         } catch (Throwable e) {
-            e.printStackTrace();
+            LOG.error("", e);
         }
     }
 
