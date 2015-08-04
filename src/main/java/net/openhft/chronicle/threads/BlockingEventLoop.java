@@ -22,6 +22,8 @@ import net.openhft.chronicle.threads.api.EventLoop;
 import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,6 +35,9 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * Event "Loop" for blocking tasks. Created by peter.lawrey on 26/01/15.
  */
 public class BlockingEventLoop implements EventLoop {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BlockingEventLoop.class);
+
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
@@ -60,7 +65,7 @@ public class BlockingEventLoop implements EventLoop {
             } catch (InvalidEventHandlerException e) {
                 // expected
             } catch (Throwable t) {
-                t.printStackTrace();
+                LOG.error("", t);
             } finally {
                 if (Jvm.isDebug())
                     System.out.println("handler " + handler + " done.");
