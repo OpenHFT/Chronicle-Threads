@@ -68,7 +68,7 @@ public class BlockingEventLoop implements EventLoop {
                 LOG.error("", t);
             } finally {
                 if (Jvm.isDebug())
-                    System.out.println("handler " + handler + " done.");
+                    LOG.debug("handler " + handler + " done.");
             }
         });
     }
@@ -110,7 +110,7 @@ public class BlockingEventLoop implements EventLoop {
             StackTraceElement[] stackTrace = thread.getStackTrace();
             StringBuilder sb = new StringBuilder(thread + " still running ");
             Jvm.trimStackTrace(sb, stackTrace);
-            System.out.println(sb);
+            LOG.info(sb.toString());
         }
     }
 }
