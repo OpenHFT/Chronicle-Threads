@@ -107,7 +107,7 @@ public class EventGroup implements EventLoop {
             long blockingTimeMS = Time.currentTimeMillis() - loopStartMS;
             long blockingInterval = blockingTimeMS / (MONITOR_INTERVAL_MS / 2);
 
-            if (blockingInterval > lastInterval && !Jvm.IS_DEBUG && core.isAlive()) {
+            if (blockingInterval > lastInterval && !Jvm.isDebug() && core.isAlive()) {
                 core.dumpRunningState(core.name() + " thread has blocked for "
                                 + blockingTimeMS + " ms.",
                         // check we are still in the loop.
