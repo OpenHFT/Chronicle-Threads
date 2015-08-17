@@ -19,6 +19,7 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.util.Time;
 import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
+import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,10 +101,14 @@ public class EventGroup implements EventLoop {
         long lastInterval = 1;
 
         @Override
-        public boolean action() {
+        public boolean action() throws InvalidEventHandlerException {
             long loopStartMS = core.loopStartMS();
             if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE)
                 return false;
+            if (loopStartMS == Long.MAX_VALUE - 1) {
+                LOG.warn("Monitoring a task which has finished");
+                throw new InvalidEventHandlerException();
+            }
             long blockingTimeMS = Time.currentTimeMillis() - loopStartMS;
             long blockingInterval = blockingTimeMS / (MONITOR_INTERVAL_MS / 2);
 

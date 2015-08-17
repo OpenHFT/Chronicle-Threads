@@ -134,6 +134,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             }
         } catch (Throwable e) {
             LOG.error("", e);
+        } finally {
+            loopStartMS = Long.MAX_VALUE - 1;
         }
     }
 
