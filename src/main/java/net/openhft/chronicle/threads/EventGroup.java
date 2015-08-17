@@ -99,6 +99,7 @@ public class EventGroup implements EventLoop {
 
     class LoopBlockMonitor implements EventHandler {
         long lastInterval = 1;
+        long started = Time.currentTimeMillis();
 
         @Override
         public boolean action() throws InvalidEventHandlerException {
@@ -109,7 +110,11 @@ public class EventGroup implements EventLoop {
                 LOG.warn("Monitoring a task which has finished");
                 throw new InvalidEventHandlerException();
             }
-            long blockingTimeMS = Time.currentTimeMillis() - loopStartMS;
+            long now = Time.currentTimeMillis();
+            // is it too early?
+            if (now - started < 10_000)
+                return false;
+            long blockingTimeMS = now - loopStartMS;
             long blockingInterval = blockingTimeMS / (MONITOR_INTERVAL_MS / 2);
 
             if (blockingInterval > lastInterval && !Jvm.isDebug() && core.isAlive()) {
