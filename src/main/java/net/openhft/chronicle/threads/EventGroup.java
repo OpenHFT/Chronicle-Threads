@@ -78,9 +78,11 @@ public class EventGroup implements EventLoop {
 
     @Override
     public void start() {
-        core.start();
-        monitor.start();
-        monitor.addHandler(new LoopBlockMonitor());
+        if (!core.isAlive()) {
+            core.start();
+            monitor.start();
+            monitor.addHandler(new LoopBlockMonitor());
+        }
     }
 
     @Override
