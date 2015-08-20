@@ -73,8 +73,8 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     @HotMethod
     public void run() {
         try {
-            // don't do any monitoring for the first 2000 ms.
-            for (int i = 0; i < 40; i++)
+            // don't do any monitoring for the first 10000 ms.
+            for (int i = 0; i < 200; i++)
                 if (running)
                     Jvm.pause(50);
             while (running) {
@@ -82,12 +82,9 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
                 synchronized (handlers) {
                     busy = runHandlers();
                 }
-                if (busy) {
+                pauser.pause();
+                if (busy)
                     pauser.reset();
-
-                } else {
-                    pauser.pause();
-                }
             }
         } catch (Throwable e) {
             e.printStackTrace();

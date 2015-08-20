@@ -113,9 +113,6 @@ public class EventGroup implements EventLoop {
                 throw new InvalidEventHandlerException();
             }
             long now = Time.currentTimeMillis();
-            // is it too early?
-            if (now - started < 10_000)
-                return false;
             long blockingTimeMS = now - loopStartMS;
             long blockingInterval = blockingTimeMS / (MONITOR_INTERVAL_MS / 2);
 
