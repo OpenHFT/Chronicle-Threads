@@ -34,7 +34,7 @@ import static java.util.concurrent.TimeUnit.*;
 public class EventGroup implements EventLoop {
     static final long MONITOR_INTERVAL_MS = 200;
     private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
-    final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, NANOSECONDS.convert(1, SECONDS)));
+    final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, SECONDS.toNanos(1)));
     @NotNull
     final VanillaEventLoop core;
     final BlockingEventLoop blocking = new BlockingEventLoop(this, "blocking-event-loop");
