@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
@@ -53,24 +54,30 @@ public class BlockingEventLoop implements EventLoop {
 
     @Override
     public void addHandler(@NotNull EventHandler handler) {
-        // remove the
-        closeQuietly(this.handler);
         this.handler = handler;
-        service.submit(() -> {
-            thread = Thread.currentThread();
-            handler.eventLoop(parent);
-            try {
-                while (!closed)
-                    handler.action();
-            } catch (InvalidEventHandlerException e) {
-                // expected
-            } catch (Throwable t) {
-                LOG.error("", t);
-            } finally {
-                if (Jvm.isDebug())
-                    LOG.debug("handler " + handler + " done.");
-            }
-        });
+        try {
+            service.submit(() -> {
+                thread = Thread.currentThread();
+                handler.eventLoop(parent);
+                try {
+                    while (!closed)
+                        handler.action();
+
+                } catch (InvalidEventHandlerException e) {
+                    // expected
+                } catch (Throwable t) {
+                    LOG.error("", t);
+                } finally {
+                    if (LOG.isDebugEnabled())
+                        LOG.debug("handler " + handler + " done.");
+                    if (closed)
+                        closeQuietly(this.handler);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            if (!closed)
+                LOG.error("", e);
+        }
     }
 
     @Override
@@ -93,7 +100,7 @@ public class BlockingEventLoop implements EventLoop {
         service.shutdown();
 
         try {
-            if( !(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
+            if (!(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
                 service.shutdownNow();
         } catch (InterruptedException e) {
             service.shutdownNow();

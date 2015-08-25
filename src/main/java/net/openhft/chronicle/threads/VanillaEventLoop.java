@@ -96,8 +96,9 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
         } else {
             pauser.unpause();
-            while (!newHandler.compareAndSet(null, handler))
+            while (!newHandler.compareAndSet(null, handler)) {
                 Thread.yield();
+            }
         }
     }
 
@@ -255,24 +256,26 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
     @Override
     public void close() {
-        closedHere = new Throwable("Closed here");
-        highHandlers.forEach(Closeable::closeQuietly);
-        mediumHandlers.forEach(Closeable::closeQuietly);
-        daemonHandlers.forEach(Closeable::closeQuietly);
-        timerHandlers.forEach(Closeable::closeQuietly);
-        Optional.ofNullable(newHandler.get()).ifPresent(Closeable::closeQuietly);
-        service.shutdown();
         try {
+            closedHere = new Throwable("Closed here");
+            highHandlers.forEach(Closeable::closeQuietly);
+            mediumHandlers.forEach(Closeable::closeQuietly);
+            daemonHandlers.forEach(Closeable::closeQuietly);
+            timerHandlers.forEach(Closeable::closeQuietly);
+            Optional.ofNullable(newHandler.get()).ifPresent(Closeable::closeQuietly);
+            service.shutdown();
+
             if (!(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
                 service.shutdownNow();
         } catch (InterruptedException e) {
             service.shutdownNow();
+        } finally {
+            highHandlers.clear();
+            mediumHandlers.clear();
+            daemonHandlers.clear();
+            timerHandlers.clear();
+            newHandler.set(null);
         }
-        highHandlers.clear();
-        mediumHandlers.clear();
-        daemonHandlers.clear();
-        timerHandlers.clear();
-        newHandler.set(null);
     }
 
     public boolean isAlive() {
