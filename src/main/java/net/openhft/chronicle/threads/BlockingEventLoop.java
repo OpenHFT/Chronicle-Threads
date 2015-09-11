@@ -106,7 +106,6 @@ public class BlockingEventLoop implements EventLoop {
             service.shutdownNow();
         }
 
-
         try {
             if (thread != null)
                 thread.join(100);
