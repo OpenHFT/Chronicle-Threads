@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class EventGroupTest {
 
     @Test
-    public void testSimeEventGroupTest() throws Exception {
+    public void testSimpleEventGroupTest() throws Exception {
 
         final AtomicInteger value = new AtomicInteger();
 
@@ -31,8 +31,8 @@ public class EventGroupTest {
 
             final long start = System.currentTimeMillis();
 
-            Thread.sleep(1);
             while (value.get() != 10) {
+                Thread.sleep(1);
             }
 
             Assert.assertTrue(System.currentTimeMillis() < start + TimeUnit.SECONDS.toMillis(5));
