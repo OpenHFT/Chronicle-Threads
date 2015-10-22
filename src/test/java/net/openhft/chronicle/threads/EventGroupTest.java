@@ -17,10 +17,8 @@ public class EventGroupTest {
 
         final AtomicInteger value = new AtomicInteger();
 
-        final EventGroup eventGroup = new EventGroup(true);
-        try {
+        try (final EventGroup eventGroup = new EventGroup(true)) {
             eventGroup.start();
-
             eventGroup.addHandler(() -> {
                 if (value.get() == 10)
                     // throw this if you don't wish to be called back
@@ -30,7 +28,6 @@ public class EventGroupTest {
             });
 
             final long start = System.currentTimeMillis();
-
             while (value.get() != 10) {
                 Thread.sleep(1);
             }
@@ -41,11 +38,7 @@ public class EventGroupTest {
                 Assert.assertEquals(10, value.get());
                 Thread.sleep(1);
             }
-
-        } catch (Exception e) {
-            eventGroup.stop();
         }
     }
-
 
 }
