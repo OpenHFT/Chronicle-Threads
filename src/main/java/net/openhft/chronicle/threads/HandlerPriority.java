@@ -29,8 +29,9 @@ public enum HandlerPriority {
      */
     MEDIUM,
     /**
-     * Timing based tasks called every give interval. Note: this task will not be called if the thread pauses e.g. due a
-     * GC or when debugging is used.  This makes the timer more robust to delays than using absolute time differences.
+     * Timing based tasks called every give interval. Note: this task will not be called if the
+     * thread pauses e.g. due a GC or when debugging is used.  This makes the timer more robust to
+     * delays than using absolute time differences.
      */
     TIMER,
     /**
@@ -44,5 +45,10 @@ public enum HandlerPriority {
     /**
      * Task is a blocking operation, added to a cached thread pool
      */
-    BLOCKING
+    BLOCKING,
+
+    /***
+     * used for replication, ensures that the replication runs on its own thread
+     */
+    REPLICATION
 }

@@ -37,6 +37,7 @@ public class EventGroup implements EventLoop {
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, SECONDS.toNanos(1)));
     @NotNull
     final VanillaEventLoop core;
+    final VanillaEventLoop replication;
     final BlockingEventLoop blocking = new BlockingEventLoop(this, "blocking-event-loop");
     @NotNull
     private final LightPauser pauser;
@@ -47,6 +48,8 @@ public class EventGroup implements EventLoop {
                 NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
         core = new VanillaEventLoop(this, "core-event-loop",
                 pauser, 1, daemon);
+
+        replication = new VanillaEventLoop(this, "replication-event-loop", pauser, 1, daemon);
     }
 
     @Override
@@ -56,7 +59,7 @@ public class EventGroup implements EventLoop {
 
     public void addHandler(@NotNull EventHandler handler) {
         HandlerPriority t1 = handler.priority();
-        switch (t1 == null ? HandlerPriority.BLOCKING : t1) {
+        switch (t1) {
             case HIGH:
             case MEDIUM:
             case TIMER:
@@ -71,6 +74,12 @@ public class EventGroup implements EventLoop {
             case BLOCKING:
                 blocking.addHandler(handler);
                 break;
+
+            // used only for replication, this is so replication can run in its own thread
+            case REPLICATION:
+                replication.addHandler(handler);
+                break;
+
             default:
                 throw new IllegalArgumentException("Unknown priority " + handler.priority());
         }
@@ -81,6 +90,7 @@ public class EventGroup implements EventLoop {
         if (!core.isAlive()) {
             core.start();
             monitor.start();
+            // this checks that the core threads have stalled
             monitor.addHandler(new LoopBlockMonitor());
         }
     }
