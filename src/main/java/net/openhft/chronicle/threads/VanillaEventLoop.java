@@ -234,6 +234,11 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 if (!daemonHandlers.contains(handler))
                     daemonHandlers.add(handler);
                 break;
+            case REPLICATION:
+                if (!mediumHandlers.contains(handler))
+                    mediumHandlers.add(handler);
+                break;
+
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
