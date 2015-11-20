@@ -224,6 +224,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                     highHandlers.add(handler);
                 break;
 
+            case REPLICATION:
             case MEDIUM:
                 if (!mediumHandlers.contains(handler))
                     mediumHandlers.add(handler);
@@ -233,10 +234,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             case DAEMON:
                 if (!daemonHandlers.contains(handler))
                     daemonHandlers.add(handler);
-                break;
-            case REPLICATION:
-                if (!mediumHandlers.contains(handler))
-                    mediumHandlers.add(handler);
                 break;
 
             default:

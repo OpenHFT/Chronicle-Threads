@@ -32,7 +32,12 @@ import static java.util.concurrent.TimeUnit.*;
  * Created by peter.lawrey on 22/01/15.
  */
 public class EventGroup implements EventLoop {
-    static final long MONITOR_INTERVAL_MS = 200;
+
+    static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong
+            ("REPLICATION_MONITOR_INTERVAL_MS", SECONDS.toMillis(15));
+
+    static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 200);
+
     private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, SECONDS.toNanos(1)));
     @NotNull
@@ -46,9 +51,7 @@ public class EventGroup implements EventLoop {
         pauser = new LightPauser(
                 NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
                 NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
-        core = new VanillaEventLoop(this, "core-event-loop",
-                pauser, 1, daemon);
-
+        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon);
         replication = new VanillaEventLoop(this, "replication-event-loop", pauser, 1, daemon);
     }
 
@@ -85,13 +88,17 @@ public class EventGroup implements EventLoop {
         }
     }
 
+
     @Override
     public void start() {
         if (!core.isAlive()) {
             core.start();
+
+            replication.start();
             monitor.start();
             // this checks that the core threads have stalled
-            monitor.addHandler(new LoopBlockMonitor());
+            monitor.addHandler(new LoopBlockMonitor(MONITOR_INTERVAL_MS, EventGroup.this.core));
+            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, replication));
         }
     }
 
@@ -111,11 +118,18 @@ public class EventGroup implements EventLoop {
 
     class LoopBlockMonitor implements EventHandler {
         long lastInterval = 1;
-        long started = Time.currentTimeMillis();
+        private final long monitoryIntervalMs;
+        private final VanillaEventLoop eventLoop;
+
+        public LoopBlockMonitor(long monitoryIntervalMs, final VanillaEventLoop eventLoop) {
+            this.monitoryIntervalMs = monitoryIntervalMs;
+            this.eventLoop = eventLoop;
+        }
 
         @Override
         public boolean action() throws InvalidEventHandlerException {
-            long loopStartMS = core.loopStartMS();
+
+            long loopStartMS = eventLoop.loopStartMS();
             if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE)
                 return false;
             if (loopStartMS == Long.MAX_VALUE - 1) {
@@ -124,13 +138,13 @@ public class EventGroup implements EventLoop {
             }
             long now = Time.currentTimeMillis();
             long blockingTimeMS = now - loopStartMS;
-            long blockingInterval = blockingTimeMS / (MONITOR_INTERVAL_MS / 2);
+            long blockingInterval = blockingTimeMS / (monitoryIntervalMs / 2);
 
-            if (blockingInterval > lastInterval && !Jvm.isDebug() && core.isAlive()) {
-                core.dumpRunningState(core.name() + " thread has blocked for "
+            if (blockingInterval > lastInterval && !Jvm.isDebug() && eventLoop.isAlive()) {
+                eventLoop.dumpRunningState(eventLoop.name() + " thread has blocked for "
                                 + blockingTimeMS + " ms.",
                         // check we are still in the loop.
-                        () -> core.loopStartMS() == loopStartMS);
+                        () -> eventLoop.loopStartMS() == loopStartMS);
 
             } else {
                 lastInterval = Math.max(1, blockingInterval);
