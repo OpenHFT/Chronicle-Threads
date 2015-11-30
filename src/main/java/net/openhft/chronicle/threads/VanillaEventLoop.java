@@ -161,7 +161,13 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             try {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
-                highHandlers.remove(i--);
+                try {
+                    highHandlers.remove(i--);
+                } catch (ArrayIndexOutOfBoundsException e2) {
+                    if (!mediumHandlers.isEmpty())
+                        throw e2;
+                }
+
                 closeQuietly(handler);
 
             } catch (Exception e) {
@@ -179,7 +185,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             try {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
-                mediumHandlers.remove(j);
+                try {
+                    mediumHandlers.remove(j);
+                } catch (ArrayIndexOutOfBoundsException e2) {
+                    if (!mediumHandlers.isEmpty())
+                        throw e2;
+                }
                 closeQuietly(handler);
 
             } catch (Exception e) {
@@ -196,7 +207,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             try {
                 handler.action();
             } catch (InvalidEventHandlerException e) {
-                timerHandlers.remove(i--);
+                try {
+                    timerHandlers.remove(i--);
+                } catch (ArrayIndexOutOfBoundsException e2) {
+                    if (!timerHandlers.isEmpty())
+                        throw e2;
+                }
                 closeQuietly(handler);
 
             } catch (Exception e) {
@@ -212,7 +228,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             try {
                 handler.action();
             } catch (InvalidEventHandlerException e) {
-                daemonHandlers.remove(i--);
+                try {
+                    daemonHandlers.remove(i--);
+                } catch (ArrayIndexOutOfBoundsException e2) {
+                    if (!daemonHandlers.isEmpty())
+                        throw e2;
+                }
                 closeQuietly(handler);
 
             } catch (Exception e) {
@@ -279,9 +300,19 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             timerHandlers.forEach(Closeable::closeQuietly);
             Optional.ofNullable(newHandler.get()).ifPresent(Closeable::closeQuietly);
             service.shutdown();
+            pauser.unpause();
+            thread.interrupt();
 
-            if (!(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
+            if (!(service.awaitTermination(1, TimeUnit.SECONDS))) {
+                Thread thread = this.thread;
+                if (thread != null) {
+                    StackTraceElement[] stackTrace = thread.getStackTrace();
+                    StringBuilder sb = new StringBuilder(thread + " still running ");
+                    Jvm.trimStackTrace(sb, stackTrace);
+                    LOG.info(sb.toString());
+                }
                 service.shutdownNow();
+            }
         } catch (InterruptedException e) {
             service.shutdownNow();
         } finally {

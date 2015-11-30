@@ -105,6 +105,7 @@ public class EventGroup implements EventLoop {
     @Override
     public void stop() {
         monitor.stop();
+        replication.stop();
         core.stop();
     }
 
@@ -117,9 +118,9 @@ public class EventGroup implements EventLoop {
     }
 
     class LoopBlockMonitor implements EventHandler {
-        long lastInterval = 1;
         private final long monitoryIntervalMs;
         private final VanillaEventLoop eventLoop;
+        long lastInterval = 1;
 
         public LoopBlockMonitor(long monitoryIntervalMs, final VanillaEventLoop eventLoop) {
             this.monitoryIntervalMs = monitoryIntervalMs;
