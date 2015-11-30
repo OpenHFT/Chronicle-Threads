@@ -96,9 +96,22 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
         } else {
             pauser.unpause();
-            while (!newHandler.compareAndSet(null, handler)) {
-                Thread.yield();
-            }
+            boolean first = true;
+            do {
+                if (!running.get()) {
+                    try {
+                        LOG.info("Running " + handler + " in the current thread as " + this + " has finished");
+                        handler.action();
+                    } catch (InvalidEventHandlerException ignored) {
+                    }
+                    return;
+                }
+                if (first)
+                    first = false;
+                else
+                    Thread.yield();
+
+            } while (!newHandler.compareAndSet(null, handler));
         }
     }
 
