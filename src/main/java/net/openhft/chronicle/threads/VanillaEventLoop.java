@@ -171,7 +171,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.error("", e);
             }
         }
         return busy;
@@ -194,7 +194,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.error("", e);
             }
         }
         return busy;
@@ -216,7 +216,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.error("", e);
             }
         }
     }
@@ -237,7 +237,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.error("", e);
             }
         }
     }

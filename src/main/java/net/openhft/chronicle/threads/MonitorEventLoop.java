@@ -22,6 +22,8 @@ import net.openhft.chronicle.threads.api.EventHandler;
 import net.openhft.chronicle.threads.api.EventLoop;
 import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.xml.ws.WebServiceException;
 import java.io.Closeable;
@@ -35,6 +37,7 @@ import java.util.concurrent.TimeUnit;
  * Created by peter.lawrey on 22/01/15.
  */
 public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
+    static final Logger LOG = LoggerFactory.getLogger(MonitorEventLoop.class);
     final ExecutorService service = Executors.newSingleThreadExecutor(new NamedThreadFactory("event-loop-monitor", true));
 
     private final EventLoop parent;
@@ -87,7 +90,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
                     pauser.reset();
             }
         } catch (Throwable e) {
-            e.printStackTrace();
+            LOG.warn("run() caught", e);
         }
     }
 
@@ -105,7 +108,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
                 handlers.remove(i--);
 
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.warn("handler " + handler + " threw", e);
             }
         }
         return busy;
