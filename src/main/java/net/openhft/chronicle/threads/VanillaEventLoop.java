@@ -95,7 +95,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             addNewHandler(handler);
 
         } else {
-            pauser.unpause();
             boolean first = true;
             do {
                 if (!running.get()) {
@@ -106,6 +105,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                     }
                     return;
                 }
+                pauser.unpause();
                 if (first)
                     first = false;
                 else

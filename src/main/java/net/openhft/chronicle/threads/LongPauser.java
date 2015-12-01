@@ -9,10 +9,10 @@ import java.util.concurrent.TimeUnit;
  */
 public class LongPauser implements Pauser {
 
-    private long timeNs;
+    private final long timeMs;
 
     public LongPauser(long time, TimeUnit timeUnit) {
-        this.timeNs = timeUnit.toNanos(time);
+        this.timeMs = timeUnit.toMillis(time);
     }
 
     @Override
@@ -22,13 +22,13 @@ public class LongPauser implements Pauser {
 
     @Override
     public void pause() {
-        Jvm.pause(timeNs);
+        Jvm.pause(timeMs);
 
     }
 
     @Override
     public void pause(long maxPauseNS) {
-        Jvm.pause(Math.min(timeNs, maxPauseNS));
+        Jvm.pause(Math.min(timeMs, maxPauseNS / 1000000));
     }
 
     @Override
