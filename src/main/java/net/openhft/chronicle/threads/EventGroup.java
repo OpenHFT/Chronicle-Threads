@@ -40,6 +40,7 @@ public class EventGroup implements EventLoop {
     static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 200);
 
     private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
+    private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 30);
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, SECONDS.toNanos(1)));
     @NotNull
     final VanillaEventLoop core;
@@ -53,7 +54,7 @@ public class EventGroup implements EventLoop {
                 NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
                 NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
         core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon);
-        replication = new VanillaEventLoop(this, "replication-event-loop", new LongPauser(1, TimeUnit.MILLISECONDS), 30, daemon);
+        replication = new VanillaEventLoop(this, "replication-event-loop", new LongPauser(1, TimeUnit.MILLISECONDS), REPLICATION_EVENT_PAUSE_TIME, daemon);
     }
 
     @Override
