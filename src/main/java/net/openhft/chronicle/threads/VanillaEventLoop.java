@@ -91,13 +91,18 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void addHandler(@NotNull EventHandler handler) {
+        addHandler(false, handler);
+    }
+
+
+    public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
 
         } else {
             boolean first = true;
             do {
-                if (!running.get()) {
+                if (!dontAttemptToRunImmediatelyInCurrentThread && !running.get()) {
                     try {
                         LOG.info("Running " + handler + " in the current thread as " + this + " has finished");
                         handler.action();
@@ -114,6 +119,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             } while (!newHandler.compareAndSet(null, handler));
         }
     }
+
 
     public long loopStartMS() {
         return loopStartMS;

@@ -16,12 +16,17 @@
 
 package net.openhft.chronicle.threads.api;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.Closeable;
 
 /**
  * Created by peter.lawrey on 22/01/15.
  */
 public interface EventLoop extends Closeable {
+
+    void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler);
+
     void addHandler(EventHandler handler);
 
     void start();

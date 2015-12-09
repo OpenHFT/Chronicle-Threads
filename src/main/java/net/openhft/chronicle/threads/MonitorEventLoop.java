@@ -64,6 +64,11 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         running = false;
     }
 
+    @Override
+    public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
+        addHandler(handler);
+    }
+
     public void addHandler(@NotNull EventHandler handler) {
         synchronized (handlers) {
             if (!handlers.contains(handler))

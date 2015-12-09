@@ -62,6 +62,11 @@ public class EventGroup implements EventLoop {
         pauser.unpause();
     }
 
+    @Override
+    public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
+        addHandler(handler);
+    }
+
     public void addHandler(@NotNull EventHandler handler) {
         HandlerPriority t1 = handler.priority();
         switch (t1) {

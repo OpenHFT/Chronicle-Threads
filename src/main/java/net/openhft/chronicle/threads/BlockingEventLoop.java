@@ -53,6 +53,11 @@ public class BlockingEventLoop implements EventLoop {
     }
 
     @Override
+    public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
+        addHandler(handler);
+    }
+
+    @Override
     public void addHandler(@NotNull EventHandler handler) {
         this.handler = handler;
         try {
