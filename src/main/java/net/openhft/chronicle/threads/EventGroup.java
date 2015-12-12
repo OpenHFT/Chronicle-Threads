@@ -114,6 +114,7 @@ public class EventGroup implements EventLoop {
         monitor.stop();
         replication.stop();
         core.stop();
+        blocking.stop();
     }
 
     @Override
@@ -122,6 +123,7 @@ public class EventGroup implements EventLoop {
         monitor.close();
         blocking.close();
         core.close();
+        replication.close();
     }
 
     class LoopBlockMonitor implements EventHandler {
