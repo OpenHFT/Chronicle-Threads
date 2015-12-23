@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static java.util.concurrent.TimeUnit.*;
 
@@ -48,6 +49,16 @@ public class EventGroup implements EventLoop {
     final BlockingEventLoop blocking = new BlockingEventLoop(this, "blocking-event-loop");
     @NotNull
     private final LightPauser pauser;
+
+    public EventGroup(boolean daemon, Consumer<Throwable> onThrowable) {
+        pauser = new LightPauser(
+                NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
+                NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
+        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon);
+        replication = new VanillaEventLoop(this, "replication-event-loop", new LongPauser(1,
+                TimeUnit.MILLISECONDS), REPLICATION_EVENT_PAUSE_TIME, daemon, onThrowable);
+    }
+
 
     public EventGroup(boolean daemon) {
         pauser = new LightPauser(

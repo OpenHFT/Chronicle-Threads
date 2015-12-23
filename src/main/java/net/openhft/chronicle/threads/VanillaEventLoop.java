@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
@@ -56,6 +57,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private final Pauser pauser;
     private final long timerIntervalMS;
     private final String name;
+    private final Consumer<Throwable> onThrowable;
     private long lastTimerNS;
     private volatile long loopStartMS;
     @NotNull
@@ -65,6 +67,13 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     @Nullable
     private volatile Throwable closedHere = null;
 
+    /**
+     * @param parent          the parent event loop
+     * @param name            the name of this event hander
+     * @param pauser          the pause strategy
+     * @param timerIntervalMS how long to pause
+     * @param daemon          is a demon thread
+     */
     public VanillaEventLoop(EventLoop parent, String name, Pauser pauser, long timerIntervalMS, boolean daemon) {
         this.parent = parent;
         this.name = name;
@@ -72,6 +81,30 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         this.timerIntervalMS = timerIntervalMS;
         loopStartMS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
+        onThrowable = t -> LOG.error("", t);
+    }
+
+    /**
+     * @param parent          the parent event loop
+     * @param name            the name of this event hander
+     * @param pauser          the pause strategy
+     * @param timerIntervalMS how long to pause
+     * @param daemon          is a demon thread
+     * @param onThrowable     consumer is called when ever an error occurs
+     */
+    public VanillaEventLoop(EventLoop parent,
+                            String name,
+                            Pauser pauser,
+                            long timerIntervalMS,
+                            boolean daemon,
+                            Consumer<Throwable> onThrowable) {
+        this.parent = parent;
+        this.name = name;
+        this.pauser = pauser;
+        this.timerIntervalMS = timerIntervalMS;
+        loopStartMS = Long.MAX_VALUE;
+        service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
+        this.onThrowable = onThrowable;
     }
 
     public void start() {
@@ -153,7 +186,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 }
             }
         } catch (Throwable e) {
-            LOG.error("", e);
+            onThrowable.accept(e);
         } finally {
             loopStartMS = Long.MAX_VALUE - 1;
         }
@@ -199,6 +232,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 }
                 closeQuietly(handler);
 
+            } catch (AssertionError ae) {
+                throw ae;
             } catch (Exception e) {
                 LOG.error("", e);
             }
