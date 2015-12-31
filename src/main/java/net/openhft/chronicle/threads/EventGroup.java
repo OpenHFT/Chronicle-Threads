@@ -66,7 +66,7 @@ public class EventGroup implements EventLoop {
                 NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
                 NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
         core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon);
-        replication = new VanillaEventLoop(this, "replication-event-loop", new LongPauser(0,
+        replication = new VanillaEventLoop(this, "replication-event-loop", new LongPauser(1,
                 TimeUnit.MILLISECONDS), REPLICATION_EVENT_PAUSE_TIME, daemon);
     }
 
