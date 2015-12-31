@@ -23,7 +23,6 @@ public class LongPauser implements Pauser {
     @Override
     public void pause() {
         Jvm.pause(timeMs);
-
     }
 
     @Override
