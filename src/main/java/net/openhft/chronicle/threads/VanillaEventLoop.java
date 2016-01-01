@@ -127,7 +127,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         addHandler(false, handler);
     }
 
-
     public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
@@ -152,7 +151,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             } while (!newHandler.compareAndSet(null, handler));
         }
     }
-
 
     public long loopStartMS() {
         return loopStartMS;
