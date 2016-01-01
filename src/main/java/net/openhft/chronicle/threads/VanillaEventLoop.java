@@ -165,10 +165,16 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             thread = Thread.currentThread();
             while (running.get()) {
                 boolean busy = false;
-                for (int i = 0; i < 10; i++) {
+                if (highHandlers.isEmpty()) {
                     loopStartMS = Time.currentTimeMillis();
-                    busy |= runAllHighHandlers();
-                    busy |= runOneTenthLowHandler(i);
+                    busy |= runAllLowHandler();
+
+                } else {
+                    for (int i = 0; i < 10; i++) {
+                        loopStartMS = Time.currentTimeMillis();
+                        busy |= runAllHighHandlers();
+                        busy |= runOneTenthLowHandler(i);
+                    }
                 }
                 if (lastTimerNS + timerIntervalMS < loopStartMS) {
                     lastTimerNS = loopStartMS;
@@ -232,8 +238,29 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 }
                 closeQuietly(handler);
 
-            } catch (AssertionError ae) {
-                throw ae;
+            } catch (Exception e) {
+                LOG.error("", e);
+            }
+        }
+        return busy;
+    }
+
+    @HotMethod
+    private boolean runAllLowHandler() {
+        boolean busy = false;
+        for (int j = 0; j < mediumHandlers.size(); j++) {
+            EventHandler handler = mediumHandlers.get(j);
+            try {
+                busy |= handler.action();
+            } catch (InvalidEventHandlerException e) {
+                try {
+                    mediumHandlers.remove(j);
+                } catch (ArrayIndexOutOfBoundsException e2) {
+                    if (!mediumHandlers.isEmpty())
+                        throw e2;
+                }
+                closeQuietly(handler);
+
             } catch (Exception e) {
                 LOG.error("", e);
             }

@@ -1,6 +1,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.Maths;
 
 import java.util.concurrent.TimeUnit;
 
@@ -9,25 +10,34 @@ import java.util.concurrent.TimeUnit;
  */
 public class LongPauser implements Pauser {
 
-    private final long timeMs;
+    private final int timeMs;
+    private int count;
 
     public LongPauser(long time, TimeUnit timeUnit) {
-        this.timeMs = timeUnit.toMillis(time);
+        this.timeMs = Maths.toUInt31(timeUnit.toMillis(time));
     }
 
     @Override
     public void reset() {
-
+        count = 0;
     }
 
     @Override
     public void pause() {
-        Jvm.pause(timeMs);
+        if (count++ == 0)
+            return;
+        if (count > timeMs)
+            count = timeMs;
+        Jvm.pause(count);
     }
 
     @Override
     public void pause(long maxPauseNS) {
-        Jvm.pause(Math.min(timeMs, maxPauseNS / 1000000));
+        if (count++ == 0)
+            return;
+        if (count > timeMs)
+            count = timeMs;
+        Jvm.pause(Math.min(count, maxPauseNS / 1000000));
     }
 
     @Override

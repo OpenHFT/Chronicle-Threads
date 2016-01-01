@@ -46,28 +46,32 @@ public class EventGroup implements EventLoop {
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, SECONDS.toNanos(1)));
     @NotNull
     final VanillaEventLoop core;
-    final VanillaEventLoop replication;
     final BlockingEventLoop blocking = new BlockingEventLoop(this, "blocking-event-loop");
+    private final Consumer<Throwable> onThrowable;
     @NotNull
     private final LightPauser pauser;
+    VanillaEventLoop _replication;
 
     public EventGroup(boolean daemon, Consumer<Throwable> onThrowable) {
+        this.onThrowable = onThrowable;
         pauser = new LightPauser(
                 NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
                 NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
         core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon);
-        replication = new VanillaEventLoop(this, "replication-event-loop", new LongPauser(1,
-                TimeUnit.MILLISECONDS), REPLICATION_EVENT_PAUSE_TIME, daemon, onThrowable);
     }
 
-
     public EventGroup(boolean daemon) {
-        pauser = new LightPauser(
-                NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
-                NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
-        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon);
-        replication = new VanillaEventLoop(this, "replication-event-loop", new LongPauser(1,
-                TimeUnit.MILLISECONDS), REPLICATION_EVENT_PAUSE_TIME, daemon);
+        this(daemon, Throwable::printStackTrace);
+    }
+
+    public synchronized VanillaEventLoop getReplication() {
+        if (_replication == null) {
+            LongPauser pauser = new LongPauser(REPLICATION_EVENT_PAUSE_TIME, TimeUnit.MILLISECONDS);
+            _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable);
+            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
+            _replication.start();
+        }
+        return _replication;
     }
 
     @Override
@@ -100,7 +104,7 @@ public class EventGroup implements EventLoop {
 
             // used only for replication, this is so replication can run in its own thread
             case REPLICATION:
-                replication.addHandler(handler);
+                getReplication().addHandler(handler);
                 break;
 
             default:
@@ -108,24 +112,22 @@ public class EventGroup implements EventLoop {
         }
     }
 
-
     @Override
     public void start() {
         if (!core.isAlive()) {
             core.start();
 
-            replication.start();
             monitor.start();
             // this checks that the core threads have stalled
             monitor.addHandler(new LoopBlockMonitor(MONITOR_INTERVAL_MS, EventGroup.this.core));
-            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, replication));
         }
     }
 
     @Override
     public void stop() {
         monitor.stop();
-        replication.stop();
+        if (_replication != null)
+            _replication.stop();
         core.stop();
         blocking.stop();
     }
@@ -136,7 +138,7 @@ public class EventGroup implements EventLoop {
         monitor.close();
         blocking.close();
         core.close();
-        replication.close();
+        if (_replication != null) _replication.close();
     }
 
     class LoopBlockMonitor implements EventHandler {
