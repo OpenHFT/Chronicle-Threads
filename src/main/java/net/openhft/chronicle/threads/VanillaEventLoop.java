@@ -331,6 +331,10 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 break;
 
             case TIMER:
+                if (!timerHandlers.contains(handler))
+                    timerHandlers.add(handler);
+                break;
+
             case DAEMON:
                 if (!daemonHandlers.contains(handler))
                     daemonHandlers.add(handler);

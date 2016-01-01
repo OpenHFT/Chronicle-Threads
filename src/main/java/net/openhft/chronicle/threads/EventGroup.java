@@ -42,7 +42,7 @@ public class EventGroup implements EventLoop {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger
-            ("replicationEventPauseTime", 0);
+            ("replicationEventPauseTime", 20);
     final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, SECONDS.toNanos(1)));
     @NotNull
     final VanillaEventLoop core;
