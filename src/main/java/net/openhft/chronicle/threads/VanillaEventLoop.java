@@ -134,19 +134,28 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         } else {
             boolean first = true;
             do {
-                if (!dontAttemptToRunImmediatelyInCurrentThread && !running.get()) {
-                    try {
-                        LOG.info("Running " + handler + " in the current thread as " + this + " has finished");
-                        handler.action();
-                    } catch (InvalidEventHandlerException ignored) {
+                if (!running.get()) {
+                    if (!dontAttemptToRunImmediatelyInCurrentThread) {
+                        try {
+                            if (LOG.isDebugEnabled())
+                                LOG.debug("Running " + handler + " in the current thread as " + this + " has finished");
+                            handler.action();
+                        } catch (InvalidEventHandlerException ignored) {
+                        }
                     }
                     return;
                 }
                 pauser.unpause();
-                if (first)
+                if (first) {
                     first = false;
-                else
                     Thread.yield();
+
+                } else {
+                    Jvm.pause(1);
+                    StringBuilder sb = new StringBuilder().append("Trying to add handle " + handler + " to running ").append(thread);
+                    Jvm.trimStackTrace(sb, thread.getStackTrace());
+                    System.out.println(sb.toString());
+                }
 
             } while (!newHandler.compareAndSet(null, handler));
         }
@@ -166,19 +175,20 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 if (highHandlers.isEmpty()) {
                     loopStartMS = Time.currentTimeMillis();
                     busy |= runAllLowHandler();
+                    acceptNewHandlers();
 
                 } else {
                     for (int i = 0; i < 10; i++) {
                         loopStartMS = Time.currentTimeMillis();
                         busy |= runAllHighHandlers();
                         busy |= runOneTenthLowHandler(i);
+                        acceptNewHandlers();
                     }
                 }
                 if (lastTimerNS + timerIntervalMS < loopStartMS) {
                     lastTimerNS = loopStartMS;
                     runTimerHandlers();
                 }
-                acceptNewHandlers();
                 if (busy) {
                     pauser.reset();
 
