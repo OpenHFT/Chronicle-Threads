@@ -30,10 +30,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.Queue;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
@@ -54,6 +52,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private final List<EventHandler> timerHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> daemonHandlers = new CopyOnWriteArrayList<>();
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
+    private final Queue<EventHandler> newHandlerQueue = new LinkedTransferQueue<>();
     private final Pauser pauser;
     private final long timerIntervalMS;
     private final String name;
@@ -132,8 +131,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             addNewHandler(handler);
 
         } else {
-            boolean first = true;
-            do {
+
                 if (!running.get()) {
                     if (!dontAttemptToRunImmediatelyInCurrentThread) {
                         try {
@@ -146,18 +144,9 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                     return;
                 }
                 pauser.unpause();
-                if (first) {
-                    first = false;
-                    Thread.yield();
+            if (!newHandler.compareAndSet(null, handler))
+                newHandlerQueue.add(handler);
 
-                } else {
-                    Jvm.pause(1);
-                    StringBuilder sb = new StringBuilder().append("Trying to add handle " + handler + " to running ").append(thread);
-                    Jvm.trimStackTrace(sb, thread.getStackTrace());
-                    System.out.println(sb.toString());
-                }
-
-            } while (!newHandler.compareAndSet(null, handler));
         }
     }
 
@@ -175,20 +164,20 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 if (highHandlers.isEmpty()) {
                     loopStartMS = Time.currentTimeMillis();
                     busy |= runAllLowHandler();
-                    acceptNewHandlers();
 
                 } else {
                     for (int i = 0; i < 10; i++) {
                         loopStartMS = Time.currentTimeMillis();
                         busy |= runAllHighHandlers();
                         busy |= runOneTenthLowHandler(i);
-                        acceptNewHandlers();
                     }
                 }
                 if (lastTimerNS + timerIntervalMS < loopStartMS) {
                     lastTimerNS = loopStartMS;
                     runTimerHandlers();
                 }
+                busy |= acceptNewHandlers();
+
                 if (busy) {
                     pauser.reset();
 
@@ -319,11 +308,18 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     @HotMethod
-    private void acceptNewHandlers() {
+    private boolean acceptNewHandlers() {
+        boolean busy = false;
         EventHandler handler = newHandler.getAndSet(null);
         if (handler != null) {
             addNewHandler(handler);
+            busy = true;
         }
+        while ((handler = newHandlerQueue.poll()) != null) {
+            addNewHandler(handler);
+            busy = true;
+        }
+        return busy;
     }
 
     private void addNewHandler(@NotNull EventHandler handler) {
@@ -379,6 +375,10 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             daemonHandlers.forEach(Closeable::closeQuietly);
             timerHandlers.forEach(Closeable::closeQuietly);
             Optional.ofNullable(newHandler.get()).ifPresent(Closeable::closeQuietly);
+
+            for (Object o; (o = newHandlerQueue.poll()) != null; )
+                Closeable.closeQuietly(o);
+
             service.shutdown();
             pauser.unpause();
             thread.interrupt();
@@ -400,6 +400,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             mediumHandlers.clear();
             daemonHandlers.clear();
             timerHandlers.clear();
+            newHandlerQueue.clear();
             newHandler.set(null);
         }
     }
