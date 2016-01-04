@@ -50,13 +50,14 @@ public class EventGroup implements EventLoop {
     private final Consumer<Throwable> onThrowable;
     @NotNull
     private final LightPauser pauser;
-    VanillaEventLoop _replication;
+    private VanillaEventLoop _replication;
 
     public EventGroup(boolean daemon, Consumer<Throwable> onThrowable) {
         this.onThrowable = onThrowable;
         pauser = new LightPauser(
                 NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
                 NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
+        monitor.addHandler(new PauserMonitor(pauser, "core pauser", 10));
         core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon);
     }
 
@@ -70,6 +71,7 @@ public class EventGroup implements EventLoop {
             _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();
+            monitor.addHandler(new PauserMonitor(pauser, "replication pauser", 10));
         }
         return _replication;
     }

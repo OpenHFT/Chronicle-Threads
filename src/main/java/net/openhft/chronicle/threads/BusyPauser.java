@@ -39,4 +39,14 @@ public enum BusyPauser implements Pauser {
     @Override
     public void unpause() {
     }
+
+    @Override
+    public long timePaused() {
+        return 0;
+    }
+
+    @Override
+    public long countPaused() {
+        return 0;
+    }
 }

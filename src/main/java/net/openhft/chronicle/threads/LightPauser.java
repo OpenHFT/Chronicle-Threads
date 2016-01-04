@@ -29,11 +29,12 @@ import java.util.concurrent.locks.LockSupport;
  */
 public class LightPauser implements Pauser {
     public static final long NO_BUSY_PERIOD = -1;
-    public static final long NO_PAUSE_PERIOD = -1;
     private final AtomicBoolean pausing = new AtomicBoolean();
     private final long busyPeriodNS;
     private final long parkPeriodNS;
     private int count;
+    private long timePaused = 0;
+    private long countPaused = 0;
     private long pauseStart = 0;
     private volatile Thread thread;
 
@@ -53,6 +54,7 @@ public class LightPauser implements Pauser {
         pause(parkPeriodNS);
     }
 
+    @Override
     public void pause(long maxPauseNS) {
         if (busyPeriodNS > 0) {
             if (count++ < 1000)
@@ -69,7 +71,11 @@ public class LightPauser implements Pauser {
         thread = Thread.currentThread();
 
         pausing.set(true);
+        long start = System.currentTimeMillis();
         doPause(maxPauseNS);
+        long time = System.currentTimeMillis() - start;
+        timePaused += time;
+        countPaused++;
         pausing.set(false);
     }
 
@@ -82,5 +88,15 @@ public class LightPauser implements Pauser {
     public void unpause() {
         if (pausing.get())
             LockSupport.unpark(thread);
+    }
+
+    @Override
+    public long timePaused() {
+        return timePaused;
+    }
+
+    @Override
+    public long countPaused() {
+        return countPaused;
     }
 }
