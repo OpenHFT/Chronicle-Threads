@@ -29,13 +29,16 @@ public class LongPauser implements Pauser {
     private final long minPauseTimeNS;
     private final long maxPauseTimeNS;
     private final AtomicBoolean pausing = new AtomicBoolean();
+    private final int minBusy, minCount;
     private int count = 0;
     private long pauseTimeNS;
     private long timePaused = 0;
     private long countPaused = 0;
     private volatile Thread thread = null;
 
-    public LongPauser(long minTime, long maxTime, TimeUnit timeUnit) {
+    public LongPauser(int minBusy, int minCount, long minTime, long maxTime, TimeUnit timeUnit) {
+        this.minBusy = minBusy;
+        this.minCount = minCount;
         this.minPauseTimeNS = timeUnit.toNanos(minTime);
         this.maxPauseTimeNS = timeUnit.toNanos(maxTime);
         pauseTimeNS = minPauseTimeNS;
@@ -49,7 +52,10 @@ public class LongPauser implements Pauser {
 
     @Override
     public void pause() {
-        if (++count <= 1) {
+        ++count;
+        if (count < minBusy)
+            return;
+        if (count <= minBusy + minCount) {
             Thread.yield();
             return;
         }

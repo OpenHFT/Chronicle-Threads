@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import static java.util.concurrent.TimeUnit.*;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Created by peter.lawrey on 22/01/15.
@@ -43,20 +43,18 @@ public class EventGroup implements EventLoop {
     private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger
             ("replicationEventPauseTime", 20);
-    final EventLoop monitor = new MonitorEventLoop(this, new LightPauser(LightPauser.NO_BUSY_PERIOD, SECONDS.toNanos(1)));
+    final EventLoop monitor = new MonitorEventLoop(this, new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS));
     @NotNull
     final VanillaEventLoop core;
     final BlockingEventLoop blocking = new BlockingEventLoop(this, "blocking-event-loop");
     private final Consumer<Throwable> onThrowable;
     @NotNull
-    private final LightPauser pauser;
+    private final Pauser pauser;
     private VanillaEventLoop _replication;
 
     public EventGroup(boolean daemon, Consumer<Throwable> onThrowable) {
         this.onThrowable = onThrowable;
-        pauser = new LightPauser(
-                NANOSECONDS.convert(20, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS),
-                NANOSECONDS.convert(200, Jvm.isDebug() ? MILLISECONDS : MICROSECONDS));
+        pauser = new LongPauser(100, 100, 1, Jvm.isDebug() ? 20 : 200, TimeUnit.MILLISECONDS);
         monitor.addHandler(new PauserMonitor(pauser, "core pauser", 10));
         core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon);
     }
@@ -67,7 +65,7 @@ public class EventGroup implements EventLoop {
 
     public synchronized VanillaEventLoop getReplication() {
         if (_replication == null) {
-            LongPauser pauser = new LongPauser(1, REPLICATION_EVENT_PAUSE_TIME, TimeUnit.MILLISECONDS);
+            LongPauser pauser = new LongPauser(0, 1, 1, REPLICATION_EVENT_PAUSE_TIME, TimeUnit.MILLISECONDS);
             _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();
