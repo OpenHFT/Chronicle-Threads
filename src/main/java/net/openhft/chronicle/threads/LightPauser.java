@@ -51,11 +51,7 @@ public class LightPauser implements Pauser {
 
     @Override
     public void pause() {
-        pause(parkPeriodNS);
-    }
-
-    @Override
-    public void pause(long maxPauseNS) {
+        long maxPauseNS = parkPeriodNS;
         if (busyPeriodNS > 0) {
             if (count++ < 1000)
                 return;

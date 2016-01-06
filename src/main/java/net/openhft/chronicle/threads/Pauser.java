@@ -26,8 +26,6 @@ public interface Pauser {
 
     void pause();
 
-    void pause(long maxPauseNS);
-
     void unpause();
 
     long timePaused();

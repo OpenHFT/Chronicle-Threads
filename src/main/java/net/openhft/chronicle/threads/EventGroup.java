@@ -67,7 +67,7 @@ public class EventGroup implements EventLoop {
 
     public synchronized VanillaEventLoop getReplication() {
         if (_replication == null) {
-            LongPauser pauser = new LongPauser(REPLICATION_EVENT_PAUSE_TIME, TimeUnit.MILLISECONDS);
+            LongPauser pauser = new LongPauser(1, REPLICATION_EVENT_PAUSE_TIME, TimeUnit.MILLISECONDS);
             _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();

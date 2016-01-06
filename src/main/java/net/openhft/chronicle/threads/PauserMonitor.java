@@ -19,6 +19,7 @@ public class PauserMonitor implements EventHandler {
     private final String description;
     private final int mills;
     private long nextLongTime = 0;
+    private long lastTime = 0;
     private long lastTimePaused = 0;
     private long lastCountPaused = 0;
 
@@ -41,11 +42,16 @@ public class PauserMonitor implements EventHandler {
         long countPaused = pauser.countPaused();
 
         if (nextLongTime > 0) {
+            long timeDelta = now - lastTime;
             long timePausedDelta = timePaused - lastTimePaused;
             long countPausedDelta = countPaused - lastCountPaused;
             if (countPausedDelta > 0) {
                 double averageTime = timePausedDelta * 1000 / countPausedDelta / 1e3;
-                LOG.info(description + ": avg pause: " + averageTime + " ms, count=" + countPausedDelta);
+                // sometimes slightly negative due to rounding error
+                double busy = Math.abs((timeDelta - timePausedDelta) * 1000 / timeDelta / 10.0);
+                LOG.info(description + ": avg pause: " + averageTime + " ms, "
+                        + "count=" + countPausedDelta
+                        + (lastTime > 0 ? ", busy=" + busy + "%" : ""));
             } else {
                 LOG.info(description + ": count=" + countPausedDelta);
             }
@@ -53,6 +59,7 @@ public class PauserMonitor implements EventHandler {
         lastTimePaused = timePaused;
         lastCountPaused = countPaused;
         nextLongTime = now + mills;
+        lastTime = now;
         return true;
     }
 
