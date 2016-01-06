@@ -60,7 +60,7 @@ public class LongPauser implements Pauser {
             return;
         }
         doPause(pauseTimeNS);
-        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS / 10);
+        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + pauseTimeNS / 10);
     }
 
     void doPause(long delayNs) {

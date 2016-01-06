@@ -53,7 +53,7 @@ public class PauserMonitor implements EventHandler {
                         + "count=" + countPausedDelta
                         + (lastTime > 0 ? ", busy=" + busy + "%" : ""));
             } else {
-                LOG.info(description + ": count=" + countPausedDelta);
+                LOG.info(description + ": count=" + countPausedDelta + ", busy=100%");
             }
         }
         lastTimePaused = timePaused;
