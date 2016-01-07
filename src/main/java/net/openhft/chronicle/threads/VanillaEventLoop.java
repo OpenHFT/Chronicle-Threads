@@ -201,7 +201,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         for (int i = 0; i < highHandlers.size(); i++) {
             EventHandler handler = highHandlers.get(i);
             try {
-                busy |= handler.action();
+                boolean action = handler.action();
+                busy |= action;
             } catch (InvalidEventHandlerException e) {
                 try {
                     highHandlers.remove(i--);
@@ -225,7 +226,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         for (int j = i; j < mediumHandlers.size(); j += 10) {
             EventHandler handler = mediumHandlers.get(j);
             try {
-                busy |= handler.action();
+                boolean action = handler.action();
+                if (action) {
+                    handler.action();
+                    System.out.print(i);
+                }
+                busy |= action;
             } catch (InvalidEventHandlerException e) {
                 try {
                     mediumHandlers.remove(j);

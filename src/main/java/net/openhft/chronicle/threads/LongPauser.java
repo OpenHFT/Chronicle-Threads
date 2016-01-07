@@ -35,6 +35,7 @@ public class LongPauser implements Pauser {
     private long timePaused = 0;
     private long countPaused = 0;
     private volatile Thread thread = null;
+    private long yieldStart = 0;
 
     public LongPauser(int minBusy, int minCount, long minTime, long maxTime, TimeUnit timeUnit) {
         this.minBusy = minBusy;
@@ -46,6 +47,7 @@ public class LongPauser implements Pauser {
 
     @Override
     public void reset() {
+        checkYieldTime();
         pauseTimeNS = minPauseTimeNS;
         count = 0;
     }
@@ -56,11 +58,27 @@ public class LongPauser implements Pauser {
         if (count < minBusy)
             return;
         if (count <= minBusy + minCount) {
-            Thread.yield();
+            yield();
             return;
         }
+        checkYieldTime();
         doPause(pauseTimeNS);
-        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + pauseTimeNS / 10);
+        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + pauseTimeNS / 64);
+    }
+
+    private void checkYieldTime() {
+        if (yieldStart > 0) {
+            long time = System.nanoTime() - yieldStart;
+            timePaused += time;
+            countPaused++;
+            yieldStart = 0;
+        }
+    }
+
+    private void yield() {
+        if (yieldStart == 0)
+            yieldStart = System.nanoTime();
+        Thread.yield();
     }
 
     void doPause(long delayNs) {
