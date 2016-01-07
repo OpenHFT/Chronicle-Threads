@@ -43,10 +43,10 @@ public class EventGroup implements EventLoop {
     private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger
             ("replicationEventPauseTime", 20);
-    final EventLoop monitor = new MonitorEventLoop(this, new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS));
+    final EventLoop monitor;
     @NotNull
     final VanillaEventLoop core;
-    final BlockingEventLoop blocking = new BlockingEventLoop(this, "blocking-event-loop");
+    final BlockingEventLoop blocking;
     private final Consumer<Throwable> onThrowable;
     @NotNull
     private final Pauser pauser;
@@ -55,8 +55,11 @@ public class EventGroup implements EventLoop {
     public EventGroup(boolean daemon, Consumer<Throwable> onThrowable) {
         this.onThrowable = onThrowable;
         pauser = new LongPauser(100, 100, 1, Jvm.isDebug() ? 20 : 200, TimeUnit.MILLISECONDS);
+        monitor = new MonitorEventLoop(this, new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS), onThrowable);
         monitor.addHandler(new PauserMonitor(pauser, "core pauser", 10));
-        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon);
+        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon, onThrowable);
+        blocking = new BlockingEventLoop(this, "blocking-event-loop", onThrowable);
+
     }
 
     public EventGroup(boolean daemon) {
@@ -170,7 +173,6 @@ public class EventGroup implements EventLoop {
                                 + blockingTimeMS + " ms.",
                         // check we are still in the loop.
                         () -> eventLoop.loopStartMS() == loopStartMS);
-
             } else {
                 lastInterval = Math.max(1, blockingInterval);
             }

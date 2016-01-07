@@ -132,18 +132,18 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
         } else {
 
-                if (!running.get()) {
-                    if (!dontAttemptToRunImmediatelyInCurrentThread) {
-                        try {
-                            if (LOG.isDebugEnabled())
-                                LOG.debug("Running " + handler + " in the current thread as " + this + " has finished");
-                            handler.action();
-                        } catch (InvalidEventHandlerException ignored) {
-                        }
+            if (!running.get()) {
+                if (!dontAttemptToRunImmediatelyInCurrentThread) {
+                    try {
+                        if (LOG.isDebugEnabled())
+                            LOG.debug("Running " + handler + " in the current thread as " + this + " has finished");
+                        handler.action();
+                    } catch (InvalidEventHandlerException ignored) {
                     }
-                    return;
                 }
-                pauser.unpause();
+                return;
+            }
+            pauser.unpause();
             if (!newHandler.compareAndSet(null, handler))
                 newHandlerQueue.add(handler);
 
@@ -213,7 +213,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                LOG.error("", e);
+                onThrowable.accept(e);
             }
         }
         return busy;
@@ -236,7 +236,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                LOG.error("", e);
+                onThrowable.accept(e);
             }
         }
         return busy;
@@ -259,7 +259,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                LOG.error("", e);
+                onThrowable.accept(e);
             }
         }
         return busy;
@@ -281,7 +281,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                LOG.error("", e);
+                onThrowable.accept(e);
             }
         }
     }
@@ -302,7 +302,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                LOG.error("", e);
+                onThrowable.accept(e);
             }
         }
     }

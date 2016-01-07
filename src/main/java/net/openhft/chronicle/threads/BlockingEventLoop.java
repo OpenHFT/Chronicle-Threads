@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
@@ -40,6 +41,7 @@ public class BlockingEventLoop implements EventLoop {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingEventLoop.class);
 
     private final EventLoop parent;
+    private final Consumer<Throwable> onThrowable;
     @NotNull
     private final ExecutorService service;
     @Nullable
@@ -47,9 +49,12 @@ public class BlockingEventLoop implements EventLoop {
     private volatile boolean closed;
     private EventHandler handler;
 
-    public BlockingEventLoop(EventLoop parent, String name) {
+    public BlockingEventLoop(@NotNull EventLoop parent,
+                             @NotNull String name,
+                             @NotNull Consumer<Throwable> onThrowable) {
         this.parent = parent;
-        service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
+        this.onThrowable = onThrowable;
+        this.service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
     }
 
     @Override
@@ -71,7 +76,7 @@ public class BlockingEventLoop implements EventLoop {
                 } catch (InvalidEventHandlerException e) {
                     // expected
                 } catch (Throwable t) {
-                    LOG.error("", t);
+                    onThrowable.accept(t);
                 } finally {
                     if (LOG.isDebugEnabled())
                         LOG.debug("handler " + handler + " done.");
