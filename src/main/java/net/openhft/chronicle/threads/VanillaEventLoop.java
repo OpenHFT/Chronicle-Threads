@@ -227,10 +227,9 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             EventHandler handler = mediumHandlers.get(j);
             try {
                 boolean action = handler.action();
-                if (action) {
+                if (action)
                     handler.action();
-                    System.out.print(i);
-                }
+
                 busy |= action;
             } catch (InvalidEventHandlerException e) {
                 try {
