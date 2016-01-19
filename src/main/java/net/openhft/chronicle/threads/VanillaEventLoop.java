@@ -165,9 +165,11 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     @Override
     @HotMethod
     public void run() {
+        AffinityLock affinityLock = null;
         try {
             if (binding)
-                AffinityLock.acquireLock();
+                affinityLock = AffinityLock.acquireLock();
+
             thread = Thread.currentThread();
             while (running.get()) {
                 boolean busy = false;
@@ -202,6 +204,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             onThrowable.accept(e);
         } finally {
             loopStartMS = Long.MAX_VALUE - 1;
+            if (binding && affinityLock != null)
+                affinityLock.release();
         }
     }
 
