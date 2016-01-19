@@ -37,6 +37,17 @@ public class LongPauser implements Pauser {
     private volatile Thread thread = null;
     private long yieldStart = 0;
 
+    /**
+     * first it will busy wait, then it will yield, then sleep for a small amount of time, then
+     * increases to a large amount of time.
+     *
+     * @param minBusy  the min number of times it will go around doing nothing, after this is
+     *                 reached it will then start to yield
+     * @param minCount the number of times it will yield, before it starts to sleep
+     * @param minTime  the amount of time to sleep ( initially )
+     * @param maxTime  the amount of time subsequently to sleep
+     * @param timeUnit the unit of the {@code minTime}  and {@code maxTime}
+     */
     public LongPauser(int minBusy, int minCount, long minTime, long maxTime, TimeUnit timeUnit) {
         this.minBusy = minBusy;
         this.minCount = minCount;
