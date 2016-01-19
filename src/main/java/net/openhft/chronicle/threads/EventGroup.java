@@ -52,14 +52,18 @@ public class EventGroup implements EventLoop {
     private final Pauser pauser;
     private VanillaEventLoop _replication;
 
-    public EventGroup(boolean daemon, Consumer<Throwable> onThrowable) {
+    public EventGroup(boolean daemon, Consumer<Throwable> onThrowable, Pauser pauser) {
         this.onThrowable = onThrowable;
-        pauser = new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS);
+        this.pauser = pauser;
 
         core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon, onThrowable);
         monitor = new MonitorEventLoop(this, new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS), onThrowable);
         monitor.addHandler(new PauserMonitor(pauser, "core pauser", 30));
         blocking = new BlockingEventLoop(this, "blocking-event-loop", onThrowable);
+    }
+
+    public EventGroup(boolean daemon, Consumer<Throwable> onThrowable) {
+        this(daemon, onThrowable, new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS));
     }
 
     public EventGroup(boolean daemon) {

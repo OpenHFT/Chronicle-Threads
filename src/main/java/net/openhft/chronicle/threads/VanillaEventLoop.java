@@ -16,6 +16,7 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.Closeable;
@@ -138,6 +139,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                         if (LOG.isDebugEnabled())
                             LOG.debug("Running " + handler + " in the current thread as " + this + " has finished");
                         handler.action();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     } catch (InvalidEventHandlerException ignored) {
                     }
                 }
@@ -157,6 +160,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     @Override
     @HotMethod
     public void run() {
+        AffinityLock.acquireLock();
         try {
             thread = Thread.currentThread();
             while (running.get()) {
