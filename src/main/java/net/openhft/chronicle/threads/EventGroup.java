@@ -50,20 +50,22 @@ public class EventGroup implements EventLoop {
     private final Consumer<Throwable> onThrowable;
     @NotNull
     private final Pauser pauser;
+    private final boolean binding;
     private VanillaEventLoop _replication;
 
-    public EventGroup(boolean daemon, Consumer<Throwable> onThrowable, Pauser pauser) {
+    public EventGroup(boolean daemon, Consumer<Throwable> onThrowable, Pauser pauser, boolean binding) {
         this.onThrowable = onThrowable;
         this.pauser = pauser;
+        this.binding = binding;
 
-        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon, onThrowable);
+        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon, onThrowable, binding);
         monitor = new MonitorEventLoop(this, new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS), onThrowable);
         monitor.addHandler(new PauserMonitor(pauser, "core pauser", 30));
         blocking = new BlockingEventLoop(this, "blocking-event-loop", onThrowable);
     }
 
     public EventGroup(boolean daemon, Consumer<Throwable> onThrowable) {
-        this(daemon, onThrowable, new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS));
+        this(daemon, onThrowable, new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), false);
     }
 
     public EventGroup(boolean daemon) {
@@ -73,7 +75,7 @@ public class EventGroup implements EventLoop {
     public synchronized VanillaEventLoop getReplication() {
         if (_replication == null) {
             LongPauser pauser = new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
-            _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable);
+            _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable, binding);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();
             monitor.addHandler(new PauserMonitor(pauser, "replication pauser", 30));
