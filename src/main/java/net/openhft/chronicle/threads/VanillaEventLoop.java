@@ -400,6 +400,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
             service.shutdown();
             pauser.unpause();
+            if (thread != null)
             thread.interrupt();
 
             if (!(service.awaitTermination(1, TimeUnit.SECONDS))) {
