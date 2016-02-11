@@ -1,6 +1,6 @@
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
+import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.junit.Assert;
 import org.junit.Test;
 

@@ -18,9 +18,9 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
-import net.openhft.chronicle.threads.api.EventHandler;
-import net.openhft.chronicle.threads.api.EventLoop;
-import net.openhft.chronicle.threads.api.InvalidEventHandlerException;
+import net.openhft.chronicle.core.threads.EventHandler;
+import net.openhft.chronicle.core.threads.EventLoop;
+import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
