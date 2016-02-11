@@ -1,5 +1,6 @@
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.junit.Assert;
 import org.junit.Test;
@@ -17,7 +18,7 @@ public class EventGroupTest {
 
         final AtomicInteger value = new AtomicInteger();
 
-        try (final EventGroup eventGroup = new EventGroup(true)) {
+        try (final EventLoop eventGroup = new EventGroup(true)) {
             eventGroup.start();
             eventGroup.addHandler(() -> {
                 if (value.get() == 10)
