@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
@@ -386,6 +387,10 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             LOG.info(out.toString());
     }
 
+    public int handlerCount() {
+        return highHandlers.size() + mediumHandlers.size() + daemonHandlers.size() + timerHandlers.size();
+    }
+
     @Override
     public void close() {
         try {
@@ -399,10 +404,21 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             for (Object o; (o = newHandlerQueue.poll()) != null; )
                 Closeable.closeQuietly(o);
 
+            for (int i = 0; i < 100; i++) {
+                if (handlerCount() == 0)
+                    break;
+                Jvm.pause(1);
+            }
+            if (handlerCount() > 0) {
+                LOG.info("Handlers still running after being closed");
+                Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
+                        .flatMap(List::stream)
+                        .forEach(h -> LOG.info("\t" + h));
+            }
             service.shutdown();
             pauser.unpause();
             if (thread != null)
-            thread.interrupt();
+                thread.interrupt();
 
             if (!(service.awaitTermination(1, TimeUnit.SECONDS))) {
                 Thread thread = this.thread;
