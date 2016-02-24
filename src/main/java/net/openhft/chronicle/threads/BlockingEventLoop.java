@@ -101,6 +101,7 @@ public class BlockingEventLoop implements EventLoop {
 
     @Override
     public void stop() {
+
     }
 
     @Override

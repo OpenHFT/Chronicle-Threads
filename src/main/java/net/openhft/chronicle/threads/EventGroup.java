@@ -149,6 +149,7 @@ public class EventGroup implements EventLoop {
         blocking.close();
         core.close();
         if (_replication != null) _replication.close();
+
     }
 
     class LoopBlockMonitor implements EventHandler {
