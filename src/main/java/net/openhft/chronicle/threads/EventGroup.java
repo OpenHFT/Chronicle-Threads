@@ -65,7 +65,7 @@ public class EventGroup implements EventLoop {
         blocking = new BlockingEventLoop(this, "blocking-event-loop", onThrowable);
     }
 
-    public EventGroup(boolean daemon, Consumer<Throwable> onThrowable) {
+    public EventGroup(boolean daemon, @NotNull Consumer<Throwable> onThrowable) {
         this(daemon, onThrowable, new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), false);
     }
 

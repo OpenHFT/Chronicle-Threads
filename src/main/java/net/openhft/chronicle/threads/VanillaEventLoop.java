@@ -203,6 +203,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 }
             }
         } catch (Throwable e) {
+            //         e.printStackTrace();
             onThrowable.accept(e);
         } finally {
             loopStartMS = Long.MAX_VALUE - 1;
