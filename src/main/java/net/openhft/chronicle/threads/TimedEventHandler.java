@@ -12,11 +12,12 @@ public abstract class TimedEventHandler implements EventHandler {
 
     @Override
     public boolean action() throws InvalidEventHandlerException, InterruptedException {
-        if (nextRunNS <= System.nanoTime()) {
+        long now = System.nanoTime();
+        if (nextRunNS <= now) {
             long delayUS = timedAction();
             if (delayUS < 0)
                 return true;
-            nextRunNS = System.nanoTime() + delayUS * 1000;
+            nextRunNS = now + delayUS * 1000;
         }
         return false;
     }
