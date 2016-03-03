@@ -1,6 +1,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.EventHandler;
+import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 
 /**
@@ -26,4 +27,9 @@ public abstract class TimedEventHandler implements EventHandler {
      * @return the delay in micro-seconds.
      */
     protected abstract long timedAction();
+
+    @Override
+    public HandlerPriority priority() {
+        return HandlerPriority.TIMER;
+    }
 }
