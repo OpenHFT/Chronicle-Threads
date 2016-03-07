@@ -292,7 +292,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                     if (!mediumHandlers.isEmpty())
                         throw e2;
                 }
-                e.printStackTrace();
                 closeQuietly(handler);
 
             } catch (Exception e) {
