@@ -127,7 +127,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void stop() {
-        running.set(false);
+
+    }
+
+    @Override
+    public boolean isClosed() {
+        return closedHere != null;
     }
 
     public void addHandler(@NotNull EventHandler handler) {
@@ -174,10 +179,19 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
             thread = Thread.currentThread();
             while (running.get()) {
+                if (closedHere != null) {
+                    closeAllHandlers();
+                    runAllHighHandlers();
+                    runAllMediumHandler();
+                    runDaemonHandlers();
+                    runTimerHandlers();
+                    dumpRunningHandlers();
+                    break;
+                }
                 boolean busy = false;
                 if (highHandlers.isEmpty()) {
                     loopStartMS = Time.currentTimeMillis();
-                    busy |= runAllLowHandler();
+                    busy |= runAllMediumHandler();
 
                 } else {
                     for (int i = 0; i < 10; i++) {
@@ -265,7 +279,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     @HotMethod
-    private boolean runAllLowHandler() {
+    private boolean runAllMediumHandler() {
         boolean busy = false;
         for (int j = 0; j < mediumHandlers.size(); j++) {
             EventHandler handler = mediumHandlers.get(j);
@@ -278,6 +292,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                     if (!mediumHandlers.isEmpty())
                         throw e2;
                 }
+                e.printStackTrace();
                 closeQuietly(handler);
 
             } catch (Exception e) {
@@ -396,26 +411,24 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     public void close() {
         try {
             closedHere = new Throwable("Closed here");
-            highHandlers.forEach(Closeable::closeQuietly);
-            mediumHandlers.forEach(Closeable::closeQuietly);
-            daemonHandlers.forEach(Closeable::closeQuietly);
-            timerHandlers.forEach(Closeable::closeQuietly);
-            Optional.ofNullable(newHandler.get()).ifPresent(Closeable::closeQuietly);
 
-            for (Object o; (o = newHandlerQueue.poll()) != null; )
-                Closeable.closeQuietly(o);
+            closeAllHandlers();
 
             for (int i = 0; i < 100; i++) {
+                pauser.unpause();
+                Jvm.pause(10);
                 if (handlerCount() == 0)
                     break;
-                Jvm.pause(1);
+                if (i % 10 == 9) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Shutting down thread is executing ").append(thread)
+                            .append(", " + "handlerCount=").append(handlerCount()).append("\n");
+                    Jvm.trimStackTrace(sb, thread.getStackTrace());
+                    LOG.warn(sb.toString());
+                }
             }
-            if (handlerCount() > 0) {
-                LOG.info("Handlers still running after being closed");
-                Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
-                        .flatMap(List::stream)
-                        .forEach(h -> LOG.info("\t" + h));
-            }
+            dumpRunningHandlers();
+            running.set(false);
             service.shutdown();
             pauser.unpause();
             if (thread != null)
@@ -443,6 +456,28 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         }
     }
 
+    public void closeAllHandlers() {
+        highHandlers.forEach(Closeable::closeQuietly);
+        mediumHandlers.forEach(Closeable::closeQuietly);
+        daemonHandlers.forEach(Closeable::closeQuietly);
+        timerHandlers.forEach(Closeable::closeQuietly);
+        Optional.ofNullable(newHandler.get()).ifPresent(Closeable::closeQuietly);
+
+        for (Object o; (o = newHandlerQueue.poll()) != null; )
+            Closeable.closeQuietly(o);
+    }
+
+    public void dumpRunningHandlers() {
+        final int handlerCount = handlerCount();
+        if (handlerCount > 0) {
+            LOG.info("Handlers still running after being closed, handlerCount=" + handlerCount);
+            Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
+                    .flatMap(List::stream)
+                    .forEach(h -> LOG.info("\t" + h));
+        }
+    }
+
+    @Override
     public boolean isAlive() {
         Thread thread = this.thread;
         return thread != null && thread.isAlive();

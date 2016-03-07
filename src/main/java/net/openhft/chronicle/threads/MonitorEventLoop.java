@@ -68,6 +68,16 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     @Override
+    public boolean isClosed() {
+        return !service.isShutdown();
+    }
+
+    @Override
+    public boolean isAlive() {
+        return running;
+    }
+
+    @Override
     public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
         addHandler(handler);
     }

@@ -105,6 +105,16 @@ public class BlockingEventLoop implements EventLoop {
     }
 
     @Override
+    public boolean isClosed() {
+        return service.isShutdown();
+    }
+
+    @Override
+    public boolean isAlive() {
+        return !service.isShutdown();
+    }
+
+    @Override
     public void close() {
         closed = true;
         closeQuietly(this.handler);

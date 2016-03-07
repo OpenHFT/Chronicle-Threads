@@ -25,7 +25,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -143,7 +142,17 @@ public class EventGroup implements EventLoop {
     }
 
     @Override
-    public void close() throws IOException {
+    public boolean isClosed() {
+        return core.isClosed();
+    }
+
+    @Override
+    public boolean isAlive() {
+        return core.isAlive();
+    }
+
+    @Override
+    public void close() {
         stop();
         monitor.close();
         blocking.close();
