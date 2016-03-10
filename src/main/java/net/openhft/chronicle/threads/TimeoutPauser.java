@@ -20,22 +20,15 @@ package net.openhft.chronicle.threads;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
 
 /**
- * Created by rob on 30/11/2015.
+ * Created by peter on 10/03/2016.
  */
-public class LongPauser implements Pauser {
-    private final long minPauseTimeNS;
-    private final long maxPauseTimeNS;
-    private final AtomicBoolean pausing = new AtomicBoolean();
-    private final int minBusy, minCount;
+public class TimeoutPauser implements Pauser {
+    private final int minBusy;
     private int count = 0;
-    private long pauseTimeNS;
     private long timePaused = 0;
     private long countPaused = 0;
-    private volatile Thread thread = null;
     private long yieldStart = 0;
     private long timeOutStart = Long.MAX_VALUE;
 
@@ -43,25 +36,16 @@ public class LongPauser implements Pauser {
      * first it will busy wait, then it will yield, then sleep for a small amount of time, then
      * increases to a large amount of time.
      *
-     * @param minBusy  the min number of times it will go around doing nothing, after this is
-     *                 reached it will then start to yield
-     * @param minCount the number of times it will yield, before it starts to sleep
-     * @param minTime  the amount of time to sleep ( initially )
-     * @param maxTime  the amount of time subsequently to sleep
-     * @param timeUnit the unit of the {@code minTime}  and {@code maxTime}
+     * @param minBusy the min number of times it will go around doing nothing, after this is
+     *                reached it will then start to yield
      */
-    public LongPauser(int minBusy, int minCount, long minTime, long maxTime, TimeUnit timeUnit) {
+    public TimeoutPauser(int minBusy) {
         this.minBusy = minBusy;
-        this.minCount = minCount;
-        this.minPauseTimeNS = timeUnit.toNanos(minTime);
-        this.maxPauseTimeNS = timeUnit.toNanos(maxTime);
-        pauseTimeNS = minPauseTimeNS;
     }
 
     @Override
     public void reset() {
         checkYieldTime();
-        pauseTimeNS = minPauseTimeNS;
         count = 0;
         timeOutStart = Long.MAX_VALUE;
     }
@@ -71,13 +55,9 @@ public class LongPauser implements Pauser {
         ++count;
         if (count < minBusy)
             return;
-        if (count <= minBusy + minCount) {
-            yield();
-            return;
-        }
+
+        yield();
         checkYieldTime();
-        doPause(pauseTimeNS);
-        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + pauseTimeNS / 64);
     }
 
     @Override
@@ -85,17 +65,13 @@ public class LongPauser implements Pauser {
         ++count;
         if (count < minBusy)
             return;
-        if (count <= minBusy + minCount) {
-            yield();
-            return;
-        }
+        yield();
+
         if (timeOutStart == Long.MAX_VALUE)
             timeOutStart = System.nanoTime();
         else if (timeOutStart + timeUnit.toNanos(timeout) < System.nanoTime())
             throw new TimeoutException();
         checkYieldTime();
-        doPause(pauseTimeNS);
-        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + pauseTimeNS / 64);
     }
 
     private void checkYieldTime() {
@@ -113,22 +89,8 @@ public class LongPauser implements Pauser {
         Thread.yield();
     }
 
-    void doPause(long delayNs) {
-        long start = System.nanoTime();
-        thread = Thread.currentThread();
-        pausing.set(true);
-        LockSupport.parkNanos(delayNs);
-        pausing.set(false);
-        long time = System.nanoTime() - start;
-        timePaused += time;
-        countPaused++;
-    }
-
     @Override
     public void unpause() {
-        Thread thread = this.thread;
-        if (thread != null && pausing.get())
-            LockSupport.unpark(thread);
     }
 
     @Override

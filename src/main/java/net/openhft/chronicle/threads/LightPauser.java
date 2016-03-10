@@ -21,12 +21,16 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.annotation.ForceInline;
 import net.openhft.chronicle.core.util.Time;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 /**
  * Created by peter.lawrey on 11/12/14.
+ * @deprecated use LongPauser instead.
  */
+@Deprecated
 public class LightPauser implements Pauser {
     public static final long NO_BUSY_PERIOD = -1;
     private final AtomicBoolean pausing = new AtomicBoolean();
@@ -73,6 +77,11 @@ public class LightPauser implements Pauser {
         timePaused += time;
         countPaused++;
         pausing.set(false);
+    }
+
+    @Override
+    public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
+        throw new UnsupportedOperationException();
     }
 
     protected void doPause(long maxPauseNS) {

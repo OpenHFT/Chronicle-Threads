@@ -18,6 +18,9 @@
 
 package net.openhft.chronicle.threads;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 /**
  * Created by peter.lawrey on 11/12/14.
  */
@@ -25,6 +28,8 @@ public interface Pauser {
     void reset();
 
     void pause();
+
+    void pause(long timeout, TimeUnit timeUnit) throws TimeoutException;
 
     void unpause();
 
