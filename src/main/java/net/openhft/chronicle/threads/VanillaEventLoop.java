@@ -413,8 +413,14 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
             closeAllHandlers();
 
+            if (thread == null)
+                return;
+
+
             for (int i = 0; i < 100; i++) {
                 pauser.unpause();
+                thread.interrupt();
+
                 Jvm.pause(10);
                 if (handlerCount() == 0)
                     break;
