@@ -136,6 +136,9 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void addHandler(@NotNull EventHandler handler) {
+        if (!(handler instanceof Closeable)) {
+            handler = new CloseableEventHandler(handler);
+        }
         addHandler(false, handler);
     }
 
@@ -219,6 +222,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         } catch (Throwable e) {
             //         e.printStackTrace();
             onThrowable.accept(e);
+
         } finally {
             loopStartMS = Long.MAX_VALUE - 1;
             if (binding && affinityLock != null)
@@ -419,11 +423,13 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
             for (int i = 0; i < 100; i++) {
                 pauser.unpause();
-                thread.interrupt();
 
                 Jvm.pause(10);
                 if (handlerCount() == 0)
                     break;
+                if (i % 10 == 4)
+                    thread.interrupt();
+
                 if (i % 10 == 9) {
                     StringBuilder sb = new StringBuilder();
                     sb.append("Shutting down thread is executing ").append(thread)
