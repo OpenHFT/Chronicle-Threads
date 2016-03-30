@@ -176,7 +176,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         AffinityLock affinityLock = null;
         try {
             if (binding)
-                affinityLock = AffinityLock.acquireCore();
+                affinityLock = AffinityLock.acquireLock();
 
             thread = Thread.currentThread();
             while (running.get()) {
