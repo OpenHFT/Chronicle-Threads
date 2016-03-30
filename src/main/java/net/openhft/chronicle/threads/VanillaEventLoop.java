@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
@@ -136,9 +137,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void addHandler(@NotNull EventHandler handler) {
-        if (!(handler instanceof Closeable)) {
-            handler = new CloseableEventHandler(handler);
-        }
         addHandler(false, handler);
     }
 
@@ -480,12 +478,16 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
     public void dumpRunningHandlers() {
         final int handlerCount = handlerCount();
-        if (handlerCount > 0) {
-            LOG.info("Handlers still running after being closed, handlerCount=" + handlerCount);
-            Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
-                    .flatMap(List::stream)
-                    .forEach(h -> LOG.info("\t" + h));
-        }
+        if (handlerCount <= 0)
+            return;
+        List<EventHandler> collect = Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
+                .flatMap(List::stream)
+                .filter(e -> e instanceof Closeable)
+                .collect(Collectors.toList());
+        if (collect.isEmpty())
+            return;
+        LOG.info("Handlers still running after being closed, handlerCount=" + handlerCount);
+        collect.forEach(h -> LOG.info("\t" + h));
     }
 
     @Override
