@@ -115,6 +115,16 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         this.onThrowable = onThrowable;
     }
 
+    public static void closeAll(List<EventHandler> handlers) {
+        handlers.forEach(h -> {
+            if ((h instanceof Closeable)) {
+                Closeable.closeQuietly(h);
+            } else {
+                handlers.remove(h);
+            }
+        });
+    }
+
     public void start() {
         if (closedHere != null)
             throw new IllegalStateException("Event Group has been closed", closedHere);
@@ -404,11 +414,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             LOG.info(out.toString());
     }
 
-    public int closeableHandlerCount() {
-        return (int) Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
-                .flatMap(List::stream)
-                .filter(h -> h instanceof Closeable)
-                .count();
+    public int handlerCount() {
+        return highHandlers.size() + mediumHandlers.size() + daemonHandlers.size() + timerHandlers.size();
     }
 
     @Override
@@ -426,7 +433,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 pauser.unpause();
 
                 Jvm.pause(10);
-                if (closeableHandlerCount() == 0)
+                if (handlerCount() == 0)
                     break;
                 if (i % 10 == 4)
                     thread.interrupt();
@@ -434,7 +441,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 if (i % 10 == 9) {
                     StringBuilder sb = new StringBuilder();
                     sb.append("Shutting down thread is executing ").append(thread)
-                            .append(", " + "handlerCount=").append(closeableHandlerCount()).append("\n");
+                            .append(", " + "handlerCount=").append(handlerCount()).append("\n");
                     Jvm.trimStackTrace(sb, thread.getStackTrace());
                     LOG.warn(sb.toString());
                 }
@@ -469,10 +476,10 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void closeAllHandlers() {
-        highHandlers.forEach(Closeable::closeQuietly);
-        mediumHandlers.forEach(Closeable::closeQuietly);
-        daemonHandlers.forEach(Closeable::closeQuietly);
-        timerHandlers.forEach(Closeable::closeQuietly);
+        closeAll(highHandlers);
+        closeAll(mediumHandlers);
+        closeAll(daemonHandlers);
+        closeAll(timerHandlers);
         Optional.ofNullable(newHandler.get()).ifPresent(Closeable::closeQuietly);
 
         for (Object o; (o = newHandlerQueue.poll()) != null; )
@@ -480,7 +487,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void dumpRunningHandlers() {
-        final int handlerCount = closeableHandlerCount();
+        final int handlerCount = handlerCount();
         if (handlerCount <= 0)
             return;
         List<EventHandler> collect = Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
