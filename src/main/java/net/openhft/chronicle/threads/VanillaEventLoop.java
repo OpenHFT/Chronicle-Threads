@@ -404,8 +404,11 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             LOG.info(out.toString());
     }
 
-    public int handlerCount() {
-        return highHandlers.size() + mediumHandlers.size() + daemonHandlers.size() + timerHandlers.size();
+    public int closeableHandlerCount() {
+        return (int) Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
+                .flatMap(List::stream)
+                .filter(h -> h instanceof Closeable)
+                .count();
     }
 
     @Override
@@ -423,7 +426,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 pauser.unpause();
 
                 Jvm.pause(10);
-                if (handlerCount() == 0)
+                if (closeableHandlerCount() == 0)
                     break;
                 if (i % 10 == 4)
                     thread.interrupt();
@@ -431,7 +434,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 if (i % 10 == 9) {
                     StringBuilder sb = new StringBuilder();
                     sb.append("Shutting down thread is executing ").append(thread)
-                            .append(", " + "handlerCount=").append(handlerCount()).append("\n");
+                            .append(", " + "handlerCount=").append(closeableHandlerCount()).append("\n");
                     Jvm.trimStackTrace(sb, thread.getStackTrace());
                     LOG.warn(sb.toString());
                 }
@@ -477,7 +480,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     public void dumpRunningHandlers() {
-        final int handlerCount = handlerCount();
+        final int handlerCount = closeableHandlerCount();
         if (handlerCount <= 0)
             return;
         List<EventHandler> collect = Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
