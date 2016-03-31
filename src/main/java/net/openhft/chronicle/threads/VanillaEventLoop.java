@@ -117,7 +117,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
 
     public static void closeAll(List<EventHandler> handlers) {
         handlers.forEach(h -> {
-            if ((h instanceof Closeable)) {
+            if (h instanceof Closeable) {
                 Closeable.closeQuietly(h);
             } else {
                 handlers.remove(h);
@@ -191,11 +191,13 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             thread = Thread.currentThread();
             while (running.get()) {
                 if (closedHere != null) {
+                    LOG.trace("Closing down handlers");
                     closeAllHandlers();
                     runAllHighHandlers();
                     runAllMediumHandler();
                     runDaemonHandlers();
                     runTimerHandlers();
+                    LOG.trace("Remaining handlers");
                     dumpRunningHandlers();
                     break;
                 }
@@ -276,7 +278,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 busy |= action;
             } catch (InvalidEventHandlerException e) {
                 try {
-                    mediumHandlers.remove(j);
+                    mediumHandlers.remove(j--);
                 } catch (ArrayIndexOutOfBoundsException e2) {
                     if (!mediumHandlers.isEmpty())
                         throw e2;
@@ -299,7 +301,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
                 try {
-                    mediumHandlers.remove(j);
+                    mediumHandlers.remove(j--);
                 } catch (ArrayIndexOutOfBoundsException e2) {
                     if (!mediumHandlers.isEmpty())
                         throw e2;
@@ -429,7 +431,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 return;
 
 
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < 30; i++) {
                 pauser.unpause();
 
                 Jvm.pause(10);
@@ -444,9 +446,9 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                             .append(", " + "handlerCount=").append(handlerCount()).append("\n");
                     Jvm.trimStackTrace(sb, thread.getStackTrace());
                     LOG.warn(sb.toString());
+                    dumpRunningHandlers();
                 }
             }
-            dumpRunningHandlers();
             running.set(false);
             service.shutdown();
             pauser.unpause();
