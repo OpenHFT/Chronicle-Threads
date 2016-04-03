@@ -65,7 +65,7 @@ public class EventGroup implements EventLoop {
     }
 
     public EventGroup(boolean daemon, @NotNull Consumer<Throwable> onThrowable) {
-        this(daemon, onThrowable, new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), false);
+        this(daemon, onThrowable, new LongPauser(500, 100, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), false);
     }
 
     public EventGroup(boolean daemon) {

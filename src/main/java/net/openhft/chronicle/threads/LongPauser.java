@@ -27,6 +27,7 @@ import java.util.concurrent.locks.LockSupport;
  * Created by rob on 30/11/2015.
  */
 public class LongPauser implements Pauser {
+    private static final String SHOW_PAUSES = System.getProperty("pauses.show");
     private final long minPauseTimeNS;
     private final long maxPauseTimeNS;
     private final AtomicBoolean pausing = new AtomicBoolean();
@@ -75,9 +76,14 @@ public class LongPauser implements Pauser {
             yield();
             return;
         }
+        if (SHOW_PAUSES != null) {
+            String name = Thread.currentThread().getName();
+            if (name.startsWith(SHOW_PAUSES))
+                System.out.println(name + " p" + pauseTimeNS / 1000);
+        }
         checkYieldTime();
         doPause(pauseTimeNS);
-        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + pauseTimeNS / 64);
+        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 6) + 20_000);
     }
 
     @Override
@@ -95,7 +101,7 @@ public class LongPauser implements Pauser {
             throw new TimeoutException();
         checkYieldTime();
         doPause(pauseTimeNS);
-        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + pauseTimeNS / 64);
+        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 7) + 10_000);
     }
 
     private void checkYieldTime() {
