@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
 
-
 /**
  * Created by peter.lawrey on 04/01/2016.
  */

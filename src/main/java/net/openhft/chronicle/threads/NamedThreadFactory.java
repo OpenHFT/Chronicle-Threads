@@ -50,5 +50,4 @@ public class NamedThreadFactory implements ThreadFactory {
             t.setDaemon(daemon);
         return t;
     }
-
 }

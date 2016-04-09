@@ -430,7 +430,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             if (thread == null)
                 return;
 
-
             for (int i = 0; i < 30; i++) {
                 pauser.unpause();
 
