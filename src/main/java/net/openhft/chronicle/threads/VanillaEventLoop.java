@@ -77,25 +77,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
      * @param pauser          the pause strategy
      * @param timerIntervalMS how long to pause
      * @param daemon          is a demon thread
-     * @param binding
-     */
-    public VanillaEventLoop(EventLoop parent, String name, Pauser pauser, long timerIntervalMS, boolean daemon, boolean binding) {
-        this.parent = parent;
-        this.name = name;
-        this.pauser = pauser;
-        this.timerIntervalMS = timerIntervalMS;
-        this.binding = binding;
-        loopStartMS = Long.MAX_VALUE;
-        service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
-        onThrowable = t -> LOG.error("", t);
-    }
-
-    /**
-     * @param parent          the parent event loop
-     * @param name            the name of this event hander
-     * @param pauser          the pause strategy
-     * @param timerIntervalMS how long to pause
-     * @param daemon          is a demon thread
      * @param onThrowable     consumer is called when ever an error occurs
      * @param binding
      */
