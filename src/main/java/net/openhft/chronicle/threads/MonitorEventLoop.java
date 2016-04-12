@@ -25,7 +25,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.ws.WebServiceException;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
@@ -133,7 +132,8 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     @Override
-    public void close() throws WebServiceException {
+    public void close() {
+        stop();
         service.shutdown();
         try {
             if (!service.awaitTermination(100, TimeUnit.MILLISECONDS))

@@ -16,7 +16,6 @@
 
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -127,17 +126,5 @@ public class BlockingEventLoop implements EventLoop {
             service.shutdownNow();
         }
 
-        try {
-            if (thread != null)
-                thread.join(100);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        if (thread != null && thread.isAlive()) {
-            StackTraceElement[] stackTrace = thread.getStackTrace();
-            StringBuilder sb = new StringBuilder(thread + " still running ");
-            Jvm.trimStackTrace(sb, stackTrace);
-            LOG.info(sb.toString());
-        }
     }
 }
