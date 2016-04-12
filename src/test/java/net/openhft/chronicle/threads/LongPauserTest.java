@@ -18,6 +18,7 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -47,7 +48,7 @@ public class LongPauserTest {
                 pauser.unpause();
             long time = System.nanoTime() - start;
             System.out.printf("Average time to unpark was %,d ns%n", time / runs);
-            Thread.sleep(20);
+            Jvm.pause(20);
         }
         thread.interrupt();
     }

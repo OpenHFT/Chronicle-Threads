@@ -16,6 +16,7 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.junit.Assert;
@@ -30,7 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class EventGroupTest {
 
     @Test
-    public void testSimpleEventGroupTest() throws Exception {
+    public void testSimpleEventGroupTest() {
 
         final AtomicInteger value = new AtomicInteger();
 
@@ -46,14 +47,14 @@ public class EventGroupTest {
 
             final long start = System.currentTimeMillis();
             while (value.get() != 10) {
-                Thread.sleep(1);
+                Jvm.pause(10);
             }
 
             Assert.assertTrue(System.currentTimeMillis() < start + TimeUnit.SECONDS.toMillis(5));
 
             for (int i = 0; i < 10; i++) {
                 Assert.assertEquals(10, value.get());
-                Thread.sleep(1);
+                Jvm.pause(1);
             }
         }
     }
