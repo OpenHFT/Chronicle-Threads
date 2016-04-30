@@ -40,6 +40,8 @@ public class EventGroup implements EventLoop {
 
     static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 200);
 
+    static final int IO_THREADS = Integer.getInteger("IO_THREADS", (Runtime.getRuntime().availableProcessors() + 3) / 4);
+
     private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger
             ("replicationEventPauseTime", 20);
@@ -52,6 +54,7 @@ public class EventGroup implements EventLoop {
     private final Pauser pauser;
     private final boolean binding;
     private VanillaEventLoop _replication;
+    private VanillaEventLoop[] ioThreads = new VanillaEventLoop[IO_THREADS];
 
     public EventGroup(boolean daemon, Consumer<Throwable> onThrowable, Pauser pauser, boolean binding) {
         this.onThrowable = onThrowable;
@@ -72,13 +75,30 @@ public class EventGroup implements EventLoop {
         this(daemon, Throwable::printStackTrace);
     }
 
-    public synchronized VanillaEventLoop getReplication() {
+    static int hash(int n, int mod) {
+        n = (n >>> 23) ^ (n >>> 9) ^ n;
+        n = (n & 0x7FFF_FFFF) % mod;
+        return n;
+    }
+
+    synchronized VanillaEventLoop getReplication() {
         if (_replication == null) {
             LongPauser pauser = new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
             _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable, binding);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();
             monitor.addHandler(new PauserMonitor(pauser, "replication pauser", 30));
+        }
+        return _replication;
+    }
+
+    synchronized VanillaEventLoop getIOThread(int n) {
+        if (ioThreads[n] == null) {
+            LongPauser pauser = new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
+            _replication = new VanillaEventLoop(this, "io-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable, binding);
+            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
+            _replication.start();
+            monitor.addHandler(new PauserMonitor(pauser, "io-event-loop-" + n + " pauser", 30));
         }
         return _replication;
     }
@@ -115,6 +135,11 @@ public class EventGroup implements EventLoop {
             case REPLICATION:
                 getReplication().addHandler(handler);
                 break;
+
+            case IO: {
+                int n = hash(handler.hashCode(), IO_THREADS);
+                getIOThread(n).addHandler(handler);
+            }
 
             default:
                 throw new IllegalArgumentException("Unknown priority " + handler.priority());
