@@ -40,7 +40,7 @@ public class EventGroup implements EventLoop {
 
     static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 200);
 
-    static final int IO_THREADS = Integer.getInteger("IO_THREADS", (Runtime.getRuntime().availableProcessors() + 3) / 4);
+    static final int IO_THREADS = Integer.getInteger("IO_THREADS", (Runtime.getRuntime().availableProcessors() + 2) / 2);
 
     private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger
