@@ -32,15 +32,17 @@ public enum BusyPauser implements Pauser {
 
     @Override
     public void pause() {
+        // busy wait.
     }
 
     @Override
     public void pause(long timeout, TimeUnit timeUnit) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("Busy pauser is not stateful, use a LongPauser");
     }
 
     @Override
     public void unpause() {
+        // nothing to unpause.
     }
 
     @Override
