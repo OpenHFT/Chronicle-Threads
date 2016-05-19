@@ -106,6 +106,23 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         });
     }
 
+    @Override
+    public String toString() {
+        return "VanillaEventLoop{" +
+                "name='" + name + '\'' +
+                ", parent=" + parent +
+                ", service=" + service +
+                ", highHandlers=" + highHandlers +
+                ", mediumHandlers=" + mediumHandlers +
+                ", timerHandlers=" + timerHandlers +
+                ", daemonHandlers=" + daemonHandlers +
+                ", newHandler=" + newHandler +
+                ", newHandlerQueue=" + newHandlerQueue +
+                ", pauser=" + pauser +
+                ", closedHere=" + closedHere +
+                '}';
+    }
+
     public void start() {
         if (closedHere != null)
             throw new IllegalStateException("Event Group has been closed", closedHere);

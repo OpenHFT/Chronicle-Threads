@@ -203,7 +203,7 @@ public class EventGroup implements EventLoop {
             if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE)
                 return false;
             if (loopStartMS == Long.MAX_VALUE - 1) {
-                LOG.warn("Monitoring a task which has finished");
+                LOG.warn("Monitoring a task which has finished " + eventLoop);
                 throw new InvalidEventHandlerException();
             }
             long now = Time.currentTimeMillis();
