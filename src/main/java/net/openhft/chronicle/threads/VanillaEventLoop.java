@@ -161,7 +161,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                             LOG.debug("Running " + handler + " in the current thread as " + this + " has finished");
                         handler.action();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        LOG.warn("", e);
+
                     } catch (InvalidEventHandlerException ignored) {
                     }
                 }
