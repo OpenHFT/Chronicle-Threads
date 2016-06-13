@@ -30,8 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 /**
  * Created by peter.lawrey on 22/01/15.
@@ -43,13 +41,11 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     private final EventLoop parent;
     private final List<EventHandler> handlers = new ArrayList<>();
     private final Pauser pauser;
-    private final Consumer<Throwable> onThrowable;
     private volatile boolean running = true;
 
-    public MonitorEventLoop(EventLoop parent, Pauser pauser, Consumer<Throwable> onThrowable) {
+    public MonitorEventLoop(EventLoop parent, Pauser pauser) {
         this.parent = parent;
         this.pauser = pauser;
-        this.onThrowable = onThrowable;
     }
 
     public void start() {
@@ -106,8 +102,9 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
                 if (busy)
                     pauser.reset();
             }
+
         } catch (Throwable e) {
-            onThrowable.accept(e);
+            Jvm.warn().on(getClass(), e);
         }
     }
 
@@ -121,11 +118,12 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
             if (handler == null) continue;
             try {
                 busy |= handler.action();
+
             } catch (InvalidEventHandlerException e) {
                 handlers.remove(i--);
 
             } catch (Exception e) {
-                onThrowable.accept(e);
+                Jvm.warn().on(getClass(), e);
             }
         }
         return busy;
@@ -134,12 +132,6 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     @Override
     public void close() {
         stop();
-        service.shutdown();
-        try {
-            if (!service.awaitTermination(100, TimeUnit.MILLISECONDS))
-                service.shutdownNow();
-        } catch (InterruptedException e) {
-            service.shutdownNow();
-        }
+        Threads.shutdown(service);
     }
 }

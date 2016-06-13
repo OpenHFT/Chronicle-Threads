@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -49,30 +48,24 @@ public class EventGroup implements EventLoop {
     @NotNull
     final VanillaEventLoop core;
     final BlockingEventLoop blocking;
-    private final Consumer<Throwable> onThrowable;
     @NotNull
     private final Pauser pauser;
     private final boolean binding;
     private VanillaEventLoop _replication;
     private VanillaEventLoop[] concThreads = new VanillaEventLoop[CONC_THREADS];
 
-    public EventGroup(boolean daemon, Consumer<Throwable> onThrowable, Pauser pauser, boolean binding) {
-        this.onThrowable = onThrowable;
+    public EventGroup(boolean daemon, Pauser pauser, boolean binding) {
         this.pauser = pauser;
         this.binding = binding;
 
-        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon, onThrowable, binding);
-        monitor = new MonitorEventLoop(this, new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS), onThrowable);
+        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon, binding);
+        monitor = new MonitorEventLoop(this, new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS));
         monitor.addHandler(new PauserMonitor(pauser, "core pauser", 30));
-        blocking = new BlockingEventLoop(this, "blocking-event-loop", onThrowable);
-    }
-
-    public EventGroup(boolean daemon, @NotNull Consumer<Throwable> onThrowable) {
-        this(daemon, onThrowable, new LongPauser(500, 100, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), false);
+        blocking = new BlockingEventLoop(this, "blocking-event-loop");
     }
 
     public EventGroup(boolean daemon) {
-        this(daemon, Throwable::printStackTrace);
+        this(daemon, new LongPauser(500, 100, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), false);
     }
 
     static int hash(int n, int mod) {
@@ -84,7 +77,7 @@ public class EventGroup implements EventLoop {
     synchronized VanillaEventLoop getReplication() {
         if (_replication == null) {
             LongPauser pauser = new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
-            _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable, binding);
+            _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();
             monitor.addHandler(new PauserMonitor(pauser, "replication pauser", 60));
@@ -95,7 +88,7 @@ public class EventGroup implements EventLoop {
     synchronized VanillaEventLoop getIOThread(int n) {
         if (concThreads[n] == null) {
             LongPauser pauser = new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
-            _replication = new VanillaEventLoop(this, "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, true, onThrowable, binding);
+            _replication = new VanillaEventLoop(this, "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();
             monitor.addHandler(new PauserMonitor(pauser, "conc-event-loop-" + n + " pauser", 60));
@@ -203,7 +196,7 @@ public class EventGroup implements EventLoop {
             if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE)
                 return false;
             if (loopStartMS == Long.MAX_VALUE - 1) {
-                LOG.warn("Monitoring a task which has finished " + eventLoop);
+                Jvm.warn().on(getClass(), "Monitoring a task which has finished " + eventLoop);
                 throw new InvalidEventHandlerException();
             }
             long now = Time.currentTimeMillis();

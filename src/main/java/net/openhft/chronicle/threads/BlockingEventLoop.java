@@ -16,6 +16,7 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -27,8 +28,6 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
@@ -40,7 +39,6 @@ public class BlockingEventLoop implements EventLoop {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingEventLoop.class);
 
     private final EventLoop parent;
-    private final Consumer<Throwable> onThrowable;
     @NotNull
     private final ExecutorService service;
     @Nullable
@@ -49,10 +47,8 @@ public class BlockingEventLoop implements EventLoop {
     private EventHandler handler;
 
     public BlockingEventLoop(@NotNull EventLoop parent,
-                             @NotNull String name,
-                             @NotNull Consumer<Throwable> onThrowable) {
+                             @NotNull String name) {
         this.parent = parent;
-        this.onThrowable = onThrowable;
         this.service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
     }
 
@@ -73,19 +69,21 @@ public class BlockingEventLoop implements EventLoop {
                         handler.action();
 
                 } catch (InvalidEventHandlerException e) {
-                    // expected
+                    Jvm.debug().on(getClass(), e);
+
                 } catch (Throwable t) {
-                    onThrowable.accept(t);
+                    Jvm.warn().on(getClass(), t);
+
                 } finally {
                     if (LOG.isDebugEnabled())
-                        LOG.debug("handler " + handler + " done.");
+                        Jvm.debug().on(getClass(), "handler " + handler + " done.");
                     if (closed)
                         closeQuietly(this.handler);
                 }
             });
         } catch (RejectedExecutionException e) {
             if (!closed)
-                LOG.error("", e);
+                Jvm.warn().on(getClass(), e);
         }
     }
 
@@ -117,14 +115,8 @@ public class BlockingEventLoop implements EventLoop {
     public void close() {
         closed = true;
         closeQuietly(this.handler);
-        service.shutdown();
-
-        try {
-            if (!(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
-                service.shutdownNow();
-        } catch (InterruptedException e) {
-            service.shutdownNow();
-        }
+        Threads.shutdown(service);
 
     }
+
 }

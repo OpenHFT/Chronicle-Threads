@@ -18,10 +18,12 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.ForceInline;
+import net.openhft.chronicle.core.util.ThrowingCallable;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
-import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by peter on 24/06/15.
@@ -32,14 +34,13 @@ public enum Threads {
     static final Field GROUP = Jvm.getField(Thread.class, "group");
 
     @ForceInline
-    public static <R> R withThreadGroup(ThreadGroup tg, @NotNull Callable<R> callable) {
+    public static <R, T extends Throwable> R withThreadGroup(ThreadGroup tg, @NotNull ThrowingCallable<R, T> callable) throws T {
         Thread thread = Thread.currentThread();
         ThreadGroup tg0 = thread.getThreadGroup();
         setThreadGroup(thread, tg);
         try {
             return callable.call();
-        } catch (Exception e) {
-            throw Jvm.rethrow(e);
+
         } finally {
             setThreadGroup(thread, tg0);
         }
@@ -49,6 +50,7 @@ public enum Threads {
     public static void setThreadGroup(Thread thread, ThreadGroup tg) {
         try {
             GROUP.set(thread, tg);
+
         } catch (IllegalAccessException e) {
             throw new AssertionError(e);
         }
@@ -60,5 +62,19 @@ public enum Threads {
         if (!threadGroupName.endsWith("/"))
             threadGroupName += "/";
         return threadGroupName;
+    }
+
+    static void shutdown(ExecutorService service) {
+        service.shutdown();
+
+        try {
+            service.awaitTermination(500, TimeUnit.MILLISECONDS);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+
+        } finally {
+            service.shutdownNow();
+        }
     }
 }

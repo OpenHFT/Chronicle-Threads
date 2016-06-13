@@ -37,7 +37,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,7 +59,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private final Pauser pauser;
     private final long timerIntervalMS;
     private final String name;
-    private final Consumer<Throwable> onThrowable;
     private final boolean binding;
     private long lastTimerNS;
     private volatile long loopStartMS;
@@ -77,15 +75,14 @@ public class VanillaEventLoop implements EventLoop, Runnable {
      * @param pauser          the pause strategy
      * @param timerIntervalMS how long to pause
      * @param daemon          is a demon thread
-     * @param onThrowable     consumer is called when ever an error occurs
-     * @param binding
+     * @param binding to a cpu
      */
     public VanillaEventLoop(EventLoop parent,
                             String name,
                             Pauser pauser,
                             long timerIntervalMS,
                             boolean daemon,
-                            Consumer<Throwable> onThrowable, boolean binding) {
+                            boolean binding) {
         this.parent = parent;
         this.name = name;
         this.pauser = pauser;
@@ -93,7 +90,6 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         this.binding = binding;
         loopStartMS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
-        this.onThrowable = onThrowable;
     }
 
     public static void closeAll(List<EventHandler> handlers) {
@@ -158,10 +154,10 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 if (!dontAttemptToRunImmediatelyInCurrentThread) {
                     try {
                         if (LOG.isDebugEnabled())
-                            LOG.debug("Running " + handler + " in the current thread as " + this + " has finished");
+                            Jvm.debug().on(getClass(), "Running " + handler + " in the current thread as " + this + " has finished");
                         handler.action();
                     } catch (InterruptedException e) {
-                        LOG.warn("", e);
+                        Jvm.warn().on(getClass(), e);
 
                     } catch (InvalidEventHandlerException ignored) {
                     }
@@ -229,8 +225,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 }
             }
         } catch (Throwable e) {
-            //         e.printStackTrace();
-            onThrowable.accept(e);
+            Jvm.warn().on(getClass(), e);
 
         } finally {
             loopStartMS = Long.MAX_VALUE - 1;
@@ -258,7 +253,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                onThrowable.accept(e);
+                Jvm.warn().on(getClass(), e);
             }
         }
         return busy;
@@ -285,7 +280,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                onThrowable.accept(e);
+                Jvm.warn().on(getClass(), e);
             }
         }
         return busy;
@@ -308,7 +303,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                onThrowable.accept(e);
+                Jvm.warn().on(getClass(), e);
             }
         }
         return busy;
@@ -330,7 +325,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                onThrowable.accept(e);
+                Jvm.warn().on(getClass(), e);
             }
         }
     }
@@ -351,7 +346,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 closeQuietly(handler);
 
             } catch (Exception e) {
-                onThrowable.accept(e);
+                Jvm.warn().on(getClass(), e);
             }
         }
     }
@@ -443,7 +438,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                     sb.append("Shutting down thread is executing ").append(thread)
                             .append(", " + "handlerCount=").append(handlerCount()).append("\n");
                     Jvm.trimStackTrace(sb, thread.getStackTrace());
-                    LOG.warn(sb.toString());
+                    Jvm.warn().on(getClass(), sb.toString());
                     dumpRunningHandlers();
                 }
             }
@@ -464,7 +459,8 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 service.shutdownNow();
             }
         } catch (InterruptedException e) {
-            service.shutdownNow();
+            Threads.shutdown(service);
+
         } finally {
             highHandlers.clear();
             mediumHandlers.clear();
