@@ -279,7 +279,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 }
                 closeQuietly(handler);
 
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 Jvm.warn().on(getClass(), e);
             }
         }
