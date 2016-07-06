@@ -47,6 +47,7 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  */
 public class VanillaEventLoop implements EventLoop, Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
+    private static final EventHandler[] NO_EVENT_HANDLERS = {};
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
@@ -60,6 +61,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     private final long timerIntervalMS;
     private final String name;
     private final boolean binding;
+    private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
     private long lastTimerNS;
     private volatile long loopStartMS;
     @NotNull
@@ -184,7 +186,9 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 affinityLock = AffinityLock.acquireLock();
 
             thread = Thread.currentThread();
+            int count = 0;
             while (running.get()) {
+                count++;
                 if (closedHere != null) {
                     LOG.trace("Closing down handlers");
                     closeAllHandlers();
@@ -202,17 +206,18 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                     busy |= runAllMediumHandler();
 
                 } else {
-                    for (int i = 0; i < 10; i++) {
+                    for (int i = 0; i < 4; i++) {
                         loopStartMS = Time.currentTimeMillis();
                         busy |= runAllHighHandlers();
-                        busy |= runOneTenthLowHandler(i);
+                        busy |= runOneQuarterMediumHandler(i);
                     }
                 }
                 if (lastTimerNS + timerIntervalMS < loopStartMS) {
                     lastTimerNS = loopStartMS;
                     runTimerHandlers();
                 }
-                busy |= acceptNewHandlers();
+                if ((count & 15) == 0)
+                    busy |= acceptNewHandlers();
 
                 if (busy) {
                     pauser.reset();
@@ -243,14 +248,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 boolean action = handler.action();
                 busy |= action;
             } catch (InvalidEventHandlerException e) {
-                try {
-                    highHandlers.remove(i--);
-                } catch (ArrayIndexOutOfBoundsException e2) {
-                    if (!mediumHandlers.isEmpty())
-                        throw e2;
-                }
-
-                closeQuietly(handler);
+                removeHandler(handler, highHandlers);
 
             } catch (Exception e) {
                 Jvm.warn().on(getClass(), e);
@@ -260,24 +258,16 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     }
 
     @HotMethod
-    private boolean runOneTenthLowHandler(int i) {
+    private boolean runOneQuarterMediumHandler(int i) {
         boolean busy = false;
-        for (int j = i; j < mediumHandlers.size(); j += 10) {
-            EventHandler handler = mediumHandlers.get(j);
+        EventHandler[] mediumHandlersArray = this.mediumHandlersArray;
+        for (int j = i; j < mediumHandlersArray.length; j += 4) {
+            EventHandler handler = mediumHandlersArray[j];
             try {
-                boolean action = handler.action();
-                if (action)
-                    handler.action();
-
-                busy |= action;
+                busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
-                try {
-                    mediumHandlers.remove(j--);
-                } catch (ArrayIndexOutOfBoundsException e2) {
-                    if (!mediumHandlers.isEmpty())
-                        throw e2;
-                }
-                closeQuietly(handler);
+                removeHandler(handler, mediumHandlers);
+                this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
 
             } catch (Throwable e) {
                 Jvm.warn().on(getClass(), e);
@@ -289,18 +279,14 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     @HotMethod
     private boolean runAllMediumHandler() {
         boolean busy = false;
-        for (int j = 0; j < mediumHandlers.size(); j++) {
-            EventHandler handler = mediumHandlers.get(j);
+        EventHandler[] mediumHandlersArray = this.mediumHandlersArray;
+        for (int j = 0; j < mediumHandlersArray.length; j++) {
+            EventHandler handler = mediumHandlersArray[j];
             try {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
-                try {
-                    mediumHandlers.remove(j--);
-                } catch (ArrayIndexOutOfBoundsException e2) {
-                    if (!mediumHandlers.isEmpty())
-                        throw e2;
-                }
-                closeQuietly(handler);
+                removeHandler(handler, mediumHandlers);
+                this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
 
             } catch (Exception e) {
                 Jvm.warn().on(getClass(), e);
@@ -316,13 +302,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             try {
                 handler.action();
             } catch (InvalidEventHandlerException e) {
-                try {
-                    timerHandlers.remove(i--);
-                } catch (ArrayIndexOutOfBoundsException e2) {
-                    if (!timerHandlers.isEmpty())
-                        throw e2;
-                }
-                closeQuietly(handler);
+                removeHandler(handler, timerHandlers);
 
             } catch (Exception e) {
                 Jvm.warn().on(getClass(), e);
@@ -337,18 +317,22 @@ public class VanillaEventLoop implements EventLoop, Runnable {
             try {
                 handler.action();
             } catch (InvalidEventHandlerException e) {
-                try {
-                    daemonHandlers.remove(i--);
-                } catch (ArrayIndexOutOfBoundsException e2) {
-                    if (!daemonHandlers.isEmpty())
-                        throw e2;
-                }
-                closeQuietly(handler);
+                removeHandler(handler, daemonHandlers);
 
             } catch (Exception e) {
                 Jvm.warn().on(getClass(), e);
             }
         }
+    }
+
+    private void removeHandler(EventHandler handler, List<EventHandler> handlers) {
+        try {
+            handlers.remove(handler);
+        } catch (ArrayIndexOutOfBoundsException e2) {
+            if (!handlers.isEmpty())
+                throw e2;
+        }
+        closeQuietly(handler);
     }
 
     @HotMethod
@@ -375,9 +359,12 @@ public class VanillaEventLoop implements EventLoop, Runnable {
                 break;
 
             case REPLICATION:
+            case CONCURRENT:
             case MEDIUM:
-                if (!mediumHandlers.contains(handler))
+                if (!mediumHandlers.contains(handler)) {
                     mediumHandlers.add(handler);
+                    mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
+                }
                 break;
 
             case TIMER:
@@ -464,6 +451,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
         } finally {
             highHandlers.clear();
             mediumHandlers.clear();
+            mediumHandlersArray = NO_EVENT_HANDLERS;
             daemonHandlers.clear();
             timerHandlers.clear();
             newHandlerQueue.clear();

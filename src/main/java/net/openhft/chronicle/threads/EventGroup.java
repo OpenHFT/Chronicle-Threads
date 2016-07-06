@@ -16,6 +16,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -65,7 +66,7 @@ public class EventGroup implements EventLoop {
     }
 
     public EventGroup(boolean daemon) {
-        this(daemon, new LongPauser(500, 100, 500, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), false);
+        this(daemon, new LongPauser(1000, 200, 250, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), false);
     }
 
     static int hash(int n, int mod) {
@@ -76,7 +77,7 @@ public class EventGroup implements EventLoop {
 
     synchronized VanillaEventLoop getReplication() {
         if (_replication == null) {
-            LongPauser pauser = new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
+            LongPauser pauser = new LongPauser(500, 100, 250, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
             _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();
@@ -85,15 +86,15 @@ public class EventGroup implements EventLoop {
         return _replication;
     }
 
-    synchronized VanillaEventLoop getIOThread(int n) {
+    synchronized VanillaEventLoop getConcThread(int n) {
         if (concThreads[n] == null) {
-            LongPauser pauser = new LongPauser(1, 50, 500, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
-            _replication = new VanillaEventLoop(this, "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
-            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
-            _replication.start();
+            LongPauser pauser = new LongPauser(500, 100, 250, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
+            concThreads[n] = new VanillaEventLoop(this, "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
+            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]));
+            concThreads[n].start();
             monitor.addHandler(new PauserMonitor(pauser, "conc-event-loop-" + n + " pauser", 60));
         }
-        return _replication;
+        return concThreads[n];
     }
 
     @Override
@@ -131,7 +132,8 @@ public class EventGroup implements EventLoop {
 
             case CONCURRENT: {
                 int n = hash(handler.hashCode(), CONC_THREADS);
-                getIOThread(n).addHandler(handler);
+                getConcThread(n).addHandler(handler);
+                break;
             }
 
             default:
@@ -155,6 +157,10 @@ public class EventGroup implements EventLoop {
         monitor.stop();
         if (_replication != null)
             _replication.stop();
+        for (VanillaEventLoop concThread : concThreads) {
+            if (concThread != null)
+                concThread.stop();
+        }
         core.stop();
         blocking.stop();
     }
@@ -176,7 +182,7 @@ public class EventGroup implements EventLoop {
         blocking.close();
         core.close();
         if (_replication != null) _replication.close();
-
+        Closeable.closeQuietly(concThreads);
     }
 
     class LoopBlockMonitor implements EventHandler {
@@ -186,6 +192,7 @@ public class EventGroup implements EventLoop {
 
         public LoopBlockMonitor(long monitoryIntervalMs, final VanillaEventLoop eventLoop) {
             this.monitoryIntervalMs = monitoryIntervalMs;
+            assert eventLoop != null;
             this.eventLoop = eventLoop;
         }
 
