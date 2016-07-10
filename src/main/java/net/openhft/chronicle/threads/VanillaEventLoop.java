@@ -45,7 +45,7 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 /**
  * Created by peter.lawrey on 22/01/15.
  */
-public class VanillaEventLoop implements EventLoop, Runnable {
+public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     private static final EventHandler[] NO_EVENT_HANDLERS = {};
     private final EventLoop parent;
@@ -404,7 +404,7 @@ public class VanillaEventLoop implements EventLoop, Runnable {
     @Override
     public void close() {
         try {
-            closedHere = new Throwable("Closed here");
+            closedHere = Jvm.isDebug() ? new Throwable("Closed here") : null;
 
             closeAllHandlers();
 
