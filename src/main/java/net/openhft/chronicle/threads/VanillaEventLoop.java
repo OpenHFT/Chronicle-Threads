@@ -234,7 +234,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
         } finally {
             loopStartMS = Long.MAX_VALUE - 1;
-            if (binding && affinityLock != null)
+            if (affinityLock != null)
                 affinityLock.release();
         }
     }

@@ -23,8 +23,6 @@ import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
@@ -42,7 +40,6 @@ public class EventGroup implements EventLoop {
 
     static final int CONC_THREADS = Integer.getInteger("CONC_THREADS", (Runtime.getRuntime().availableProcessors() + 2) / 2);
 
-    private static final Logger LOG = LoggerFactory.getLogger(EventGroup.class);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger
             ("replicationEventPauseTime", 20);
     final EventLoop monitor;
@@ -66,7 +63,11 @@ public class EventGroup implements EventLoop {
     }
 
     public EventGroup(boolean daemon) {
-        this(daemon, new LongPauser(1000, 200, 250, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), false);
+        this(daemon, false);
+    }
+
+    public EventGroup(boolean daemon, boolean binding) {
+        this(daemon, new LongPauser(1000, 200, 250, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), binding);
     }
 
     static int hash(int n, int mod) {
