@@ -25,6 +25,7 @@ import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -51,8 +52,11 @@ public class EventGroup implements EventLoop {
     private final boolean binding;
     private VanillaEventLoop _replication;
     private VanillaEventLoop[] concThreads = new VanillaEventLoop[CONC_THREADS];
+    private Supplier<Pauser> concThreadPauserSupplier = () -> new LongPauser(500, 100, 250, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
+    private boolean daemon;
 
     public EventGroup(boolean daemon, Pauser pauser, boolean binding) {
+        this.daemon = daemon;
         this.pauser = pauser;
         this.binding = binding;
 
@@ -76,6 +80,10 @@ public class EventGroup implements EventLoop {
         return n;
     }
 
+    public void setConcThreadPauserSupplier(Supplier<Pauser> supplier) {
+        concThreadPauserSupplier = supplier;
+    }
+
     synchronized VanillaEventLoop getReplication() {
         if (_replication == null) {
             LongPauser pauser = new LongPauser(500, 100, 250, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
@@ -89,8 +97,8 @@ public class EventGroup implements EventLoop {
 
     synchronized VanillaEventLoop getConcThread(int n) {
         if (concThreads[n] == null) {
-            LongPauser pauser = new LongPauser(500, 100, 250, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
-            concThreads[n] = new VanillaEventLoop(this, "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
+            Pauser pauser = concThreadPauserSupplier.get();
+            concThreads[n] = new VanillaEventLoop(this, "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, daemon, binding);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]));
             concThreads[n].start();
             monitor.addHandler(new PauserMonitor(pauser, "conc-event-loop-" + n + " pauser", 60));
