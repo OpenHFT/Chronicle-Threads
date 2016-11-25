@@ -223,7 +223,7 @@ public class EventGroup implements EventLoop {
             }
             long now = Time.currentTimeMillis();
             long blockingTimeMS = now - loopStartMS;
-            long blockingInterval = blockingTimeMS / (monitoryIntervalMs / 2);
+            long blockingInterval = blockingTimeMS / ((monitoryIntervalMs + 1) / 2);
 
             if (blockingInterval > lastInterval && !Jvm.isDebug() && eventLoop.isAlive()) {
                 eventLoop.dumpRunningState(eventLoop.name() + " thread has blocked for "
