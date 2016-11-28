@@ -22,8 +22,6 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -35,9 +33,8 @@ import java.util.concurrent.Executors;
  * Created by peter.lawrey on 22/01/15.
  */
 public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
-    static final Logger LOG = LoggerFactory.getLogger(MonitorEventLoop.class);
+    static int MONITOR_INITIAL_DELAY = Integer.getInteger("MonitorInitialDelay", 60_000);
     final ExecutorService service = Executors.newSingleThreadExecutor(new NamedThreadFactory("event-loop-monitor", true));
-
     private final EventLoop parent;
     private final List<EventHandler> handlers = new ArrayList<>();
     private final Pauser pauser;
@@ -89,8 +86,8 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     @HotMethod
     public void run() {
         try {
-            // don't do any monitoring for the first 10000 ms.
-            for (int i = 0; i < 200; i++)
+            // don't do any monitoring for the first 60000 ms.
+            for (int i = 0; i < MONITOR_INITIAL_DELAY; i += 50)
                 if (running)
                     Jvm.pause(50);
             while (running) {
