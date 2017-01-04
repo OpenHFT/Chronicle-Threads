@@ -24,7 +24,6 @@ import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -53,7 +52,7 @@ public class EventGroup implements EventLoop {
     private final String name;
     private VanillaEventLoop _replication;
     private VanillaEventLoop[] concThreads = new VanillaEventLoop[CONC_THREADS];
-    private Supplier<Pauser> concThreadPauserSupplier = () -> new LongPauser(500, 100, 250, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
+    private Supplier<Pauser> concThreadPauserSupplier = () -> Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
     private boolean daemon;
 
     public EventGroup(boolean daemon, Pauser pauser, boolean binding, String name) {
@@ -63,7 +62,7 @@ public class EventGroup implements EventLoop {
         this.name = name;
 
         core = new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding);
-        monitor = new MonitorEventLoop(this, new LongPauser(0, 0, 100, 100, TimeUnit.MILLISECONDS));
+        monitor = new MonitorEventLoop(this, Pauser.timedMillis(100));
         monitor.addHandler(new PauserMonitor(pauser, name + "core pauser", 30));
         blocking = new BlockingEventLoop(this, name + "blocking-event-loop");
     }
@@ -73,7 +72,7 @@ public class EventGroup implements EventLoop {
     }
 
     public EventGroup(boolean daemon, boolean binding) {
-        this(daemon, new LongPauser(1000, 200, 250, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), binding);
+        this(daemon, Pauser.balanced(), binding);
     }
 
     public EventGroup(boolean daemon, Pauser pauser, boolean binding) {
@@ -92,7 +91,7 @@ public class EventGroup implements EventLoop {
 
     synchronized VanillaEventLoop getReplication() {
         if (_replication == null) {
-            LongPauser pauser = new LongPauser(500, 100, 250, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
+            Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
             _replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();
