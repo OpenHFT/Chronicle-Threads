@@ -100,7 +100,7 @@ public class EventGroup implements EventLoop {
         return _replication;
     }
 
-    synchronized VanillaEventLoop getConcThread(int n) {
+    private synchronized VanillaEventLoop getConcThread(int n) {
         if (concThreads[n] == null) {
             Pauser pauser = concThreadPauserSupplier.get();
             concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, daemon, binding);
@@ -109,6 +109,19 @@ public class EventGroup implements EventLoop {
             monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 60));
         }
         return concThreads[n];
+    }
+
+    @Override
+    public void awaitTermination() {
+        core.awaitTermination();
+        blocking.awaitTermination();
+        monitor.awaitTermination();
+        if (_replication != null)
+            _replication.awaitTermination();
+        for (VanillaEventLoop concThread : concThreads) {
+            if (concThread != null)
+                concThread.awaitTermination();
+        }
     }
 
     @Override

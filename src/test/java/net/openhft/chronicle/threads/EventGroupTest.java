@@ -25,18 +25,23 @@ import org.junit.Test;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.assertFalse;
+
 /**
  * @author Rob Austin.
  */
 public class EventGroupTest {
 
     @Test
-    public void testSimpleEventGroupTest() {
+    public void testSimpleEventGroupTest() throws InterruptedException {
 
         final AtomicInteger value = new AtomicInteger();
 
+        Thread t;
         try (final EventLoop eventGroup = new EventGroup(true)) {
             eventGroup.start();
+            t = new Thread(eventGroup::awaitTermination);
+            t.start();
             eventGroup.addHandler(() -> {
                 if (value.get() == 10)
                     // throw this if you don't wish to be called back
@@ -57,5 +62,7 @@ public class EventGroupTest {
                 Jvm.pause(1);
             }
         }
+        t.join(100);
+        assertFalse(t.isAlive());
     }
 }

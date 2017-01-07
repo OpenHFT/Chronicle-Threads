@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by peter.lawrey on 22/01/15.
@@ -43,6 +44,15 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public MonitorEventLoop(EventLoop parent, Pauser pauser) {
         this.parent = parent;
         this.pauser = pauser;
+    }
+
+    @Override
+    public void awaitTermination() {
+        try {
+            service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public void start() {
