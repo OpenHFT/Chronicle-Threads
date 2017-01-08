@@ -105,6 +105,15 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     @Override
+    public void awaitTermination() {
+        try {
+            service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @Override
     public String toString() {
         return "VanillaEventLoop{" +
                 "name='" + name + '\'' +

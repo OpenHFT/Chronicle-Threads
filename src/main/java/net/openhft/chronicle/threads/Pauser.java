@@ -18,6 +18,8 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -25,6 +27,55 @@ import java.util.concurrent.TimeoutException;
  * Created by peter.lawrey on 11/12/14.
  */
 public interface Pauser {
+
+    /**
+     * A balanced pauser which tries to be busy for short busrts but backs off when idle.
+     *
+     * @return a balanced pauser
+     */
+    static Pauser balanced() {
+        return balancedUpToMillis(20);
+    }
+
+    /**
+     * A balanced pauser which tries to be busy for short busrts but backs off when idle.
+     *
+     * @param millis maximum millis (unless in debug mode)
+     * @return a balanced pauser
+     */
+    static Pauser balancedUpToMillis(int millis) {
+        return new LongPauser(1000, 200, 250, (Jvm.isDebug() ? 200_000 : 0) + millis * 1_000, TimeUnit.MICROSECONDS);
+    }
+
+    /**
+     * Wait a fixed time befoe running again unless woken
+     *
+     * @param millis to wait for
+     * @return a waiting pauser
+     */
+    static Pauser millis(int millis) {
+        return millis(millis, millis);
+    }
+
+    /**
+     * A balanced pauser which tries to be busy for short busrts but backs off when idle.
+     *
+     * @param minMillis starting millis
+     * @param maxMillis maximum millis
+     * @return a balanced pauser
+     */
+    static Pauser millis(int minMillis, int maxMillis) {
+        return new LongPauser(0, 0, minMillis, maxMillis, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * A busy pauser which never waits
+     *
+     * @return a busy/non pauser
+     */
+    static Pauser busy() {
+        return BusyPauser.INSTANCE;
+    }
     void reset();
 
     void pause();

@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
@@ -50,6 +51,15 @@ public class BlockingEventLoop implements EventLoop {
                              @NotNull String name) {
         this.parent = parent;
         this.service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
+    }
+
+    @Override
+    public void awaitTermination() {
+        try {
+            service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override

@@ -24,7 +24,7 @@ import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -49,17 +49,22 @@ public class EventGroup implements EventLoop {
     @NotNull
     private final Pauser pauser;
     private final boolean binding;
+    private final String name;
     private VanillaEventLoop _replication;
     private VanillaEventLoop[] concThreads = new VanillaEventLoop[CONC_THREADS];
+    private Supplier<Pauser> concThreadPauserSupplier = () -> Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
+    private boolean daemon;
 
-    public EventGroup(boolean daemon, Pauser pauser, boolean binding) {
+    public EventGroup(boolean daemon, Pauser pauser, boolean binding, String name) {
+        this.daemon = daemon;
         this.pauser = pauser;
         this.binding = binding;
+        this.name = name;
 
-        core = new VanillaEventLoop(this, "core-event-loop", pauser, 1, daemon, binding);
-        monitor = new MonitorEventLoop(this, new LongPauser(0, 0, 100, 100, TimeUnit.MILLISECONDS));
-        monitor.addHandler(new PauserMonitor(pauser, "core pauser", 30));
-        blocking = new BlockingEventLoop(this, "blocking-event-loop");
+        core = new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding);
+        monitor = new MonitorEventLoop(this, Pauser.millis(100));
+        monitor.addHandler(new PauserMonitor(pauser, name + "core pauser", 30));
+        blocking = new BlockingEventLoop(this, name + "blocking-event-loop");
     }
 
     public EventGroup(boolean daemon) {
@@ -67,7 +72,11 @@ public class EventGroup implements EventLoop {
     }
 
     public EventGroup(boolean daemon, boolean binding) {
-        this(daemon, new LongPauser(1000, 200, 250, Jvm.isDebug() ? 200_000 : 20_000, TimeUnit.MICROSECONDS), binding);
+        this(daemon, Pauser.balanced(), binding);
+    }
+
+    public EventGroup(boolean daemon, Pauser pauser, boolean binding) {
+        this(daemon, pauser, binding, "");
     }
 
     static int hash(int n, int mod) {
@@ -76,26 +85,43 @@ public class EventGroup implements EventLoop {
         return n;
     }
 
+    public void setConcThreadPauserSupplier(Supplier<Pauser> supplier) {
+        concThreadPauserSupplier = supplier;
+    }
+
     synchronized VanillaEventLoop getReplication() {
         if (_replication == null) {
-            LongPauser pauser = new LongPauser(500, 100, 250, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
-            _replication = new VanillaEventLoop(this, "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
+            Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
+            _replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
             _replication.start();
-            monitor.addHandler(new PauserMonitor(pauser, "replication pauser", 60));
+            monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 60));
         }
         return _replication;
     }
 
-    synchronized VanillaEventLoop getConcThread(int n) {
+    private synchronized VanillaEventLoop getConcThread(int n) {
         if (concThreads[n] == null) {
-            LongPauser pauser = new LongPauser(500, 100, 250, Jvm.isDebug() ? 200_000 : REPLICATION_EVENT_PAUSE_TIME * 1000, TimeUnit.MICROSECONDS);
-            concThreads[n] = new VanillaEventLoop(this, "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
+            Pauser pauser = concThreadPauserSupplier.get();
+            concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, daemon, binding);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]));
             concThreads[n].start();
-            monitor.addHandler(new PauserMonitor(pauser, "conc-event-loop-" + n + " pauser", 60));
+            monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 60));
         }
         return concThreads[n];
+    }
+
+    @Override
+    public void awaitTermination() {
+        core.awaitTermination();
+        blocking.awaitTermination();
+        monitor.awaitTermination();
+        if (_replication != null)
+            _replication.awaitTermination();
+        for (VanillaEventLoop concThread : concThreads) {
+            if (concThread != null)
+                concThread.awaitTermination();
+        }
     }
 
     @Override
@@ -209,7 +235,7 @@ public class EventGroup implements EventLoop {
             }
             long now = Time.currentTimeMillis();
             long blockingTimeMS = now - loopStartMS;
-            long blockingInterval = blockingTimeMS / (monitoryIntervalMs / 2);
+            long blockingInterval = blockingTimeMS / ((monitoryIntervalMs + 1) / 2);
 
             if (blockingInterval > lastInterval && !Jvm.isDebug() && eventLoop.isAlive()) {
                 eventLoop.dumpRunningState(eventLoop.name() + " thread has blocked for "

@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class LongPauserTest {
     @Test
-    public void testLightPauser() throws InterruptedException {
+    public void testLongPauser() throws InterruptedException {
         final LongPauser pauser = new LongPauser(1, 1, 100, 1000, TimeUnit.MICROSECONDS);
         Thread thread = new Thread() {
             @Override
