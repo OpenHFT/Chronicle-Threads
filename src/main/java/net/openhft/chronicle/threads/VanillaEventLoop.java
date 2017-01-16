@@ -36,6 +36,7 @@ import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -426,8 +427,10 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 Jvm.pause(10);
                 if (handlerCount() == 0)
                     break;
-                if (i % 10 == 4)
+                if (i % 10 == 4) {
+                    LockSupport.unpark(thread);
                     thread.interrupt();
+                }
 
                 if (i % 10 == 9) {
                     StringBuilder sb = new StringBuilder();
