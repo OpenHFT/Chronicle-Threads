@@ -78,7 +78,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
      * @param pauser          the pause strategy
      * @param timerIntervalMS how long to pause
      * @param daemon          is a demon thread
-     * @param binding to a cpu
+     * @param binding         to a cpu
      */
     public VanillaEventLoop(EventLoop parent,
                             String name,
@@ -196,49 +196,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 affinityLock = AffinityLock.acquireLock();
 
             thread = Thread.currentThread();
-            int count = 0;
-            while (running.get()) {
-                count++;
-                if (closedHere != null) {
-                    LOG.trace("Closing down handlers");
-                    closeAllHandlers();
-                    runAllHighHandlers();
-                    runAllMediumHandler();
-                    runDaemonHandlers();
-                    runTimerHandlers();
-                    LOG.trace("Remaining handlers");
-                    dumpRunningHandlers();
-                    break;
-                }
-                boolean busy = false;
-                if (highHandlers.isEmpty()) {
-                    loopStartMS = Time.currentTimeMillis();
-                    busy |= runAllMediumHandler();
-
-                } else {
-                    for (int i = 0; i < 4; i++) {
-                        loopStartMS = Time.currentTimeMillis();
-                        busy |= runAllHighHandlers();
-                        busy |= runOneQuarterMediumHandler(i);
-                    }
-                }
-                if (lastTimerNS + timerIntervalMS < loopStartMS) {
-                    lastTimerNS = loopStartMS;
-                    runTimerHandlers();
-                }
-                if ((count & 15) == 0)
-                    busy |= acceptNewHandlers();
-
-                if (busy) {
-                    pauser.reset();
-
-                } else {
-                    runDaemonHandlers();
-                    // reset the loop timeout.
-                    loopStartMS = Long.MAX_VALUE;
-                    pauser.pause();
-                }
-            }
+            runLoop();
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
 
@@ -247,6 +205,64 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             if (affinityLock != null)
                 affinityLock.release();
         }
+    }
+
+    private void runLoop() {
+        while (running.get()) {
+            if (closedHere != null) {
+                closeAll();
+                break;
+            }
+            boolean busy;
+            if (highHandlers.isEmpty()) {
+                busy = runMediumLoopOnly();
+
+            } else {
+                busy = runHighAndMediumTasks();
+            }
+            if (lastTimerNS + timerIntervalMS < loopStartMS) {
+                lastTimerNS = loopStartMS;
+                runTimerHandlers();
+            }
+            if (busy) {
+                pauser.reset();
+
+            } else {
+                if (acceptNewHandlers())
+                    continue;
+
+                runDaemonHandlers();
+                // reset the loop timeout.
+                loopStartMS = Long.MAX_VALUE;
+                pauser.pause();
+            }
+        }
+    }
+
+    private boolean runMediumLoopOnly() {
+        loopStartMS = Time.currentTimeMillis();
+        return runAllMediumHandler();
+    }
+
+    private boolean runHighAndMediumTasks() {
+        boolean busy = false;
+        for (int i = 0; i < 4; i++) {
+            loopStartMS = Time.currentTimeMillis();
+            busy |= runAllHighHandlers();
+            busy |= runOneQuarterMediumHandler(i);
+        }
+        return busy;
+    }
+
+    private void closeAll() {
+        LOG.trace("Closing down handlers");
+        closeAllHandlers();
+        runAllHighHandlers();
+        runAllMediumHandler();
+        runDaemonHandlers();
+        runTimerHandlers();
+        LOG.trace("Remaining handlers");
+        dumpRunningHandlers();
     }
 
     @HotMethod
@@ -308,8 +324,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     @HotMethod
     private void runTimerHandlers() {
         for (int i = 0; i < timerHandlers.size(); i++) {
-            EventHandler handler = timerHandlers.get(i);
+            EventHandler handler = null;
             try {
+                handler = timerHandlers.get(i);
                 handler.action();
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, timerHandlers);
@@ -323,8 +340,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     @HotMethod
     private void runDaemonHandlers() {
         for (int i = 0; i < daemonHandlers.size(); i++) {
-            EventHandler handler = daemonHandlers.get(i);
+            EventHandler handler = null;
             try {
+                handler = daemonHandlers.get(i);
                 handler.action();
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, daemonHandlers);
