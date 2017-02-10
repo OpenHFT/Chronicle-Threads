@@ -76,5 +76,11 @@ public enum Threads {
         } finally {
             service.shutdownNow();
         }
+
+        try {
+            service.awaitTermination(1500, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
