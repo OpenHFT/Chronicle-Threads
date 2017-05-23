@@ -39,6 +39,7 @@ public class BlockingEventLoop implements EventLoop {
 
     private static final Logger LOG = LoggerFactory.getLogger(BlockingEventLoop.class);
 
+    @NotNull
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;

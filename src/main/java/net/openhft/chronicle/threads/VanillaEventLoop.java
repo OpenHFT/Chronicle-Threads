@@ -62,6 +62,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private final long timerIntervalMS;
     private final String name;
     private final boolean binding;
+    @NotNull
     private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
     private long lastTimerNS;
     private volatile long loopStartMS;
@@ -95,7 +96,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
     }
 
-    public static void closeAll(List<EventHandler> handlers) {
+    public static void closeAll(@NotNull List<EventHandler> handlers) {
         handlers.forEach(h -> {
             if (h instanceof Closeable) {
                 Closeable.closeQuietly(h);
@@ -114,6 +115,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         }
     }
 
+    @NotNull
     @Override
     public String toString() {
         return "VanillaEventLoop{" +
@@ -353,7 +355,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         }
     }
 
-    private void removeHandler(EventHandler handler, List<EventHandler> handlers) {
+    private void removeHandler(EventHandler handler, @NotNull List<EventHandler> handlers) {
         try {
             handlers.remove(handler);
         } catch (ArrayIndexOutOfBoundsException e2) {

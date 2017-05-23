@@ -18,6 +18,8 @@
 
 package net.openhft.chronicle.threads;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -61,7 +63,7 @@ public class TimeoutPauser implements Pauser {
     }
 
     @Override
-    public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
+    public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
         ++count;
         if (count < minBusy)
             return;

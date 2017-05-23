@@ -18,6 +18,9 @@
 
 package net.openhft.chronicle.threads;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,6 +39,7 @@ public class LongPauser implements Pauser {
     private long pauseTimeNS;
     private long timePaused = 0;
     private long countPaused = 0;
+    @Nullable
     private volatile Thread thread = null;
     private long yieldStart = 0;
     private long timeOutStart = Long.MAX_VALUE;
@@ -51,7 +55,7 @@ public class LongPauser implements Pauser {
      * @param maxTime  the amount of time subsequently to sleep
      * @param timeUnit the unit of the {@code minTime}  and {@code maxTime}
      */
-    public LongPauser(int minBusy, int minCount, long minTime, long maxTime, TimeUnit timeUnit) {
+    public LongPauser(int minBusy, int minCount, long minTime, long maxTime, @NotNull TimeUnit timeUnit) {
         this.minBusy = minBusy;
         this.minCount = minCount;
         this.minPauseTimeNS = timeUnit.toNanos(minTime);
@@ -87,7 +91,7 @@ public class LongPauser implements Pauser {
     }
 
     @Override
-    public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
+    public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
         ++count;
         if (count < minBusy)
             return;

@@ -31,6 +31,7 @@ import java.lang.ref.WeakReference;
 public class PauserMonitor implements EventHandler {
     private static final Logger LOG = LoggerFactory.getLogger(PauserMonitor.class);
 
+    @NotNull
     private final WeakReference<Pauser> pauser;
     private final String description;
     private final int mills;

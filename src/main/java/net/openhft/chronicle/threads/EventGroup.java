@@ -42,20 +42,23 @@ public class EventGroup implements EventLoop {
 
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger
             ("replicationEventPauseTime", 20);
+    @NotNull
     final EventLoop monitor;
     @NotNull
     final VanillaEventLoop core;
+    @NotNull
     final BlockingEventLoop blocking;
     @NotNull
     private final Pauser pauser;
     private final boolean binding;
     private final String name;
     private VanillaEventLoop _replication;
+    @NotNull
     private VanillaEventLoop[] concThreads = new VanillaEventLoop[CONC_THREADS];
     private Supplier<Pauser> concThreadPauserSupplier = () -> Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
     private boolean daemon;
 
-    public EventGroup(boolean daemon, Pauser pauser, boolean binding, String name) {
+    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, String name) {
         this.daemon = daemon;
         this.pauser = pauser;
         this.binding = binding;
@@ -75,7 +78,7 @@ public class EventGroup implements EventLoop {
         this(daemon, Pauser.balanced(), binding);
     }
 
-    public EventGroup(boolean daemon, Pauser pauser, boolean binding) {
+    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding) {
         this(daemon, pauser, binding, "");
     }
 
@@ -214,10 +217,11 @@ public class EventGroup implements EventLoop {
 
     class LoopBlockMonitor implements EventHandler {
         private final long monitoryIntervalMs;
+        @NotNull
         private final VanillaEventLoop eventLoop;
         long lastInterval = 1;
 
-        public LoopBlockMonitor(long monitoryIntervalMs, final VanillaEventLoop eventLoop) {
+        public LoopBlockMonitor(long monitoryIntervalMs, @NotNull final VanillaEventLoop eventLoop) {
             this.monitoryIntervalMs = monitoryIntervalMs;
             assert eventLoop != null;
             this.eventLoop = eventLoop;
