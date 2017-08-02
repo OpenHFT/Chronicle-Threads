@@ -30,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-/**
+/*
  * Created by peter.lawrey on 22/01/15.
  */
 public class MonitorEventLoop implements EventLoop, Runnable, Closeable {

@@ -25,7 +25,7 @@ import java.lang.reflect.Field;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/**
+/*
  * Created by peter on 24/06/15.
  */
 public enum Threads {

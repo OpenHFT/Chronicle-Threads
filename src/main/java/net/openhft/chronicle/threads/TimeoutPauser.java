@@ -23,7 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/**
+/*
  * Created by peter on 10/03/2016.
  */
 public class TimeoutPauser implements Pauser {

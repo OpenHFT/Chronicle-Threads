@@ -20,7 +20,7 @@ package net.openhft.chronicle.threads;
 
 import java.util.concurrent.TimeUnit;
 
-/**
+/*
  * Created by peter.lawrey on 11/12/14.
  */
 public enum BusyPauser implements Pauser {

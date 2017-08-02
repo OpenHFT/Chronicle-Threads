@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/**
+/*
  * Created by peter.lawrey on 11/12/14.
  */
 public interface Pauser {

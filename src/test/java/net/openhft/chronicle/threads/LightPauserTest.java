@@ -21,7 +21,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import org.junit.Test;
 
-/**
+/*
  * Created by peter.lawrey on 11/12/14.
  */
 public class LightPauserTest {

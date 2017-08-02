@@ -28,7 +28,7 @@ import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-/**
+/*
  * Created by peter.lawrey on 22/01/15.
  */
 public class EventGroup implements EventLoop {

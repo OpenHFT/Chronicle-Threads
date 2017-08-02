@@ -21,7 +21,7 @@ import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
-/**
+/*
  * Created by peter on 03/03/2016.
  */
 public abstract class TimedEventHandler implements EventHandler {
