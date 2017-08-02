@@ -137,6 +137,7 @@ public class EventGroup implements EventLoop {
         addHandler(handler);
     }
 
+    @Override
     public void addHandler(@NotNull EventHandler handler) {
         HandlerPriority t1 = handler.priority();
         switch (t1) {

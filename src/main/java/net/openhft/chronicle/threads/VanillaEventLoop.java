@@ -133,6 +133,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 '}';
     }
 
+    @Override
     public void start() {
         if (closedHere != null)
             throw new IllegalStateException("Event Group has been closed", closedHere);
@@ -145,6 +146,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         pauser.unpause();
     }
 
+    @Override
     public void stop() {
 
     }
@@ -154,10 +156,12 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         return closedHere != null;
     }
 
+    @Override
     public void addHandler(@NotNull EventHandler handler) {
         addHandler(false, handler);
     }
 
+    @Override
     public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);

@@ -55,6 +55,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         }
     }
 
+    @Override
     public void start() {
         running = true;
         service.submit(this);
@@ -65,6 +66,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         pauser.unpause();
     }
 
+    @Override
     public void stop() {
         running = false;
     }
@@ -84,6 +86,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         addHandler(handler);
     }
 
+    @Override
     public void addHandler(@NotNull EventHandler handler) {
         synchronized (handlers) {
             if (!handlers.contains(handler))
