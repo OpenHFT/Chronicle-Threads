@@ -22,7 +22,7 @@ import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
 /*
- * Created by peter on 03/03/2016.
+ * Created by Peter Lawrey on 03/03/2016.
  */
 public abstract class TimedEventHandler implements EventHandler {
     private long nextRunNS = 0;

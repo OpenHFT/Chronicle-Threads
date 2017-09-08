@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /*
- * Created by peter on 10/03/2016.
+ * Created by Peter Lawrey on 10/03/2016.
  */
 public class TimeoutPauser implements Pauser {
     private final int minBusy;
