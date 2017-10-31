@@ -204,7 +204,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             thread = Thread.currentThread();
             runLoop();
         } catch (Throwable e) {
-            Jvm.warn().on(getClass(), e);
+            Jvm.warn().on(getClass(), "Loop terminated due to exception", e);
 
         } finally {
             loopStartMS = Long.MAX_VALUE - 1;

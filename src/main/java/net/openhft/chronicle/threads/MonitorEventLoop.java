@@ -133,7 +133,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
                 handlers.remove(i--);
 
             } catch (Exception e) {
-                Jvm.warn().on(getClass(), e);
+                Jvm.warn().on(getClass(), "Loop terminated due to exception", e);
             }
         }
         return busy;
