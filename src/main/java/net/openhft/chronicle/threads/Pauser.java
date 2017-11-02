@@ -70,6 +70,17 @@ public interface Pauser {
     }
 
     /**
+     * Yielding pauser. simpler than LongPauser but slightly more friendly to other processes
+     */
+    static Pauser yielding() {
+        return yielding(2);
+    }
+
+    static Pauser yielding(int minBusy) {
+        return new YieldingPauser(minBusy);
+    }
+
+    /**
      * A busy pauser which never waits
      *
      * @return a busy/non pauser
