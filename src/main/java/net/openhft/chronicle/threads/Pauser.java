@@ -28,6 +28,21 @@ import java.util.concurrent.TimeoutException;
  * Created by peter.lawrey on 11/12/14.
  */
 public interface Pauser {
+    int MIN_PROCESSORS = Integer.getInteger("pauser.minProcessors", 9);
+    boolean SLEEPY = getSleepy();
+
+    static boolean getSleepy() {
+        int procs = Runtime.getRuntime().availableProcessors();
+        if (procs < MIN_PROCESSORS) {
+            Jvm.warn().on(Pauser.class, "Using Pauser.sleepy() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS + "+");
+            return true;
+        }
+        return false;
+    }
+
+    static Pauser sleepy() {
+        return new LongPauser(0, 20, 500, 20_000, TimeUnit.MICROSECONDS);
+    }
 
     /**
      * A balanced pauser which tries to be busy for short busrts but backs off when idle.
@@ -45,7 +60,7 @@ public interface Pauser {
      * @return a balanced pauser
      */
     static Pauser balancedUpToMillis(int millis) {
-        return new LongPauser(1000, 200, 250, (Jvm.isDebug() ? 200_000 : 0) + millis * 1_000, TimeUnit.MICROSECONDS);
+        return SLEEPY ? sleepy() : new LongPauser(1000, 200, 250, (Jvm.isDebug() ? 200_000 : 0) + millis * 1_000, TimeUnit.MICROSECONDS);
     }
 
     /**
@@ -77,7 +92,7 @@ public interface Pauser {
     }
 
     static Pauser yielding(int minBusy) {
-        return new YieldingPauser(minBusy);
+        return SLEEPY ? sleepy() : new YieldingPauser(minBusy);
     }
 
     /**
@@ -87,8 +102,9 @@ public interface Pauser {
      */
     @NotNull
     static Pauser busy() {
-        return BusyPauser.INSTANCE;
+        return SLEEPY ? sleepy() : BusyPauser.INSTANCE;
     }
+
     void reset();
 
     void pause();
