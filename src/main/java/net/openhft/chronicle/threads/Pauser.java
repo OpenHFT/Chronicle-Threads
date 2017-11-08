@@ -28,7 +28,7 @@ import java.util.concurrent.TimeoutException;
  * Created by peter.lawrey on 11/12/14.
  */
 public interface Pauser {
-    int MIN_PROCESSORS = Integer.getInteger("pauser.minProcessors", 9);
+    int MIN_PROCESSORS = Integer.getInteger("pauser.minProcessors", 8);
     boolean SLEEPY = getSleepy();
 
     static boolean getSleepy() {
