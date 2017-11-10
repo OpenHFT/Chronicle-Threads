@@ -44,7 +44,7 @@ public abstract class TimedEventHandler implements EventHandler {
      *
      * @return the delay in micro-seconds.
      */
-    protected abstract long timedAction();
+    protected abstract long timedAction() throws InvalidEventHandlerException, InterruptedException;
 
     @NotNull
     @Override
