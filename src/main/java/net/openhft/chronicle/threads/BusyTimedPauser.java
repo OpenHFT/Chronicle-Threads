@@ -19,15 +19,17 @@
 package net.openhft.chronicle.threads;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
-/*
- * Created by peter.lawrey on 11/12/14.
- */
-public enum BusyPauser implements Pauser {
+
+public enum BusyTimedPauser implements Pauser {
     INSTANCE;
+
+    long time = Long.MAX_VALUE;
 
     @Override
     public void reset() {
+        time = Long.MAX_VALUE;
     }
 
     @Override
@@ -36,8 +38,11 @@ public enum BusyPauser implements Pauser {
     }
 
     @Override
-    public void pause(long timeout, TimeUnit timeUnit) {
-        throw new UnsupportedOperationException("Busy pauser is not stateful, use a LongPauser");
+    public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
+        if (time == Long.MAX_VALUE)
+            time = System.nanoTime();
+        if (time + timeUnit.toNanos(timeout) < System.nanoTime())
+            throw new TimeoutException();
     }
 
     @Override

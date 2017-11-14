@@ -102,7 +102,7 @@ public interface Pauser {
      */
     @NotNull
     static Pauser busy() {
-        return SLEEPY ? sleepy() : BusyPauser.INSTANCE;
+        return SLEEPY ? sleepy() : BusyTimedPauser.INSTANCE;
     }
 
     void reset();
