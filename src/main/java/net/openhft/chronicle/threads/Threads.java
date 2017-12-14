@@ -64,7 +64,7 @@ public enum Threads {
         return threadGroupName;
     }
 
-    static void shutdown(@NotNull ExecutorService service) {
+    public static void shutdown(@NotNull ExecutorService service) {
         service.shutdown();
 
         try {
