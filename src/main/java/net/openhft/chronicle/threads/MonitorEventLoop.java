@@ -103,7 +103,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
             for (int i = 0; i < MONITOR_INITIAL_DELAY; i += 50)
                 if (running)
                     Jvm.pause(50);
-            while (running) {
+            while (running && !Thread.currentThread().isInterrupted()) {
                 boolean busy;
                 synchronized (handlers) {
                     busy = runHandlers();
@@ -116,6 +116,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
         }
+
     }
 
     @HotMethod

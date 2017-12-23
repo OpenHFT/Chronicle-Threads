@@ -52,7 +52,7 @@ public class EventGroup implements EventLoop {
     private final Pauser pauser;
     private final boolean binding;
     private final String name;
-    private VanillaEventLoop _replication;
+    private VanillaEventLoop replication;
     @NotNull
     private VanillaEventLoop[] concThreads = new VanillaEventLoop[CONC_THREADS];
     private Supplier<Pauser> concThreadPauserSupplier = () -> Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
@@ -93,14 +93,14 @@ public class EventGroup implements EventLoop {
     }
 
     synchronized VanillaEventLoop getReplication() {
-        if (_replication == null) {
+        if (replication == null) {
             Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
-            _replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
-            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, _replication));
-            _replication.start();
+            replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
+            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, replication));
+            replication.start();
             monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 60));
         }
-        return _replication;
+        return replication;
     }
 
     private synchronized VanillaEventLoop getConcThread(int n) {
@@ -119,8 +119,8 @@ public class EventGroup implements EventLoop {
         core.awaitTermination();
         blocking.awaitTermination();
         monitor.awaitTermination();
-        if (_replication != null)
-            _replication.awaitTermination();
+        if (replication != null)
+            replication.awaitTermination();
         for (VanillaEventLoop concThread : concThreads) {
             if (concThread != null)
                 concThread.awaitTermination();
@@ -186,8 +186,8 @@ public class EventGroup implements EventLoop {
     @Override
     public void stop() {
         monitor.stop();
-        if (_replication != null)
-            _replication.stop();
+        if (replication != null)
+            replication.stop();
         for (VanillaEventLoop concThread : concThreads) {
             if (concThread != null)
                 concThread.stop();
@@ -212,7 +212,7 @@ public class EventGroup implements EventLoop {
         monitor.close();
         blocking.close();
         core.close();
-        if (_replication != null) _replication.close();
+        if (replication != null) replication.close();
         Closeable.closeQuietly(concThreads);
     }
 

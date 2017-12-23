@@ -214,7 +214,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private void runLoop() {
-        while (running.get()) {
+        while (running.get() && !Thread.currentThread().isInterrupted()) {
             if (closedHere != null) {
                 closeAll();
                 break;
