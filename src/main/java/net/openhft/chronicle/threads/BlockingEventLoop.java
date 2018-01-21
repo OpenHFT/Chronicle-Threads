@@ -21,7 +21,6 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +32,9 @@ import java.util.concurrent.TimeUnit;
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
 /**
- * Event "Loop" for blocking tasks. Created by peter.lawrey on 26/01/15.
+ * Event Loop for blocking tasks.
+ *
+ * @author Peter Lawrey
  */
 public class BlockingEventLoop implements EventLoop {
 
@@ -43,14 +44,17 @@ public class BlockingEventLoop implements EventLoop {
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
-    @Nullable
-    private Thread thread = null;
     private volatile boolean closed;
     private EventHandler handler;
 
     public BlockingEventLoop(@NotNull EventLoop parent,
                              @NotNull String name) {
         this.parent = parent;
+        this.service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
+    }
+
+    public BlockingEventLoop(@NotNull String name) {
+        this.parent = this;
         this.service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
     }
 
@@ -73,7 +77,6 @@ public class BlockingEventLoop implements EventLoop {
         this.handler = handler;
         try {
             service.submit(() -> {
-                thread = Thread.currentThread();
                 handler.eventLoop(parent);
                 try {
                     while (!closed)
