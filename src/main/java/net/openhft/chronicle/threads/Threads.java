@@ -82,5 +82,7 @@ public enum Threads {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+
+        Jvm.pause(100);
     }
 }

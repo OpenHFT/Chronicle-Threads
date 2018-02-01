@@ -209,10 +209,12 @@ public class EventGroup implements EventLoop {
     @Override
     public void close() {
         stop();
-        monitor.close();
-        blocking.close();
-        core.close();
-        if (replication != null) replication.close();
+        Closeable.closeQuietly(
+                monitor,
+                blocking,
+                core);
+
+        if (replication != null) Closeable.closeQuietly(replication);
         Closeable.closeQuietly(concThreads);
     }
 
