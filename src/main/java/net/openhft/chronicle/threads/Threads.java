@@ -66,23 +66,27 @@ public enum Threads {
 
     public static void shutdown(@NotNull ExecutorService service) {
         service.shutdown();
-
         try {
-            service.awaitTermination(500, TimeUnit.MILLISECONDS);
+            if (!service.awaitTermination(100, TimeUnit.MILLISECONDS)) {
+                service.shutdownNow();
+
+                if (!service.awaitTermination(1, TimeUnit.SECONDS)) {
+                    service.shutdownNow();
+
+                    try {
+                        if (!service.awaitTermination(1, TimeUnit.SECONDS))
+                            service.shutdownNow();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+
+            }
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-
         } finally {
-            service.shutdownNow();
+            Jvm.pause(100);
         }
-
-        try {
-            service.awaitTermination(1500, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        Jvm.pause(100);
     }
 }
