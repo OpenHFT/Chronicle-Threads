@@ -100,7 +100,7 @@ public enum Threads {
                                     }
 
                                 } catch (Exception e) {
-                                    e.printStackTrace();
+                                    Jvm.warn().on(Threads.class, e);
                                 }
 
                             } else
