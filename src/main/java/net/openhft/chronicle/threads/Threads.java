@@ -70,10 +70,8 @@ public enum Threads {
     public static void shutdown(@NotNull ExecutorService service) {
         service.shutdown();
         try {
-          //  if (!service.awaitTermination(500, TimeUnit.MILLISECONDS)) {
-              //  service.shutdownNow();
 
-                if (!service.awaitTermination(1, TimeUnit.SECONDS)) {
+            if (!service.awaitTermination(1, TimeUnit.SECONDS)) {
                     service.shutdownNow();
 
                     try {
@@ -112,8 +110,6 @@ public enum Threads {
                         Thread.currentThread().interrupt();
                     }
                 }
-
-           // }
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
