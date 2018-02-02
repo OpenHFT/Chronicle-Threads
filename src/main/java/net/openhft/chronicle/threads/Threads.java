@@ -70,7 +70,7 @@ public enum Threads {
     public static void shutdown(@NotNull ExecutorService service) {
         service.shutdown();
         try {
-            if (!service.awaitTermination(100, TimeUnit.MILLISECONDS)) {
+            if (!service.awaitTermination(500, TimeUnit.MILLISECONDS)) {
                 service.shutdownNow();
 
                 if (!service.awaitTermination(1, TimeUnit.SECONDS)) {
