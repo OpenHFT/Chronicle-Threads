@@ -70,14 +70,14 @@ public enum Threads {
     public static void shutdown(@NotNull ExecutorService service) {
         service.shutdown();
         try {
-            if (!service.awaitTermination(500, TimeUnit.MILLISECONDS)) {
-                service.shutdownNow();
+          //  if (!service.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+              //  service.shutdownNow();
 
                 if (!service.awaitTermination(1, TimeUnit.SECONDS)) {
                     service.shutdownNow();
 
                     try {
-                        if (!service.awaitTermination(4, TimeUnit.SECONDS)) {
+                        if (!service.awaitTermination(20, TimeUnit.SECONDS)) {
                             if (service instanceof ThreadPoolExecutor) {
                                 try {
                                     Field workers = ThreadPoolExecutor.class.getDeclaredField("workers");
@@ -113,7 +113,7 @@ public enum Threads {
                     }
                 }
 
-            }
+           // }
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
