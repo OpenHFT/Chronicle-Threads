@@ -21,8 +21,11 @@ import net.openhft.chronicle.core.annotation.ForceInline;
 import net.openhft.chronicle.core.util.ThrowingCallable;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.Thread.State;
 import java.lang.reflect.Field;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /*
@@ -74,8 +77,37 @@ public enum Threads {
                     service.shutdownNow();
 
                     try {
-                        if (!service.awaitTermination(1, TimeUnit.SECONDS))
-                            service.shutdownNow();
+                        if (!service.awaitTermination(4, TimeUnit.SECONDS)) {
+                            if (service instanceof ThreadPoolExecutor) {
+                                try {
+                                    Field workers = ThreadPoolExecutor.class.getDeclaredField("workers");
+                                    workers.setAccessible(true);
+                                    Set objects = (Set) workers.get(service);
+                                    for (Object o : objects) {
+                                        Field thread = o.getClass().getDeclaredField("thread");
+                                        thread.setAccessible(true);
+                                        Thread t = (Thread) thread.get(o);
+                                        if (t.getState() != State.TERMINATED) {
+
+                                            StringBuilder b = new StringBuilder("**** THE " +
+                                                    "FOLLOWING " +
+                                                    "THREAD DID NOT SHUTDOWN ***\n");
+                                            for (StackTraceElement s : t.getStackTrace()) {
+                                                b.append("  "+s.toString() + "\n");
+                                            }
+                                            Jvm.warn().on(Threads.class, b.toString());
+                                        }
+                                    }
+
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+
+                            } else
+                                service.shutdownNow();
+
+                        }
+
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
@@ -85,8 +117,6 @@ public enum Threads {
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        } finally {
-            Jvm.pause(100);
         }
     }
 }
