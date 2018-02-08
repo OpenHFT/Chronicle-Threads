@@ -466,16 +466,19 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 }
             }
             running.set(false);
-            service.shutdown();
+
+
+
+
             pauser.unpause();
 
             if (!(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
-                service.shutdownNow();
+                Threads.shutdown(service);
 
             if (thread != null)
                 thread.interrupt();
 
-            if (!(service.awaitTermination(1, TimeUnit.SECONDS))) {
+           /* if (!(service.awaitTermination(1, TimeUnit.SECONDS))) {
                 Thread thread = this.thread;
                 if (thread != null) {
                     StackTraceElement[] stackTrace = thread.getStackTrace();
@@ -484,7 +487,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                     LOG.info(sb.toString());
                 }
                 service.shutdownNow();
-            }
+            }*/
         } catch (InterruptedException e) {
             Threads.shutdown(service);
 

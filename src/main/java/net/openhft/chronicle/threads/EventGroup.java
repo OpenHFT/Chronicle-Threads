@@ -215,6 +215,7 @@ public class EventGroup implements EventLoop {
                 blocking,
                 core);
 
+        VanillaEventLoop replication = this.replication;
         if (replication != null) Closeable.closeQuietly(replication);
         Closeable.closeQuietly(concThreads);
     }
