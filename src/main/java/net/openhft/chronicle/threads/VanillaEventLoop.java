@@ -47,6 +47,7 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * Created by peter.lawrey on 22/01/15.
  */
 public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
+    public static final int NO_CPU = -1;
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     private static final EventHandler[] NO_EVENT_HANDLERS = {};
     private final EventLoop parent;
@@ -62,6 +63,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private final long timerIntervalMS;
     private final String name;
     private final boolean binding;
+    private final int bindingCpu;
     @NotNull
     private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
     private long lastTimerNS;
@@ -79,21 +81,33 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
      * @param pauser          the pause strategy
      * @param timerIntervalMS how long to pause
      * @param daemon          is a demon thread
-     * @param binding         to a cpu
+     * @param binding         set affinity
+     * @param bindingCpu      cpu to bind to
      */
     public VanillaEventLoop(EventLoop parent,
                             String name,
                             Pauser pauser,
                             long timerIntervalMS,
                             boolean daemon,
-                            boolean binding) {
+                            boolean binding,
+                            int bindingCpu) {
         this.parent = parent;
         this.name = name;
         this.pauser = pauser;
         this.timerIntervalMS = timerIntervalMS;
         this.binding = binding;
+        this.bindingCpu = bindingCpu;
         loopStartMS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
+    }
+
+    public VanillaEventLoop(EventLoop parent,
+                            String name,
+                            Pauser pauser,
+                            long timerIntervalMS,
+                            boolean daemon,
+                            boolean binding) {
+        this(parent, name, pauser, timerIntervalMS, daemon, binding, NO_CPU);
     }
 
     public static void closeAll(@NotNull List<EventHandler> handlers) {
@@ -198,7 +212,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     public void run() {
         AffinityLock affinityLock = null;
         try {
-            if (binding)
+            if (bindingCpu != NO_CPU)
+                affinityLock = AffinityLock.acquireLock(bindingCpu);
+            else if (binding)
                 affinityLock = AffinityLock.acquireLock();
 
             thread = Thread.currentThread();

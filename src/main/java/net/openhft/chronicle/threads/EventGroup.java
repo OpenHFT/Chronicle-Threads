@@ -27,6 +27,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
 /*
  * Created by peter.lawrey on 22/01/15.
@@ -51,6 +52,7 @@ public class EventGroup implements EventLoop {
     @NotNull
     private final Pauser pauser;
     private final boolean binding;
+    private final int bindingCpuReplication;
     private final String name;
     private VanillaEventLoop replication;
     @NotNull
@@ -58,13 +60,14 @@ public class EventGroup implements EventLoop {
     private Supplier<Pauser> concThreadPauserSupplier = () -> Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
     private boolean daemon;
 
-    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, String name) {
+    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, int bindingCpuCore, int bindingCpuReplication, String name) {
         this.daemon = daemon;
         this.pauser = pauser;
         this.binding = binding;
+        this.bindingCpuReplication = bindingCpuReplication;
         this.name = name;
 
-        core = new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding);
+        core = new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, bindingCpuCore);
         monitor = new MonitorEventLoop(this, Pauser.millis(100));
         monitor.addHandler(new PauserMonitor(pauser, name + "core pauser", 30));
         blocking = new BlockingEventLoop(this, name + "blocking-event-loop");
@@ -79,7 +82,11 @@ public class EventGroup implements EventLoop {
     }
 
     public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding) {
-        this(daemon, pauser, binding, "");
+        this(daemon, pauser, binding, NO_CPU, NO_CPU, "");
+    }
+
+    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, String name) {
+        this(daemon, pauser, binding, NO_CPU, NO_CPU, name);
     }
 
     static int hash(int n, int mod) {
@@ -95,7 +102,7 @@ public class EventGroup implements EventLoop {
     synchronized VanillaEventLoop getReplication() {
         if (replication == null) {
             Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
-            replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding);
+            replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding, bindingCpuReplication);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, replication));
             replication.start();
             monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 60));
@@ -106,7 +113,7 @@ public class EventGroup implements EventLoop {
     private synchronized VanillaEventLoop getConcThread(int n) {
         if (concThreads[n] == null) {
             Pauser pauser = concThreadPauserSupplier.get();
-            concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, daemon, binding);
+            concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, daemon, binding, NO_CPU);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]));
             concThreads[n].start();
             monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 60));
