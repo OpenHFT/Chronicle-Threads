@@ -30,14 +30,20 @@ public class NamedThreadFactory implements ThreadFactory {
     private final AtomicInteger id = new AtomicInteger();
     private final String name;
     private final Boolean daemon;
+    private final Integer priority;
 
     public NamedThreadFactory(String name) {
         this(name, null);
     }
 
     public NamedThreadFactory(String name, Boolean daemon) {
+        this(name, daemon, null);
+    }
+
+    public NamedThreadFactory(String name, Boolean daemon, Integer priority) {
         this.name = name;
         this.daemon = daemon;
+        this.priority = priority;
     }
 
     @Override
@@ -48,6 +54,8 @@ public class NamedThreadFactory implements ThreadFactory {
         Thread t = new Thread(r, nameN);
         if (daemon != null)
             t.setDaemon(daemon);
+        if (priority != null)
+            t.setPriority(priority);
         return t;
     }
 }
