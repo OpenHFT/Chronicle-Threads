@@ -523,10 +523,15 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         closeAll(mediumHandlers);
         closeAll(daemonHandlers);
         closeAll(timerHandlers);
-        Optional.ofNullable(newHandler.get()).ifPresent(Closeable::closeQuietly);
+        Optional.ofNullable(newHandler.get()).ifPresent(eventHandler -> {
+            Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before close "+eventHandler);
+            Closeable.closeQuietly(eventHandler);
+        });
 
-        for (Object o; (o = newHandlerQueue.poll()) != null; )
+        for (Object o; (o = newHandlerQueue.poll()) != null; ) {
+            Jvm.warn().on(getClass(), "Handler in newHandlerQueue was not accepted before close "+o);
             Closeable.closeQuietly(o);
+        }
     }
 
     public void dumpRunningHandlers() {
