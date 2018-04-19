@@ -35,15 +35,20 @@ import java.util.concurrent.TimeUnit;
  */
 public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     static int MONITOR_INITIAL_DELAY = Integer.getInteger("MonitorInitialDelay", 60_000);
-    final ExecutorService service = Executors.newSingleThreadExecutor(new NamedThreadFactory("event-loop-monitor", true));
+    final ExecutorService service;
     private final EventLoop parent;
     private final List<EventHandler> handlers = new ArrayList<>();
     private final Pauser pauser;
     private volatile boolean running = true;
 
     public MonitorEventLoop(EventLoop parent, Pauser pauser) {
+        this(parent, "", pauser);
+    }
+
+    public MonitorEventLoop(EventLoop parent, String name, Pauser pauser) {
         this.parent = parent;
         this.pauser = pauser;
+        service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name + "event-loop-monitor", true));
     }
 
     @Override
