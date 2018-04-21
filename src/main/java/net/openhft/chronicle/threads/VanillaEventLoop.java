@@ -328,8 +328,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private boolean runAllMediumHandler() {
         boolean busy = false;
         EventHandler[] mediumHandlersArray = this.mediumHandlersArray;
-        for (int j = 0; j < mediumHandlersArray.length; j++) {
-            EventHandler handler = mediumHandlersArray[j];
+        for (EventHandler handler : mediumHandlersArray) {
             try {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {

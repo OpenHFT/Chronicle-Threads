@@ -91,7 +91,7 @@ public enum Threads {
                                                 "FOLLOWING " +
                                                 "THREAD DID NOT SHUTDOWN ***\n");
                                         for (StackTraceElement s : t.getStackTrace()) {
-                                            b.append("  " + s.toString() + "\n");
+                                            b.append("  ").append(s).append("\n");
                                         }
                                         Jvm.warn().on(Threads.class, b.toString());
                                     }
