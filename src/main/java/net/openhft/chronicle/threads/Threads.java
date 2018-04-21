@@ -72,44 +72,44 @@ public enum Threads {
         try {
 
             if (!service.awaitTermination(1, TimeUnit.SECONDS)) {
-                    service.shutdownNow();
+                service.shutdownNow();
 
-                    try {
-                        if (!service.awaitTermination(20, TimeUnit.SECONDS)) {
-                            if (service instanceof ThreadPoolExecutor) {
-                                try {
-                                    Field workers = ThreadPoolExecutor.class.getDeclaredField("workers");
-                                    workers.setAccessible(true);
-                                    Set objects = (Set) workers.get(service);
-                                    for (Object o : objects) {
-                                        Field thread = o.getClass().getDeclaredField("thread");
-                                        thread.setAccessible(true);
-                                        Thread t = (Thread) thread.get(o);
-                                        if (t.getState() != State.TERMINATED) {
+                try {
+                    if (!service.awaitTermination(20, TimeUnit.SECONDS)) {
+                        if (service instanceof ThreadPoolExecutor) {
+                            try {
+                                Field workers = ThreadPoolExecutor.class.getDeclaredField("workers");
+                                workers.setAccessible(true);
+                                Set objects = (Set) workers.get(service);
+                                for (Object o : objects) {
+                                    Field thread = o.getClass().getDeclaredField("thread");
+                                    thread.setAccessible(true);
+                                    Thread t = (Thread) thread.get(o);
+                                    if (t.getState() != State.TERMINATED) {
 
-                                            StringBuilder b = new StringBuilder("**** THE " +
-                                                    "FOLLOWING " +
-                                                    "THREAD DID NOT SHUTDOWN ***\n");
-                                            for (StackTraceElement s : t.getStackTrace()) {
-                                                b.append("  "+s.toString() + "\n");
-                                            }
-                                            Jvm.warn().on(Threads.class, b.toString());
+                                        StringBuilder b = new StringBuilder("**** THE " +
+                                                "FOLLOWING " +
+                                                "THREAD DID NOT SHUTDOWN ***\n");
+                                        for (StackTraceElement s : t.getStackTrace()) {
+                                            b.append("  " + s.toString() + "\n");
                                         }
+                                        Jvm.warn().on(Threads.class, b.toString());
                                     }
-
-                                } catch (Exception e) {
-                                    Jvm.warn().on(Threads.class, e);
                                 }
 
-                            } else
-                                service.shutdownNow();
+                            } catch (Exception e) {
+                                Jvm.warn().on(Threads.class, e);
+                            }
 
-                        }
+                        } else
+                            service.shutdownNow();
 
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
                     }
+
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
+            }
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

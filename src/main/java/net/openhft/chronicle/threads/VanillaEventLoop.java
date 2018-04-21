@@ -483,9 +483,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             }
             running.set(false);
 
-
-
-
             pauser.unpause();
 
             if (!(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
@@ -524,12 +521,12 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         closeAll(daemonHandlers);
         closeAll(timerHandlers);
         Optional.ofNullable(newHandler.get()).ifPresent(eventHandler -> {
-            Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before close "+eventHandler);
+            Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before close " + eventHandler);
             Closeable.closeQuietly(eventHandler);
         });
 
         for (Object o; (o = newHandlerQueue.poll()) != null; ) {
-            Jvm.warn().on(getClass(), "Handler in newHandlerQueue was not accepted before close "+o);
+            Jvm.warn().on(getClass(), "Handler in newHandlerQueue was not accepted before close " + o);
             Closeable.closeQuietly(o);
         }
     }

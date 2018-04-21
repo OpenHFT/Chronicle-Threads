@@ -21,7 +21,6 @@ package net.openhft.chronicle.threads;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-
 public class BusyTimedPauser implements Pauser {
 
     private long time = Long.MAX_VALUE;

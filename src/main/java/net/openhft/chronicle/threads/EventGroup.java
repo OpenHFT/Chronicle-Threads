@@ -62,12 +62,13 @@ public class EventGroup implements EventLoop {
 
     /**
      * Create an EventGroup
-     * @param daemon whether to create threads as daemon
-     * @param pauser pauser to use
-     * @param binding whether to bind core event loop to current core
-     * @param bindingCpuCore CPU to bind core event loop to. Supersedes binding above
+     *
+     * @param daemon                whether to create threads as daemon
+     * @param pauser                pauser to use
+     * @param binding               whether to bind core event loop to current core
+     * @param bindingCpuCore        CPU to bind core event loop to. Supersedes binding above
      * @param bindingCpuReplication CPU to bind replication event loop to. -1 means no binding
-     * @param name name of event group. Any created threads are named after this
+     * @param name                  name of event group. Any created threads are named after this
      */
     public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, int bindingCpuCore, int bindingCpuReplication, String name) {
         this.daemon = daemon;
