@@ -148,6 +148,6 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     @Override
     public void close() {
         stop();
-        Threads.shutdown(service);
+        Threads.shutdownDaemon(service);
     }
 }

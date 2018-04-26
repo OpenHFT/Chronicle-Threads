@@ -61,6 +61,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private final Queue<EventHandler> newHandlerQueue = new LinkedTransferQueue<>();
     private final Pauser pauser;
     private final long timerIntervalMS;
+    private final boolean daemon;
     private final String name;
     private final boolean binding;
     private final int bindingCpu;
@@ -95,6 +96,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         this.name = name;
         this.pauser = pauser;
         this.timerIntervalMS = timerIntervalMS;
+        this.daemon = daemon;
         this.binding = binding;
         this.bindingCpu = bindingCpu;
         loopStartMS = Long.MAX_VALUE;
@@ -152,7 +154,12 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         if (closedHere != null)
             throw new IllegalStateException("Event Group has been closed", closedHere);
         if (!running.getAndSet(true))
-            service.submit(this);
+            try {
+                service.submit(this);
+            } catch (RejectedExecutionException e) {
+                if (!isClosed())
+                    throw e;
+            }
     }
 
     @Override
@@ -455,15 +462,16 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         try {
             closedHere = Jvm.isDebug() ? new Throwable("Closed here") : null;
 
+            pauser.reset(); // reset the timer.
             closeAllHandlers();
 
             if (thread == null)
                 return;
 
-            for (int i = 0; i < 30; i++) {
+            for (int i = 1; i <= 30; i++) {
                 pauser.unpause();
 
-                Jvm.pause(10);
+                Jvm.pause(i);
                 if (handlerCount() == 0)
                     break;
                 if (i % 10 == 4) {
@@ -484,24 +492,10 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
             pauser.unpause();
 
-            if (!(service.awaitTermination(500, TimeUnit.MILLISECONDS)))
-                Threads.shutdown(service);
+            Threads.shutdown(service, daemon);
 
             if (thread != null)
                 thread.interrupt();
-
-           /* if (!(service.awaitTermination(1, TimeUnit.SECONDS))) {
-                Thread thread = this.thread;
-                if (thread != null) {
-                    StackTraceElement[] stackTrace = thread.getStackTrace();
-                    StringBuilder sb = new StringBuilder(thread + " still running ");
-                    Jvm.trimStackTrace(sb, stackTrace);
-                    LOG.info(sb.toString());
-                }
-                service.shutdownNow();
-            }*/
-        } catch (InterruptedException e) {
-            Threads.shutdown(service);
 
         } finally {
             highHandlers.clear();

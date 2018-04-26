@@ -67,6 +67,22 @@ public enum Threads {
         return threadGroupName;
     }
 
+    public static void shutdownDaemon(@NotNull ExecutorService service) {
+        service.shutdownNow();
+        try {
+            service.awaitTermination(10, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public static void shutdown(@NotNull ExecutorService service, boolean daemon) {
+        if (daemon)
+            shutdownDaemon(service);
+        else
+            shutdown(service);
+    }
+
     public static void shutdown(@NotNull ExecutorService service) {
         service.shutdown();
         try {

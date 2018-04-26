@@ -36,17 +36,17 @@
         <dependencies>
             <dependency>
                 <groupId>net.openhft</groupId>
-                <artifactId>third-party-bom
-                </artifactId> <!-- PLEASE DON'T LEAVE THIS ON A SNAPSHOT because they get missed in a release  -->
+                <artifactId>third-party-bom</artifactId>
                 <type>pom</type>
-                <version>3.6.0</version>
+                <!-- PLEASE DON'T LEAVE THIS ON A SNAPSHOT because they get missed in a release  -->
+                <version>3.6.2</version>
                 <scope>import</scope>
             </dependency>
 
             <dependency>
                 <groupId>net.openhft</groupId>
                 <artifactId>chronicle-bom</artifactId>
-                <version>1.15.208</version>
+                <version>1.15.254-SNAPSHOT</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
