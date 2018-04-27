@@ -76,18 +76,24 @@ public class LongPauser implements Pauser {
         ++count;
         if (count < minBusy)
             return;
+
+        checkYieldTime();
         if (count <= minBusy + minCount) {
             yield();
             return;
         }
         if (SHOW_PAUSES != null) {
-            String name = Thread.currentThread().getName();
-            if (name.startsWith(SHOW_PAUSES))
-                System.out.println(name + " p" + pauseTimeNS / 1000);
+            showPauses();
         }
-        checkYieldTime();
+
         doPause(pauseTimeNS);
         pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 6) + 20_000);
+    }
+
+    private void showPauses() {
+        String name = Thread.currentThread().getName();
+        if (name.startsWith(SHOW_PAUSES))
+            System.out.println(name + " p" + pauseTimeNS / 1000);
     }
 
     @Override
