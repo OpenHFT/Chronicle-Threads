@@ -78,7 +78,7 @@ public class EventGroup implements EventLoop {
         this.name = name;
 
         core = new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, bindingCpuCore);
-        monitor = new MonitorEventLoop(this, name, Pauser.millis(100));
+        monitor = new MonitorEventLoop(this, name, Pauser.millis(Integer.getInteger("monitor.interval", 10)));
         monitor.addHandler(new PauserMonitor(pauser, name + "core pauser", 30));
         blocking = new BlockingEventLoop(this, name + "blocking-event-loop");
     }
