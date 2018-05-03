@@ -69,8 +69,8 @@ public interface Pauser {
      * @param millis to wait for
      * @return a waiting pauser
      */
-    static Pauser millis(int millis) {
-        return millis(millis, millis);
+    static MilliPauser millis(int millis) {
+        return new MilliPauser(millis);
     }
 
     /**
