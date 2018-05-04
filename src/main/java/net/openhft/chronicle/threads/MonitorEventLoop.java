@@ -34,7 +34,8 @@ import java.util.concurrent.TimeUnit;
  * Created by peter.lawrey on 22/01/15.
  */
 public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
-    static int MONITOR_INITIAL_DELAY = Integer.getInteger("MonitorInitialDelay", 60_000);
+    public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
+    static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 60_000);
     final ExecutorService service;
     private final EventLoop parent;
     private final List<EventHandler> handlers = new ArrayList<>();
@@ -105,7 +106,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public void run() {
         try {
             // don't do any monitoring for the first 60000 ms.
-            for (int i = 0; i < MONITOR_INITIAL_DELAY; i += 50)
+            for (int i = 0; i < MONITOR_INITIAL_DELAY_MS; i += 50)
                 if (running)
                     Jvm.pause(50);
             while (running && !Thread.currentThread().isInterrupted()) {
