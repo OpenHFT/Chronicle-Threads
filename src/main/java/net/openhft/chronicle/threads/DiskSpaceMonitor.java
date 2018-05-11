@@ -20,9 +20,11 @@ import java.util.concurrent.TimeUnit;
 public enum DiskSpaceMonitor implements Runnable {
     INSTANCE;
 
+    public static final String DISK_SPACE_CHECKER_NAME = "disk-space-checker";
     final Map<File, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
-    final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("disk-space-checker", true, Thread.MIN_PRIORITY));
+    final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(
+            new NamedThreadFactory(DISK_SPACE_CHECKER_NAME, true, Thread.MIN_PRIORITY));
     private int thresholdPercentage;
 
     DiskSpaceMonitor() {
@@ -110,7 +112,8 @@ public enum DiskSpaceMonitor implements Runnable {
                         "warning: chronicle-queue may crash if it runs out of space.");
 
             } else {
-                timeNextCheckedMS = now + (unallocatedBytes >> 30); // wait 1 sec per GB free.
+                // wait 1 ms per MB or approx 1 sec per GB free.
+                timeNextCheckedMS = now + (unallocatedBytes >> 20);
             }
             long time = System.nanoTime() - start;
             if (time > 1_000_000)
