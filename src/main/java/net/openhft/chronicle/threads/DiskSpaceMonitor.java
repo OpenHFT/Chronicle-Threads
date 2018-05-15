@@ -20,6 +20,8 @@ import java.util.concurrent.TimeUnit;
 public enum DiskSpaceMonitor implements Runnable {
     INSTANCE;
 
+    static final boolean WARN_DELETED = Boolean.getBoolean("disk.monitor.deleted.warning");
+
     public static final String DISK_SPACE_CHECKER_NAME = "disk-space-checker";
     final Map<File, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
@@ -65,7 +67,8 @@ public enum DiskSpaceMonitor implements Runnable {
             try {
                 da.run();
             } catch (IOException e) {
-                Jvm.warn().on(getClass(), "Unable to get disk space for " + da.fileStore, e);
+                if (WARN_DELETED)
+                    Jvm.warn().on(getClass(), "Unable to get disk space for " + da.fileStore, e);
                 iterator.remove();
             }
         }
