@@ -18,6 +18,7 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.ForceInline;
 import net.openhft.chronicle.core.util.Time;
 
@@ -57,8 +58,10 @@ public class LightPauser implements Pauser {
     public void pause() {
         long maxPauseNS = parkPeriodNS;
         if (busyPeriodNS > 0) {
-            if (count++ < 1000)
+            if (count++ < 1000) {
+                Jvm.safepoint();
                 return;
+            }
             if (pauseStart == 0) {
                 pauseStart = System.nanoTime();
                 return;

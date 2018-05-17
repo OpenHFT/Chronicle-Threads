@@ -18,6 +18,8 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
+
 import java.util.concurrent.TimeUnit;
 
 /*
@@ -32,7 +34,7 @@ public enum BusyPauser implements Pauser {
 
     @Override
     public void pause() {
-        // busy wait.
+        Jvm.optionalSafepoint();
     }
 
     @Override

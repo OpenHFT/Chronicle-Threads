@@ -18,6 +18,7 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -74,8 +75,10 @@ public class LongPauser implements Pauser {
     @Override
     public void pause() {
         ++count;
-        if (count < minBusy)
+        if (count < minBusy) {
+            Jvm.safepoint();
             return;
+        }
 
         checkYieldTime();
         if (count <= minBusy + minCount) {
