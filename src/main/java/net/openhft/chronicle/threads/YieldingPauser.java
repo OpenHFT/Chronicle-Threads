@@ -22,7 +22,6 @@ import net.openhft.chronicle.core.Jvm;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /*
  * Created by peter.lawrey on 2/11/2017.
@@ -62,7 +61,7 @@ public class YieldingPauser implements Pauser {
     }
 
     @Override
-    public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
+    public void pause(long timeout, @NotNull TimeUnit timeUnit) {
         ++count;
         if (count < minBusy) {
             Jvm.safepoint();
