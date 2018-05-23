@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.channels.AsynchronousCloseException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -86,7 +87,8 @@ public class BlockingEventLoop implements EventLoop {
                     Jvm.debug().on(getClass(), e);
 
                 } catch (Throwable t) {
-                    Jvm.warn().on(getClass(), t);
+                    if (!closed)
+                        Jvm.warn().on(getClass(), t);
 
                 } finally {
                     if (LOG.isDebugEnabled())
