@@ -65,4 +65,11 @@ public class EventGroupTest {
         t.join(100);
         assertFalse(t.isAlive());
     }
+
+    @Test(timeout = 1000)
+    public void testCloseAwaitTerminationWithoutStarting() throws InterruptedException {
+        final EventLoop eventGroup = new EventGroup(true);
+        eventGroup.close();
+        eventGroup.awaitTermination();
+    }
 }

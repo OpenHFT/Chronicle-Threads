@@ -465,8 +465,10 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             pauser.reset(); // reset the timer.
             closeAllHandlers();
 
-            if (thread == null)
+            if (thread == null) {
+                Threads.shutdown(service, daemon);
                 return;
+            }
 
             for (int i = 1; i <= 30; i++) {
                 pauser.unpause();
