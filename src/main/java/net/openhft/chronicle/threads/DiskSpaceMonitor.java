@@ -25,8 +25,7 @@ public enum DiskSpaceMonitor implements Runnable {
     public static final String DISK_SPACE_CHECKER_NAME = "disk-space-checker";
     final Map<File, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
-    final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(
-            new NamedThreadFactory(DISK_SPACE_CHECKER_NAME, true, Thread.MIN_PRIORITY));
+    final ScheduledExecutorService executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
     private int thresholdPercentage;
 
     DiskSpaceMonitor() {
