@@ -18,6 +18,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.ForceInline;
+import net.openhft.chronicle.core.util.ObjectUtils;
 import net.openhft.chronicle.core.util.ThrowingCallable;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,6 +26,7 @@ import java.lang.Thread.State;
 import java.lang.reflect.Field;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -35,6 +37,32 @@ public enum Threads {
     ;
 
     static final Field GROUP = Jvm.getField(Thread.class, "group");
+
+    static ExecutorFactory executorFactory;
+
+    static {
+        ExecutorFactory instance = VanillaExecutorFactory.INSTANCE;
+        try {
+            String property = System.getProperty("threads.executor.factory");
+            if (property != null)
+                instance = (ExecutorFactory) ObjectUtils.newInstance(Class.forName(property));
+        } catch (Exception e) {
+            Jvm.warn().on(Threads.class, e);
+        }
+        executorFactory = instance;
+    }
+
+    public static ExecutorService acquireExecutorService(String name, int threads, boolean daemon) {
+        return executorFactory.acquireExecutorService(name, threads, daemon);
+    }
+
+    public static ScheduledExecutorService acquireScheduledExecutorService(String name, boolean daemon) {
+        return executorFactory.acquireScheduledExecutorService(name, daemon);
+    }
+
+    public static void executorFactory(ExecutorFactory executorFactory) {
+        Threads.executorFactory = executorFactory;
+    }
 
     @ForceInline
     public static <R, T extends Throwable> R withThreadGroup(ThreadGroup tg, @NotNull ThrowingCallable<R, T> callable) throws T {
@@ -71,9 +99,9 @@ public enum Threads {
         service.shutdownNow();
         try {
             boolean terminated = service.awaitTermination(10, TimeUnit.MILLISECONDS);
-            if (! terminated) {
+            if (!terminated) {
                 terminated = service.awaitTermination(1, TimeUnit.SECONDS);
-                if (! terminated) {
+                if (!terminated) {
                     if (service instanceof ThreadPoolExecutor)
                         warnRunningThreads(service);
                     else
