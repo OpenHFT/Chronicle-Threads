@@ -40,7 +40,7 @@ public interface Pauser {
         return false;
     }
 
-    static Pauser sleepy() {
+    static TimingPauser sleepy() {
         return new LongPauser(0, 100, 500, 20_000, TimeUnit.MICROSECONDS);
     }
 
@@ -106,7 +106,7 @@ public interface Pauser {
     }
 
     @NotNull
-    static Pauser timedBusy() {
+    static TimingPauser timedBusy() {
         return SLEEPY ? sleepy() : new BusyTimedPauser();
     }
 
