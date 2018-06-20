@@ -62,12 +62,7 @@ public class YieldingPauser implements Pauser {
 
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) {
-        ++count;
-        if (count < minBusy) {
-            Jvm.safepoint();
-            return;
-        }
-        yield();
+        throw new UnsupportedOperationException("YieldingPauser is not stateful, use a LongPauser");
     }
 
     private void checkYieldTime() {

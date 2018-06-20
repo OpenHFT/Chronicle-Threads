@@ -19,6 +19,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.threads.ThreadHints;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,7 +31,7 @@ import java.util.concurrent.locks.LockSupport;
 /*
  * Created by rob on 30/11/2015.
  */
-public class LongPauser implements Pauser {
+public class LongPauser implements Pauser, TimingPauser {
     private static final String SHOW_PAUSES = System.getProperty("pauses.show");
     private final long minPauseTimeNS;
     private final long maxPauseTimeNS;
@@ -77,6 +78,7 @@ public class LongPauser implements Pauser {
         ++count;
         if (count < minBusy) {
             Jvm.safepoint();
+            ThreadHints.onSpinWait();
             return;
         }
 

@@ -70,7 +70,7 @@ public class MilliPauser implements Pauser {
 
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) {
-        doPauseMS(pauseTimeMS);
+        throw new UnsupportedOperationException("MilliPauser is not stateful, use a LongPauser");
     }
 
     void doPauseMS(long delayMS) {

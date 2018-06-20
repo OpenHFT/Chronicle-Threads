@@ -18,10 +18,13 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.threads.ThreadHints;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class BusyTimedPauser implements Pauser {
+public class BusyTimedPauser implements Pauser, TimingPauser {
 
     private long time = Long.MAX_VALUE;
 
@@ -33,6 +36,8 @@ public class BusyTimedPauser implements Pauser {
     @Override
     public void pause() {
         // busy wait.
+        Jvm.optionalSafepoint();
+        ThreadHints.onSpinWait();
     }
 
     @Override

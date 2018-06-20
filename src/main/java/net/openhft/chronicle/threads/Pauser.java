@@ -109,6 +109,7 @@ public interface Pauser {
 
     void pause();
 
+    @Deprecated // use TimingPauser instead
     void pause(long timeout, TimeUnit timeUnit) throws TimeoutException;
 
     void unpause();
