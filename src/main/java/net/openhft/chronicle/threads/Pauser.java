@@ -109,8 +109,10 @@ public interface Pauser {
 
     void pause();
 
-    @Deprecated // use TimingPauser instead
-    void pause(long timeout, TimeUnit timeUnit) throws TimeoutException;
+    @Deprecated // use TimingPauser.pause instead
+    default void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
+        throw new UnsupportedOperationException(this + " is not stateful, use a TimingPauser");
+    }
 
     void unpause();
 

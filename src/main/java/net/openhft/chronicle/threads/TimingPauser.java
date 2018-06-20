@@ -24,12 +24,13 @@ import java.util.concurrent.TimeoutException;
 /**
  * Marker interface to show we support pause(long timeout, TimeUnit timeUnit)
  */
-public interface TimingPauser {
+public interface TimingPauser extends Pauser {
+
     /**
      * Pauses but keep tracks of accumulated pause time and throws if timeout exceeded
-     * @param timeout
-     * @param timeUnit
-     * @throws TimeoutException
+     * @param timeout timeout
+     * @param timeUnit unit
+     * @throws TimeoutException thrown if timeout passes
      */
     void pause(long timeout, TimeUnit timeUnit) throws TimeoutException;
 }

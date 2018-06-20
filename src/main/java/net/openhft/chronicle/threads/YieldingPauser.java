@@ -19,9 +19,6 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.concurrent.TimeUnit;
 
 /*
  * Created by peter.lawrey on 2/11/2017.
@@ -58,11 +55,6 @@ public class YieldingPauser implements Pauser {
             return;
         }
         yield();
-    }
-
-    @Override
-    public void pause(long timeout, @NotNull TimeUnit timeUnit) {
-        throw new UnsupportedOperationException("YieldingPauser is not stateful, use a LongPauser");
     }
 
     private void checkYieldTime() {

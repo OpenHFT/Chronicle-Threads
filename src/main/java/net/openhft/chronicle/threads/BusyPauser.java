@@ -21,8 +21,6 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.ThreadHints;
 
-import java.util.concurrent.TimeUnit;
-
 /*
  * Created by peter.lawrey on 11/12/14.
  */
@@ -37,11 +35,6 @@ public enum BusyPauser implements Pauser {
     public void pause() {
         Jvm.optionalSafepoint();
         ThreadHints.onSpinWait();
-    }
-
-    @Override
-    public void pause(long timeout, TimeUnit timeUnit) {
-        throw new UnsupportedOperationException("Busy pauser is not stateful, use a LongPauser");
     }
 
     @Override

@@ -19,9 +19,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /*
@@ -66,11 +64,6 @@ public class MilliPauser implements Pauser {
     @Override
     public void pause() {
         doPauseMS(pauseTimeMS);
-    }
-
-    @Override
-    public void pause(long timeout, @NotNull TimeUnit timeUnit) {
-        throw new UnsupportedOperationException("MilliPauser is not stateful, use a LongPauser");
     }
 
     void doPauseMS(long delayMS) {
