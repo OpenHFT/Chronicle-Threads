@@ -105,6 +105,11 @@ public interface Pauser {
         return SLEEPY ? sleepy() : BusyPauser.INSTANCE;
     }
 
+    @NotNull
+    static Pauser timedBusy() {
+        return SLEEPY ? sleepy() : new BusyTimedPauser();
+    }
+
     void reset();
 
     void pause();
