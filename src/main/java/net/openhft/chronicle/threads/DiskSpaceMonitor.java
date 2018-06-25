@@ -2,6 +2,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileStore;
@@ -10,14 +11,13 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Background thread to monitor disk space free.
  */
-public enum DiskSpaceMonitor implements Runnable {
+public enum DiskSpaceMonitor implements Runnable, Closeable {
     INSTANCE;
 
     static final boolean WARN_DELETED = Boolean.getBoolean("disk.monitor.deleted.warning");
@@ -79,6 +79,11 @@ public enum DiskSpaceMonitor implements Runnable {
 
     public void setThresholdPercentage(int thresholdPercentage) {
         this.thresholdPercentage = thresholdPercentage;
+    }
+
+    @Override
+    public void close() throws IOException {
+        Threads.shutdown(executor);
     }
 
     static class DiskAttributes {
