@@ -82,7 +82,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         Threads.shutdown(executor);
     }
 
