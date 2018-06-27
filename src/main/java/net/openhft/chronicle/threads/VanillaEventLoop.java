@@ -47,6 +47,9 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * Created by peter.lawrey on 22/01/15.
  */
 public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
+    private static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop" +
+            ".ignoreInterrupts");
+
     public static final int NO_CPU = -1;
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     private static final EventHandler[] NO_EVENT_HANDLERS = {};
@@ -237,7 +240,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private void runLoop() {
-        while (running.get() && !Thread.currentThread().isInterrupted()) {
+        while (running.get() && isNotInterrupted()) {
             if (closedHere != null) {
                 closeAll();
                 break;
@@ -266,6 +269,10 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 pauser.pause();
             }
         }
+    }
+
+    private boolean isNotInterrupted() {
+        return CHECK_INTERRUPTS && !Thread.currentThread().isInterrupted();
     }
 
     private boolean runMediumLoopOnly() {
