@@ -272,7 +272,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private boolean isNotInterrupted() {
-        return CHECK_INTERRUPTS && !Thread.currentThread().isInterrupted();
+        return !CHECK_INTERRUPTS || !Thread.currentThread().isInterrupted();
     }
 
     private boolean runMediumLoopOnly() {
