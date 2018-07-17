@@ -25,14 +25,13 @@ import org.junit.Test;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-@Ignore
 public class PauserTimeoutTest {
     TimingPauser[] pausersSupportTimeout = new TimingPauser[] { new BusyTimedPauser(), new TimeoutPauser(0),
             new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS) };
     Pauser[] pausersDontSupportTimeout = new Pauser[] { new MilliPauser(1), BusyPauser.INSTANCE, new YieldingPauser(0) };
 
     @Test
-    public void pausersSupportTimeout() throws InterruptedException, TimeoutException {
+    public void pausersSupportTimeout() throws TimeoutException {
         int timeoutNS = 100_000_000;
         for (TimingPauser p : pausersSupportTimeout) {
             p.pause(timeoutNS, TimeUnit.NANOSECONDS);
@@ -56,7 +55,7 @@ public class PauserTimeoutTest {
     }
 
     @Test
-    public void pausersDontSupportTimeout() throws InterruptedException, TimeoutException {
+    public void pausersDontSupportTimeout() throws TimeoutException {
         for (Pauser p : pausersDontSupportTimeout) {
             try {
                 p.pause(100, TimeUnit.MILLISECONDS);
