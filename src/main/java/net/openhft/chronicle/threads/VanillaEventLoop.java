@@ -18,6 +18,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.StackTrace;
 import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.threads.EventHandler;
@@ -467,7 +468,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     @Override
     public void close() {
         try {
-            closedHere = Jvm.isDebug() ? new Throwable("Closed here") : null;
+            closedHere = Jvm.isDebug() ? new StackTrace("Closed here") : null;
 
             pauser.reset(); // reset the timer.
             closeAllHandlers();
