@@ -16,7 +16,7 @@ import java.util.function.Supplier;
 
 class ThreadMonitorEventHandler implements EventHandler {
     private static final Logger LOG = LoggerFactory.getLogger(ThreadMonitorEventHandler.class);
-    private static final int TIMING_ERROR = OS.isWindows() ? 20_000_000 : 10_000_000;
+    private static final int TIMING_ERROR = OS.isWindows() ? 20_000_000 : 12_000_000;
 
     private final String description;
     private final long timeLimit;
