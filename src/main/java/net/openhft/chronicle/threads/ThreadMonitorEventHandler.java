@@ -48,7 +48,7 @@ class ThreadMonitorEventHandler implements EventHandler {
         long time = timeSupplier.getAsLong();
         long now = System.nanoTime();
         try {
-            if (time == Long.MIN_VALUE) {
+            if (time == Long.MIN_VALUE || time == Long.MAX_VALUE) {
                 return false;
             }
 
