@@ -24,6 +24,7 @@ import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -188,6 +189,24 @@ public class EventGroup implements EventLoop {
             default:
                 throw new IllegalArgumentException("Unknown priority " + handler.priority());
         }
+    }
+
+    private final MilliPauser milliPauser = Pauser.millis(50);
+
+    public void setupTimeLimitMonitor(long timeLimitNS, LongSupplier timeOfStart) {
+        // to cleanly shut down the runner, we cannot rely on Thread.interrupt as it
+        // can cause nasty exceptions to bubble up from the guts of CQ
+        addTimingMonitor(
+                name + "-monitor",
+                timeLimitNS,
+                timeOfStart,
+                core::thread);
+    }
+
+    public void addTimingMonitor(String description, long timeLimitNS, LongSupplier timeSupplier,
+                                 Supplier<Thread> threadSupplier) {
+        milliPauser.minPauseTimeMS((timeLimitNS + 999_999) / 1_000_000);
+        addHandler(new ThreadMonitorEventHandler(description, timeLimitNS, timeSupplier, threadSupplier));
     }
 
     @Override

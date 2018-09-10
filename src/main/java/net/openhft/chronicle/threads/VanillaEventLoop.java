@@ -80,6 +80,11 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     @Nullable
     private volatile Throwable closedHere = null;
 
+    @Nullable
+    public Thread thread() {
+        return thread;
+    }
+
     /**
      * @param parent          the parent event loop
      * @param name            the name of this event hander
