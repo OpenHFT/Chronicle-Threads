@@ -33,11 +33,12 @@ public interface Pauser {
 
     static boolean getSleepy() {
         int procs = Runtime.getRuntime().availableProcessors();
-        if (procs < MIN_PROCESSORS) {
-            Jvm.warn().on(Pauser.class, "Using Pauser.sleepy() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS + "+");
-            return true;
-        }
-        return false;
+        return procs < MIN_PROCESSORS;
+    }
+
+    static Pauser yielding(int minBusy) {
+        SleepyWarning.warnSleepy();
+        return SLEEPY ? sleepy() : new YieldingPauser(minBusy);
     }
 
     static TimingPauser sleepy() {
@@ -91,10 +92,6 @@ public interface Pauser {
         return yielding(2);
     }
 
-    static Pauser yielding(int minBusy) {
-        return SLEEPY ? sleepy() : new YieldingPauser(minBusy);
-    }
-
     /**
      * A busy pauser which never waits
      *
@@ -102,7 +99,23 @@ public interface Pauser {
      */
     @NotNull
     static Pauser busy() {
+        SleepyWarning.warnSleepy();
         return SLEEPY ? sleepy() : BusyPauser.INSTANCE;
+    }
+
+
+    enum SleepyWarning {
+        ;
+
+        static {
+            if (SLEEPY) {
+                int procs = Runtime.getRuntime().availableProcessors();
+                Jvm.warn().on(Pauser.class, "Using Pauser.sleepy() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS + "+");
+            }
+        }
+
+        static void warnSleepy() {
+        }
     }
 
     @NotNull
