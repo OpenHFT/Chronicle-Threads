@@ -55,9 +55,9 @@ public class EventGroup implements EventLoop {
     private final boolean binding;
     private final int bindingCpuReplication;
     private final String name;
-    private VanillaEventLoop replication;
     @NotNull
-    private VanillaEventLoop[] concThreads = new VanillaEventLoop[CONC_THREADS];
+    private final VanillaEventLoop[] concThreads;
+    private VanillaEventLoop replication;
     private Supplier<Pauser> concThreadPauserSupplier = () -> Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
     private boolean daemon;
 
@@ -71,7 +71,7 @@ public class EventGroup implements EventLoop {
      * @param bindingCpuReplication CPU to bind replication event loop to. -1 means no binding
      * @param name                  name of event group. Any created threads are named after this
      */
-    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, int bindingCpuCore, int bindingCpuReplication, String name) {
+    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, int bindingCpuCore, int bindingCpuReplication, String name, int concThreads) {
         this.daemon = daemon;
         this.pauser = pauser;
         this.binding = binding;
@@ -82,6 +82,7 @@ public class EventGroup implements EventLoop {
         monitor = new MonitorEventLoop(this, name, Pauser.millis(Integer.getInteger("monitor.interval", 10)));
         monitor.addHandler(new PauserMonitor(pauser, name + "core pauser", 30));
         blocking = new BlockingEventLoop(this, name + "blocking-event-loop");
+        this.concThreads = new VanillaEventLoop[concThreads];
     }
 
     public EventGroup(boolean daemon) {
@@ -100,7 +101,12 @@ public class EventGroup implements EventLoop {
         this(daemon, pauser, binding, NO_CPU, NO_CPU, name);
     }
 
-    static int hash(int n, int mod) {
+    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, int bindingCpuCore, int bindingCpuReplication, String name) {
+        this(daemon, pauser, binding, bindingCpuCore, bindingCpuReplication, name, CONC_THREADS);
+    }
+
+    protected int hash(EventHandler handler, int mod) {
+        int n = handler.hashCode();
         n = (n >>> 23) ^ (n >>> 9) ^ n;
         n = (n & 0x7FFF_FFFF) % mod;
         return n;
@@ -181,7 +187,7 @@ public class EventGroup implements EventLoop {
                 break;
 
             case CONCURRENT: {
-                int n = hash(handler.hashCode(), CONC_THREADS);
+                int n = hash(handler, concThreads.length);
                 getConcThread(n).addHandler(handler);
                 break;
             }
