@@ -103,21 +103,6 @@ public interface Pauser {
         return SLEEPY ? sleepy() : BusyPauser.INSTANCE;
     }
 
-
-    enum SleepyWarning {
-        ;
-
-        static {
-            if (SLEEPY) {
-                int procs = Runtime.getRuntime().availableProcessors();
-                Jvm.warn().on(Pauser.class, "Using Pauser.sleepy() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS + "+");
-            }
-        }
-
-        static void warnSleepy() {
-        }
-    }
-
     @NotNull
     static TimingPauser timedBusy() {
         return SLEEPY ? sleepy() : new BusyTimedPauser();
@@ -140,4 +125,18 @@ public interface Pauser {
     long timePaused();
 
     long countPaused();
+
+    enum SleepyWarning {
+        ;
+
+        static {
+            if (SLEEPY) {
+                int procs = Runtime.getRuntime().availableProcessors();
+                Jvm.warn().on(Pauser.class, "Using Pauser.sleepy() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS + "+");
+            }
+        }
+
+        static void warnSleepy() {
+        }
+    }
 }

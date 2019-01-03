@@ -48,10 +48,9 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * Created by peter.lawrey on 22/01/15.
  */
 public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
+    public static final int NO_CPU = -1;
     private static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop" +
             ".ignoreInterrupts");
-
-    public static final int NO_CPU = -1;
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     private static final EventHandler[] NO_EVENT_HANDLERS = {};
     private final EventLoop parent;
@@ -79,11 +78,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private volatile Thread thread = null;
     @Nullable
     private volatile Throwable closedHere = null;
-
-    @Nullable
-    public Thread thread() {
-        return thread;
-    }
 
     /**
      * @param parent          the parent event loop
@@ -129,6 +123,11 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 handlers.remove(h);
             }
         });
+    }
+
+    @Nullable
+    public Thread thread() {
+        return thread;
     }
 
     @Override

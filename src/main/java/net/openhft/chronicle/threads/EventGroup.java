@@ -57,6 +57,7 @@ public class EventGroup implements EventLoop {
     private final String name;
     @NotNull
     private final VanillaEventLoop[] concThreads;
+    private final MilliPauser milliPauser = Pauser.millis(50);
     private VanillaEventLoop replication;
     private Supplier<Pauser> concThreadPauserSupplier = () -> Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
     private boolean daemon;
@@ -196,8 +197,6 @@ public class EventGroup implements EventLoop {
                 throw new IllegalArgumentException("Unknown priority " + handler.priority());
         }
     }
-
-    private final MilliPauser milliPauser = Pauser.millis(50);
 
     public void setupTimeLimitMonitor(long timeLimitNS, LongSupplier timeOfStart) {
         // to cleanly shut down the runner, we cannot rely on Thread.interrupt as it

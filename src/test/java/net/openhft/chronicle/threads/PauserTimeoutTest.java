@@ -19,16 +19,15 @@
 package net.openhft.chronicle.threads;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class PauserTimeoutTest {
-    TimingPauser[] pausersSupportTimeout = new TimingPauser[] { new BusyTimedPauser(), new TimeoutPauser(0),
-            new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS) };
-    Pauser[] pausersDontSupportTimeout = new Pauser[] { new MilliPauser(1), BusyPauser.INSTANCE, new YieldingPauser(0) };
+    TimingPauser[] pausersSupportTimeout = new TimingPauser[]{new BusyTimedPauser(), new TimeoutPauser(0),
+            new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS)};
+    Pauser[] pausersDontSupportTimeout = new Pauser[]{new MilliPauser(1), BusyPauser.INSTANCE, new YieldingPauser(0)};
 
     @Test
     public void pausersSupportTimeout() throws TimeoutException {
@@ -45,7 +44,7 @@ public class PauserTimeoutTest {
             while (System.nanoTime() < start + timeoutNS * 2)
                 ;
             try {
-                System.out.println(start + " timeoutNS " + (start + timeoutNS) + " now "+System.nanoTime()+" past "+(System.nanoTime()>(start + timeoutNS)));
+                System.out.println(start + " timeoutNS " + (start + timeoutNS) + " now " + System.nanoTime() + " past " + (System.nanoTime() > (start + timeoutNS)));
                 p.pause(timeoutNS, TimeUnit.NANOSECONDS);
             } catch (TimeoutException e) {
                 continue;

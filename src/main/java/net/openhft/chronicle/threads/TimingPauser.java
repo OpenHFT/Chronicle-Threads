@@ -28,7 +28,8 @@ public interface TimingPauser extends Pauser {
 
     /**
      * Pauses but keep tracks of accumulated pause time and throws if timeout exceeded
-     * @param timeout timeout
+     *
+     * @param timeout  timeout
      * @param timeUnit unit
      * @throws TimeoutException thrown if timeout passes
      */
