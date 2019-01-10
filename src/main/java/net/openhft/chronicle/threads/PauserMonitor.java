@@ -66,11 +66,11 @@ public class PauserMonitor implements EventHandler {
                 double averageTime = timePausedDelta * 1000 / countPausedDelta / 1e3;
                 // sometimes slightly negative due to rounding error
                 double busy = Math.abs((timeDelta - timePausedDelta) * 1000 / timeDelta / 10.0);
-                LOG.info(description + ": avg pause: " + averageTime + " ms, "
+                LOG.debug(description + ": avg pause: " + averageTime + " ms, "
                         + "count=" + countPausedDelta
                         + (lastTime > 0 ? ", busy=" + busy + "%" : ""));
             } else {
-                LOG.info(description + ": count=" + countPausedDelta + ", busy=100%");
+                LOG.debug(description + ": count=" + countPausedDelta + ", busy=100%");
             }
         }
         lastTimePaused = timePaused;
