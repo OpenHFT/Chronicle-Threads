@@ -119,7 +119,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         handlers.forEach(h -> {
             if (h instanceof Closeable)
                 Closeable.closeQuietly(h);
-            handlers.remove(h);
+            // do not remove the handler here, all the handle to close itself ASAP instead.
         });
     }
 
@@ -163,8 +163,10 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             try {
                 service.submit(this);
             } catch (RejectedExecutionException e) {
-                if (!isClosed())
+                if (!isClosed()) {
+                    closeAll();
                     throw e;
+                }
             }
     }
 
@@ -463,6 +465,10 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             LOG.info(out.toString());
     }
 
+    public int nonDaemonHandlerCount() {
+        return highHandlers.size() + mediumHandlers.size();
+    }
+
     public int handlerCount() {
         return highHandlers.size() + mediumHandlers.size() + daemonHandlers.size() + timerHandlers.size();
     }
@@ -479,22 +485,20 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 Threads.shutdown(service, daemon);
                 return;
             }
+            pauser.unpause();
+            LockSupport.unpark(thread);
+            thread.interrupt();
 
             for (int i = 1; i <= 30; i++) {
-                pauser.unpause();
-
-                Jvm.pause(i);
-                if (handlerCount() == 0)
+                if (nonDaemonHandlerCount() == 0) {
                     break;
-                if (i % 10 == 4) {
-                    LockSupport.unpark(thread);
-                    thread.interrupt();
                 }
+                Jvm.pause(i);
 
-                if (i % 10 == 9) {
+                if (i % 10 == 0) {
                     StringBuilder sb = new StringBuilder();
                     sb.append("Shutting down thread is executing ").append(thread)
-                            .append(", " + "handlerCount=").append(handlerCount()).append("\n");
+                            .append(", " + "handlerCount=").append(nonDaemonHandlerCount()).append("\n");
                     Jvm.trimStackTrace(sb, thread.getStackTrace());
                     Jvm.warn().on(getClass(), sb.toString());
                     dumpRunningHandlers();
@@ -518,6 +522,17 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             newHandlerQueue.clear();
             newHandler.set(null);
         }
+    }
+
+    private void runAllActionsOnce(List<EventHandler> handlers) {
+        handlers.forEach(h -> {
+            try {
+                h.action();
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            } catch (Exception ignored) {
+            }
+        });
     }
 
     public void closeAllHandlers() {

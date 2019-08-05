@@ -83,23 +83,34 @@ public class BlockingEventLoop implements EventLoop {
                         handler.action();
 
                 } catch (InvalidEventHandlerException e) {
-                    Jvm.debug().on(getClass(), e);
+                    // expected and logged below.
 
                 } catch (Throwable t) {
                     if (!closed)
-                        Jvm.warn().on(getClass(), t);
+                        Jvm.warn().on(handler.getClass(), asString(handler) + " threw", t);
 
                 } finally {
                     if (LOG.isDebugEnabled())
-                        Jvm.debug().on(getClass(), "handler " + handler + " done.");
-                    if (closed)
+                        Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
+                    if (closed) {
                         closeQuietly(this.handler);
+                        try {
+                            // so it can close off resources.
+                            handler.action();
+                        } catch (Exception ignored) {
+                            // ignored
+                        }
+                    }
                 }
             });
         } catch (RejectedExecutionException e) {
             if (!closed)
                 Jvm.warn().on(getClass(), e);
         }
+    }
+
+    private String asString(Object handler) {
+        return Integer.toHexString(System.identityHashCode(handler));
     }
 
     @Override
