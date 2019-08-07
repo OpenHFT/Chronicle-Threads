@@ -49,8 +49,6 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  */
 public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     public static final int NO_CPU = -1;
-    private static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop" +
-            ".ignoreInterrupts");
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     private static final EventHandler[] NO_EVENT_HANDLERS = {};
     private final EventLoop parent;
@@ -76,6 +74,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private volatile AtomicBoolean running = new AtomicBoolean();
     @Nullable
     private volatile Thread thread = null;
+    private volatile boolean closing = false;
     @Nullable
     private volatile Throwable closedHere = null;
 
@@ -163,7 +162,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             try {
                 service.submit(this);
             } catch (RejectedExecutionException e) {
-                if (!isClosed()) {
+                if (!closing) {
                     closeAll();
                     throw e;
                 }
@@ -182,7 +181,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public boolean isClosed() {
-        return closedHere != null;
+        return !running.get();
     }
 
     @Override
@@ -245,7 +244,8 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private void runLoop() {
-        while (running.get() && isNotInterrupted()) {
+        // When interrupted wait until all high/medium tasks have removed themselves.
+        while (running.get()) {
             if (closedHere != null) {
                 closeAll();
                 break;
@@ -274,10 +274,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 pauser.pause();
             }
         }
-    }
-
-    private boolean isNotInterrupted() {
-        return !CHECK_INTERRUPTS || !Thread.currentThread().isInterrupted();
     }
 
     private boolean runMediumLoopOnly() {
@@ -476,6 +472,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     @Override
     public void close() {
         try {
+            closing = true;
             closedHere = Jvm.isDebug() ? new StackTrace("Closed here") : null;
 
             pauser.reset(); // reset the timer.
