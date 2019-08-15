@@ -150,7 +150,6 @@ public class EventGroup implements EventLoop {
             if (concThread != null)
                 concThread.awaitTermination();
         }
-
     }
 
     @Override

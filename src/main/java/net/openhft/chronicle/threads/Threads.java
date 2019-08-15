@@ -134,12 +134,10 @@ public enum Threads {
                         else
                             service.shutdownNow();
                     }
-
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
             }
-
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -165,7 +163,6 @@ public enum Threads {
                     Jvm.warn().on(Threads.class, b.toString());
                 }
             }
-
         } catch (Exception e) {
             Jvm.warn().on(Threads.class, e);
         }

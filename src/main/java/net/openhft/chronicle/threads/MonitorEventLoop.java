@@ -118,11 +118,9 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
                 if (busy)
                     pauser.reset();
             }
-
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
         }
-
     }
 
     @HotMethod
