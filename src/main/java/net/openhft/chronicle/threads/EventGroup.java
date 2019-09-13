@@ -122,7 +122,8 @@ public class EventGroup implements EventLoop {
             Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
             replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, binding, bindingCpuReplication);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, replication));
-            replication.start();
+            if (isAlive())
+                replication.start();
             monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 60));
         }
         return replication;
@@ -133,7 +134,8 @@ public class EventGroup implements EventLoop {
             Pauser pauser = concThreadPauserSupplier.get();
             concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, daemon, binding, NO_CPU);
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]));
-            concThreads[n].start();
+            if (isAlive())
+                concThreads[n].start();
             monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 60));
         }
         return concThreads[n];
@@ -217,6 +219,15 @@ public class EventGroup implements EventLoop {
     public void start() {
         if (!core.isAlive()) {
             core.start();
+            blocking.start();
+
+            if (replication != null)
+                replication.start();
+
+            for (VanillaEventLoop concThread : concThreads) {
+                if (concThread != null)
+                    concThread.start();
+            }
 
             monitor.start();
             // this checks that the core threads have stalled
