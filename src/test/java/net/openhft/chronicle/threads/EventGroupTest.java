@@ -17,10 +17,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.threads.EventHandler;
-import net.openhft.chronicle.core.threads.EventLoop;
-import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Test;
@@ -83,9 +80,19 @@ public class EventGroupTest {
         eventGroup.awaitTermination();
     }
 
+    @Test
+    public void checkNoThreadsCreatedIfEventGroupNotStarted() throws InterruptedException {
+        final ThreadDump threadDump = new ThreadDump();
+        try (final EventLoop eventGroup = new EventGroup(true)) {
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
+            threadDump.assertNoNewThreads();
+        }
+    }
+
     @Test(timeout = 5000)
     public void testBlockingHandlersOnlyStartWhenStarted() throws InterruptedException {
-        checkOnlyStartWhenStarted(HandlerPriority.BLOCKING);
+        checkOnlyStartWhenStartedTwice(HandlerPriority.BLOCKING);
     }
 
     @Test(timeout = 5000)
@@ -95,8 +102,12 @@ public class EventGroupTest {
 
     @Test(timeout = 5000)
     public void testConcurrentHandlers() throws InterruptedException {
+        checkOnlyStartWhenStartedTwice(HandlerPriority.CONCURRENT);
+    }
+
+    private void checkOnlyStartWhenStartedTwice(HandlerPriority priority) throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true)) {
-            TestHandler handler = new TestHandler(HandlerPriority.CONCURRENT, 1);
+            TestHandler handler = new TestHandler(priority, 1);
             eventGroup.addHandler(handler);
             Jvm.pause(100);
             Assert.assertEquals(1, handler.started.getCount());
@@ -120,16 +131,16 @@ public class EventGroupTest {
         }
     }
 
-    private class TestHandler implements EventHandler {
+    static class TestHandler implements EventHandler {
         final CountDownLatch started = new CountDownLatch(1);
         final HandlerPriority priority;
         final int hash;
 
-        private TestHandler(HandlerPriority priority) {
+        TestHandler(HandlerPriority priority) {
             this(priority, 0);
         }
 
-        private TestHandler(HandlerPriority priority, int hash) {
+        TestHandler(HandlerPriority priority, int hash) {
             this.priority = priority;
             this.hash = hash;
         }

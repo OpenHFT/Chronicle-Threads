@@ -24,6 +24,8 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -36,7 +38,7 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  *
  * @author Peter Lawrey
  */
-public class BlockingEventLoop implements EventLoop, Runnable {
+public class BlockingEventLoop implements EventLoop {
 
     private static final Logger LOG = LoggerFactory.getLogger(BlockingEventLoop.class);
 
@@ -46,7 +48,7 @@ public class BlockingEventLoop implements EventLoop, Runnable {
     private final ExecutorService service;
     private volatile boolean closed;
     private volatile boolean started;
-    private EventHandler handler;
+    private List<EventHandler> handlers = new ArrayList<>();
 
     public BlockingEventLoop(@NotNull EventLoop parent,
                              @NotNull String name) {
@@ -73,35 +75,15 @@ public class BlockingEventLoop implements EventLoop, Runnable {
         addHandler(handler);
     }
 
+    /**
+     * This can be called multiple times and each handler will be executed in its own thread
+     * @param handler to execute
+     */
     @Override
     public void addHandler(@NotNull EventHandler handler) {
-        if (this.handler != null)
-            throw new IllegalStateException("Cannot reset handler");
-        this.handler = handler;
+        this.handlers.add(handler);
         if (started)
-            this.start();
-    }
-
-    @Override
-    public void run() {
-        handler.eventLoop(parent);
-        try {
-            while (!closed)
-                handler.action();
-
-        } catch (InvalidEventHandlerException e) {
-            // expected and logged below.
-
-        } catch (Throwable t) {
-            if (!closed)
-                Jvm.warn().on(handler.getClass(), asString(handler) + " threw", t);
-
-        } finally {
-            if (LOG.isDebugEnabled())
-                Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
-            if (closed)
-                EventHandler.closeHandler(handler);
-        }
+            this.startHandler(handler);
     }
 
     private String asString(Object handler) {
@@ -111,14 +93,17 @@ public class BlockingEventLoop implements EventLoop, Runnable {
     @Override
     public void start() {
         this.started = true;
-        if (handler == null)
-            return;
         try {
-            service.submit(this);
+            handlers.forEach(this::startHandler);
         } catch (RejectedExecutionException e) {
             if (!closed)
                 Jvm.warn().on(getClass(), e);
         }
+    }
+
+    @NotNull
+    private void startHandler(EventHandler handler) {
+        service.submit(new Runner(handler));
     }
 
     @Override
@@ -144,7 +129,37 @@ public class BlockingEventLoop implements EventLoop, Runnable {
     @Override
     public void close() {
         closed = true;
-        closeQuietly(this.handler);
+        closeQuietly(handlers);
         Threads.shutdown(service);
+    }
+
+    private class Runner implements Runnable {
+        private final EventHandler handler;
+
+        public Runner(EventHandler handler) {
+            this.handler = handler;
+        }
+
+        @Override
+        public void run() {
+            handler.eventLoop(parent);
+            try {
+                while (!closed)
+                    handler.action();
+
+            } catch (InvalidEventHandlerException e) {
+                // expected and logged below.
+
+            } catch (Throwable t) {
+                if (!closed)
+                    Jvm.warn().on(handler.getClass(), asString(handler) + " threw", t);
+
+            } finally {
+                if (LOG.isDebugEnabled())
+                    Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
+                if (closed)
+                    EventHandler.closeHandler(handler);
+            }
+        }
     }
 }
