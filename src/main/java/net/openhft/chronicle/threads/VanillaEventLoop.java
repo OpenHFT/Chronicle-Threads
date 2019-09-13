@@ -117,8 +117,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     public static void closeAll(@NotNull List<EventHandler> handlers) {
         handlers.forEach(h -> {
-            if (h instanceof Closeable)
-                Closeable.closeQuietly(h);
+            EventHandler.closeHandler(h);
             // do not remove the handler here, all the handle to close itself ASAP instead.
         });
     }

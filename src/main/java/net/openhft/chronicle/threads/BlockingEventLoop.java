@@ -92,15 +92,8 @@ public class BlockingEventLoop implements EventLoop {
                 } finally {
                     if (LOG.isDebugEnabled())
                         Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
-                    if (closed) {
-                        closeQuietly(this.handler);
-                        try {
-                            // so it can close off resources.
-                            handler.action();
-                        } catch (Exception ignored) {
-                            // ignored
-                        }
-                    }
+                    if (closed)
+                        EventHandler.closeHandler(handler);
                 }
             });
         } catch (RejectedExecutionException e) {
@@ -140,9 +133,8 @@ public class BlockingEventLoop implements EventLoop {
     @Override
     public void close() {
         closed = true;
-        closeQuietly(this.handler);
+        EventHandler.closeHandler(this.handler);
         Threads.shutdown(service);
-
     }
 
 }
