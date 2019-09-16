@@ -117,7 +117,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     public static void closeAll(@NotNull List<EventHandler> handlers) {
         handlers.forEach(h -> {
-            EventHandler.closeHandler(h);
+            closeQuietly(h);
             // do not remove the handler here, all the handle to close itself ASAP instead.
         });
     }
@@ -240,6 +240,10 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             loopStartMS = Long.MAX_VALUE - 1;
             if (affinityLock != null)
                 affinityLock.release();
+            highHandlers.forEach(EventHandler::loopFinished);
+            mediumHandlers.forEach(EventHandler::loopFinished);
+            timerHandlers.forEach(EventHandler::loopFinished);
+            daemonHandlers.forEach(EventHandler::loopFinished);
         }
     }
 

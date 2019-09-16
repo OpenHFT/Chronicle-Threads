@@ -120,6 +120,8 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
+        } finally {
+            handlers.forEach(EventHandler::loopFinished);
         }
     }
 

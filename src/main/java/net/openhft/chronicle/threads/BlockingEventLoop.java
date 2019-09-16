@@ -157,8 +157,9 @@ public class BlockingEventLoop implements EventLoop {
             } finally {
                 if (LOG.isDebugEnabled())
                     Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
+                handler.loopFinished();
                 if (closed)
-                    EventHandler.closeHandler(handler);
+                    closeQuietly(handler);
             }
         }
     }
