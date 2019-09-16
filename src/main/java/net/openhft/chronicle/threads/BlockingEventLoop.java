@@ -93,17 +93,17 @@ public class BlockingEventLoop implements EventLoop {
     @Override
     public void start() {
         this.started = true;
-        try {
-            handlers.forEach(this::startHandler);
-        } catch (RejectedExecutionException e) {
-            if (!closed)
-                Jvm.warn().on(getClass(), e);
-        }
+        handlers.forEach(this::startHandler);
     }
 
     @NotNull
     private void startHandler(EventHandler handler) {
-        service.submit(new Runner(handler));
+        try {
+            service.submit(new Runner(handler));
+        } catch (RejectedExecutionException e) {
+            if (!closed)
+                Jvm.warn().on(getClass(), e);
+        }
     }
 
     @Override
