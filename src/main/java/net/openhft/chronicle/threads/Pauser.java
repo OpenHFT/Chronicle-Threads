@@ -113,9 +113,8 @@ public interface Pauser {
     void pause();
 
     /**
-     * @deprecated use {@link TimingPauser#pause(long, TimeUnit)} instead
+     * use {@link TimingPauser#pause(long, TimeUnit)} instead
      */
-    @Deprecated
     default void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
         throw new UnsupportedOperationException(this + " is not stateful, use a TimingPauser");
     }
