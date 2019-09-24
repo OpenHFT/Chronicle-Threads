@@ -70,7 +70,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private final int bindingCpu;
     @NotNull
     private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
-    private long lastTimerNS;
+    private long lastTimerMS;
     private volatile long loopStartMS;
     @NotNull
     private volatile AtomicBoolean running = new AtomicBoolean();
@@ -260,8 +260,8 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             } else {
                 busy = runHighAndMediumTasks();
             }
-            if (lastTimerNS + timerIntervalMS < loopStartMS) {
-                lastTimerNS = loopStartMS;
+            if (lastTimerMS + timerIntervalMS < loopStartMS) {
+                lastTimerMS = loopStartMS;
                 runTimerHandlers();
             }
             if (busy) {
