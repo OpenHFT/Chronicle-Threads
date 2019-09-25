@@ -53,6 +53,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             ".ignoreInterrupts");
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     private static final EventHandler[] NO_EVENT_HANDLERS = {};
+    private static final long FINISHED = Long.MAX_VALUE - 1;
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
@@ -118,7 +119,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     public static void closeAll(@NotNull List<EventHandler> handlers) {
         handlers.forEach(h -> {
             closeQuietly(h);
-            // do not remove the handler here, all the handle to close itself ASAP instead.
+            // do not remove the handler here, remove all at end instead
         });
     }
 
@@ -176,7 +177,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public void stop() {
-
+        running.set(false);
     }
 
     @Override
@@ -233,30 +234,29 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
             thread = Thread.currentThread();
             runLoop();
+        } catch (InvalidEventHandlerException e) {
+            // ignore, already closed
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), "Loop terminated due to exception", e);
-
         } finally {
-            loopStartMS = Long.MAX_VALUE - 1;
-            if (affinityLock != null)
-                affinityLock.release();
             highHandlers.forEach(EventHandler::loopFinished);
             mediumHandlers.forEach(EventHandler::loopFinished);
             timerHandlers.forEach(EventHandler::loopFinished);
             daemonHandlers.forEach(EventHandler::loopFinished);
+            loopStartMS = FINISHED;
+            if (affinityLock != null)
+                affinityLock.release();
         }
     }
 
-    private void runLoop() {
+    private void runLoop() throws InvalidEventHandlerException {
         while (running.get() && isNotInterrupted()) {
             if (closedHere != null) {
-                closeAll();
-                break;
+                throw new InvalidEventHandlerException();
             }
             boolean busy;
             if (highHandlers.isEmpty()) {
                 busy = runMediumLoopOnly();
-
             } else {
                 busy = runHighAndMediumTasks();
             }
@@ -299,12 +299,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private void closeAll() {
-        LOG.trace("Closing down handlers");
         closeAllHandlers();
-        runAllHighHandlers();
-        runAllMediumHandler();
-        runDaemonHandlers();
-        runTimerHandlers();
         LOG.trace("Remaining handlers");
         dumpRunningHandlers();
     }
@@ -481,42 +476,32 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         try {
             closedHere = Jvm.isDebug() ? new StackTrace("Closed here") : null;
 
+            stop();
             pauser.reset(); // reset the timer.
-            closeAllHandlers();
-
-            if (thread == null) {
-                Threads.shutdown(service, daemon);
-                return;
-            }
             pauser.unpause();
             LockSupport.unpark(thread);
+            Threads.shutdown(service, daemon);
+            if (thread == null)
+                return;
             thread.interrupt();
 
             for (int i = 1; i <= 30; i++) {
-                if (nonDaemonHandlerCount() == 0) {
+                if (loopStartMS == FINISHED)
                     break;
-                }
                 Jvm.pause(i);
 
                 if (i % 10 == 0) {
                     StringBuilder sb = new StringBuilder();
-                    sb.append("Shutting down thread is executing ").append(thread)
-                            .append(", " + "handlerCount=").append(nonDaemonHandlerCount()).append("\n");
+                    sb.append(name+": Shutting down thread is executing ").append(thread)
+                            .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
                     Jvm.trimStackTrace(sb, thread.getStackTrace());
                     Jvm.warn().on(getClass(), sb.toString());
                     dumpRunningHandlers();
                 }
             }
-            running.set(false);
-
-            pauser.unpause();
-
-            Threads.shutdown(service, daemon);
-
-            if (thread != null)
-                thread.interrupt();
 
         } finally {
+            closeAllHandlers();
             highHandlers.clear();
             mediumHandlers.clear();
             mediumHandlersArray = NO_EVENT_HANDLERS;
@@ -525,17 +510,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             newHandlerQueue.clear();
             newHandler.set(null);
         }
-    }
-
-    private void runAllActionsOnce(List<EventHandler> handlers) {
-        handlers.forEach(h -> {
-            try {
-                h.action();
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-            } catch (Exception ignored) {
-            }
-        });
     }
 
     public void closeAllHandlers() {

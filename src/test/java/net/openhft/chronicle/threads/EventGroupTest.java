@@ -17,11 +17,15 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.onoes.ExceptionKey;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,6 +34,33 @@ import java.util.concurrent.locks.LockSupport;
 import static org.junit.Assert.assertFalse;
 
 public class EventGroupTest {
+
+    private ThreadDump threadDump;
+    private Map<ExceptionKey, Integer> exceptions;
+
+    @Before
+    public void threadDump() {
+        threadDump = new ThreadDump();
+    }
+
+    @After
+    public void checkThreadDump() {
+        threadDump.assertNoNewThreads();
+    }
+
+    @Before
+    public void recordExceptions() {
+        exceptions = Jvm.recordExceptions();
+    }
+
+    @After
+    public void checkExceptions() {
+        if (Jvm.hasException(exceptions)) {
+            Jvm.dumpException(exceptions);
+            Jvm.resetExceptionHandlers();
+            Assert.fail();
+        }
+    }
 
     @Test
     public void testSimpleEventGroupTest() throws InterruptedException {
