@@ -111,7 +111,7 @@ public class EventGroupTest {
         assertFalse(t.isAlive());
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 5000)
     public void testCloseAwaitTermination() throws InterruptedException {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.start();
@@ -119,7 +119,7 @@ public class EventGroupTest {
         eventGroup.awaitTermination();
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 5000)
     public void testCloseStopAwaitTermination() throws InterruptedException {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.start();
@@ -128,14 +128,14 @@ public class EventGroupTest {
         eventGroup.awaitTermination();
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 5000)
     public void testCloseAwaitTerminationWithoutStarting() throws InterruptedException {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.close();
         eventGroup.awaitTermination();
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void checkNoThreadsCreatedIfEventGroupNotStarted() throws InterruptedException {
         final ThreadDump threadDump = new ThreadDump();
         try (final EventLoop eventGroup = new EventGroup(true)) {
@@ -145,7 +145,7 @@ public class EventGroupTest {
         }
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void checkAllEventHandlerTypesStartAndStop() throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true)) {
             for (HandlerPriority hp : HandlerPriority.values())
@@ -157,47 +157,27 @@ public class EventGroupTest {
     }
 
     @Test(timeout = 5000)
-    public void testBlockingHandlersOnlyStartWhenStarted() throws InterruptedException {
-        checkOnlyStartWhenStartedTwice(HandlerPriority.BLOCKING);
-    }
-
-    @Test(timeout = 5000)
-    public void testReplicationHandlersOnlyStartWhenStarted() throws InterruptedException {
-        checkOnlyStartWhenStarted(HandlerPriority.REPLICATION);
-    }
-
-    @Test(timeout = 5000)
-    public void testConcurrentHandlers() throws InterruptedException {
-        checkOnlyStartWhenStartedTwice(HandlerPriority.CONCURRENT);
-    }
-
-    private void checkOnlyStartWhenStartedTwice(HandlerPriority priority) throws InterruptedException {
+    public void checkAllEventHandlerTypesStartAndStopAddAgain() throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true)) {
-            TestHandler handler = new TestHandler(priority, 1);
-            eventGroup.addHandler(handler);
-            Jvm.pause(100);
-            Assert.assertEquals(1, handler.started.getCount());
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
+            for (TestHandler handler : this.handlers) {
+                handler.installed.await(100, TimeUnit.MILLISECONDS);
+                Assert.assertEquals(1, handler.started.getCount());
+            }
             eventGroup.start();
-            handler.started.await(100, TimeUnit.MILLISECONDS);
-            // add a new one after start and ensure it runs
-            TestHandler handler2 = new TestHandler(HandlerPriority.CONCURRENT, 2);
-            eventGroup.addHandler(handler2);
-            handler2.started.await(100, TimeUnit.MILLISECONDS);
-        }
-    }
-
-    private void checkOnlyStartWhenStarted(HandlerPriority priority) throws InterruptedException {
-        try (final EventLoop eventGroup = new EventGroup(true)) {
-            TestHandler handler = new TestHandler(priority);
-            eventGroup.addHandler(handler);
-            Jvm.pause(100);
-            Assert.assertEquals(1, handler.started.getCount());
-            eventGroup.start();
-            handler.started.await(100, TimeUnit.MILLISECONDS);
+            for (TestHandler handler : this.handlers)
+                handler.started.await(100, TimeUnit.MILLISECONDS);
+            // add more after start
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
+            for (TestHandler handler : this.handlers)
+                handler.started.await(100, TimeUnit.MILLISECONDS);
         }
     }
 
     class TestHandler implements EventHandler, Closeable {
+        final CountDownLatch installed = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
         final AtomicLong loopFinishedNS = new AtomicLong();
         final AtomicLong closedNS = new AtomicLong();
@@ -226,6 +206,11 @@ public class EventGroupTest {
         @Override
         public HandlerPriority priority() {
             return priority;
+        }
+
+        @Override
+        public void eventLoop(EventLoop eventLoop) {
+            installed.countDown();
         }
 
         @Override
