@@ -25,18 +25,33 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.Assert.assertFalse;
 
 public class EventGroupTest {
-
+    private List<TestHandler> handlers;
     private ThreadDump threadDump;
     private Map<ExceptionKey, Integer> exceptions;
+
+    @Before
+    public void handlersInit() {
+        handlers = new ArrayList<>();
+    }
+
+    @After
+    public void checkHandlersClosed() {
+        handlers.forEach(TestHandler::checkCloseOrder);
+    }
 
     @Before
     public void threadDump() {
@@ -105,6 +120,15 @@ public class EventGroupTest {
     }
 
     @Test(timeout = 1000)
+    public void testCloseStopAwaitTermination() throws InterruptedException {
+        final EventLoop eventGroup = new EventGroup(true);
+        eventGroup.start();
+        eventGroup.stop();
+        eventGroup.close();
+        eventGroup.awaitTermination();
+    }
+
+    @Test(timeout = 1000)
     public void testCloseAwaitTerminationWithoutStarting() throws InterruptedException {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.close();
@@ -118,6 +142,17 @@ public class EventGroupTest {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             threadDump.assertNoNewThreads();
+        }
+    }
+
+    @Test
+    public void checkAllEventHandlerTypesStartAndStop() throws InterruptedException {
+        try (final EventLoop eventGroup = new EventGroup(true)) {
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
+            eventGroup.start();
+            for (TestHandler handler : this.handlers)
+                handler.started.await(100, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -162,8 +197,10 @@ public class EventGroupTest {
         }
     }
 
-    static class TestHandler implements EventHandler {
+    class TestHandler implements EventHandler, Closeable {
         final CountDownLatch started = new CountDownLatch(1);
+        final AtomicLong loopFinishedNS = new AtomicLong();
+        final AtomicLong closedNS = new AtomicLong();
         final HandlerPriority priority;
         final int hash;
 
@@ -174,6 +211,7 @@ public class EventGroupTest {
         TestHandler(HandlerPriority priority, int hash) {
             this.priority = priority;
             this.hash = hash;
+            handlers.add(this);
         }
 
         @Override
@@ -191,8 +229,36 @@ public class EventGroupTest {
         }
 
         @Override
+        public void loopFinished() {
+            Assert.assertTrue("loopFinished called once only "+this, loopFinishedNS.compareAndSet(0, System.nanoTime()));
+            Jvm.busyWaitMicros(1);
+        }
+
+        @Override
+        public void close() throws IOException {
+            Assert.assertTrue("close called once only "+this, closedNS.compareAndSet(0, System.nanoTime()));
+        }
+
+        void checkCloseOrder() {
+            Assert.assertTrue(this.toString(), loopFinishedNS.get() != 0);
+            Assert.assertTrue(this.toString(), closedNS.get() != 0);
+            Assert.assertTrue(this.toString(), loopFinishedNS.get() < closedNS.get());
+        }
+
+        @Override
         public int hashCode() {
             return hash;
+        }
+
+        @Override
+        public String toString() {
+            return "TestHandler{" +
+                    "priority=" + priority +
+                    ", loopFinishedNS=" + loopFinishedNS +
+                    ", closedNS=" + closedNS +
+                    ", started=" + started.getCount() +
+                    ", hash=" + hash +
+                    '}';
         }
     }
 }

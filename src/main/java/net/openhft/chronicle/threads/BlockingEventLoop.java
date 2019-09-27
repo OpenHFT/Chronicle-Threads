@@ -46,17 +46,21 @@ public class BlockingEventLoop implements EventLoop {
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
+    @NotNull
+    private final String name;
     private volatile boolean closed;
     private volatile boolean started;
     private List<EventHandler> handlers = new ArrayList<>();
 
     public BlockingEventLoop(@NotNull EventLoop parent,
                              @NotNull String name) {
+        this.name = name;
         this.parent = parent;
         this.service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
     }
 
     public BlockingEventLoop(@NotNull String name) {
+        this.name = name;
         this.parent = this;
         this.service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
     }
@@ -129,8 +133,17 @@ public class BlockingEventLoop implements EventLoop {
     @Override
     public void close() {
         closed = true;
-        closeQuietly(handlers);
         Threads.shutdown(service);
+        if (! started)
+            handlers.forEach(EventHandler::loopFinished);
+        closeQuietly(handlers);
+    }
+
+    @Override
+    public String toString() {
+        return "BlockingEventLoop{" +
+                "name=" + name +
+                '}';
     }
 
     private class Runner implements Runnable {
@@ -158,8 +171,6 @@ public class BlockingEventLoop implements EventLoop {
                 if (LOG.isDebugEnabled())
                     Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
                 handler.loopFinished();
-                if (closed)
-                    closeQuietly(handler);
             }
         }
     }

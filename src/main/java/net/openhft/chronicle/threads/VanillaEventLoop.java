@@ -239,14 +239,18 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), "Loop terminated due to exception", e);
         } finally {
-            highHandlers.forEach(EventHandler::loopFinished);
-            mediumHandlers.forEach(EventHandler::loopFinished);
-            timerHandlers.forEach(EventHandler::loopFinished);
-            daemonHandlers.forEach(EventHandler::loopFinished);
+            loopFinishedAllHandlers();
             loopStartMS = FINISHED;
             if (affinityLock != null)
                 affinityLock.release();
         }
+    }
+
+    private void loopFinishedAllHandlers() {
+        highHandlers.forEach(EventHandler::loopFinished);
+        mediumHandlers.forEach(EventHandler::loopFinished);
+        timerHandlers.forEach(EventHandler::loopFinished);
+        daemonHandlers.forEach(EventHandler::loopFinished);
     }
 
     private void runLoop() throws InvalidEventHandlerException {
@@ -481,8 +485,10 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             pauser.unpause();
             LockSupport.unpark(thread);
             Threads.shutdown(service, daemon);
-            if (thread == null)
+            if (thread == null) {
+                loopFinishedAllHandlers();
                 return;
+            }
             thread.interrupt();
 
             for (int i = 1; i <= 30; i++) {

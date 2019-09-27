@@ -120,8 +120,6 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
-        } finally {
-            handlers.forEach(EventHandler::loopFinished);
         }
     }
 
@@ -150,5 +148,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public void close() {
         stop();
         Threads.shutdownDaemon(service);
+        handlers.forEach(EventHandler::loopFinished);
+        net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
     }
 }
