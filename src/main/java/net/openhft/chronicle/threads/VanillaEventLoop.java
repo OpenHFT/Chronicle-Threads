@@ -398,6 +398,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private void removeHandler(EventHandler handler, @NotNull List<EventHandler> handlers) {
         try {
             handlers.remove(handler);
+            handler.loopFinished();
         } catch (ArrayIndexOutOfBoundsException e2) {
             if (!handlers.isEmpty())
                 throw e2;

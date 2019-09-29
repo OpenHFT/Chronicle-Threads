@@ -176,27 +176,41 @@ public class EventGroupTest {
         }
     }
 
+    @Test(timeout = 5000)
+    public void checkAllEventHandlerTypesStartInvalidEventHandlerException() throws InterruptedException {
+        try (final EventLoop eventGroup = new EventGroup(true)) {
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp, true));
+            eventGroup.start();
+            for (TestHandler handler : this.handlers)
+                handler.started.await(100, TimeUnit.MILLISECONDS);
+            Jvm.pause(100);
+        }
+    }
+
     class TestHandler implements EventHandler, Closeable {
         final CountDownLatch installed = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
         final AtomicLong loopFinishedNS = new AtomicLong();
         final AtomicLong closedNS = new AtomicLong();
         final HandlerPriority priority;
-        final int hash;
+        final boolean throwInvalidEventHandlerException;
 
         TestHandler(HandlerPriority priority) {
-            this(priority, 0);
+            this(priority, false);
         }
 
-        TestHandler(HandlerPriority priority, int hash) {
+        TestHandler(HandlerPriority priority, boolean throwInvalidEventHandlerException) {
             this.priority = priority;
-            this.hash = hash;
+            this.throwInvalidEventHandlerException = throwInvalidEventHandlerException;
             handlers.add(this);
         }
 
         @Override
         public boolean action() throws InvalidEventHandlerException, InterruptedException {
             started.countDown();
+            if (throwInvalidEventHandlerException)
+                throw new InvalidEventHandlerException();
             if (priority == HandlerPriority.BLOCKING)
                 LockSupport.park();
             return false;
@@ -231,18 +245,12 @@ public class EventGroupTest {
         }
 
         @Override
-        public int hashCode() {
-            return hash;
-        }
-
-        @Override
         public String toString() {
             return "TestHandler{" +
                     "priority=" + priority +
                     ", loopFinishedNS=" + loopFinishedNS +
                     ", closedNS=" + closedNS +
                     ", started=" + started.getCount() +
-                    ", hash=" + hash +
                     '}';
         }
     }
