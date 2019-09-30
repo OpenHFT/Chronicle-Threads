@@ -79,6 +79,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private volatile Thread thread = null;
     @Nullable
     private volatile Throwable closedHere = null;
+    private volatile boolean closed;
 
     /**
      * @param parent          the parent event loop
@@ -182,46 +183,20 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public boolean isClosed() {
-        return closedHere != null;
+        return closed;
     }
 
     @Override
     public void addHandler(@NotNull EventHandler handler) {
-        addHandler(false, handler);
-    }
-
-    @Override
-    public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed", closedHere);
 
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
-
         } else {
-
-            if (!running.get()) {
-                // TODO: why do we do this?
-                if (!dontAttemptToRunImmediatelyInCurrentThread) {
-                    try {
-                        if (LOG.isDebugEnabled())
-                            Jvm.debug().on(getClass(), "Running " + handler + " in the current thread as " + this + " has finished");
-                        handler.action();
-                    } catch (InterruptedException e) {
-                        Jvm.warn().on(getClass(), e);
-
-                    } catch (InvalidEventHandlerException ignored) {
-                    } finally {
-                        handler.loopFinished();
-                        Closeable.closeQuietly(handler);
-                    }
-                }
-                return;
-            }
             pauser.unpause();
             if (!newHandler.compareAndSet(null, handler))
                 newHandlerQueue.add(handler);
-
         }
     }
 
@@ -486,6 +461,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     @Override
     public void close() {
         try {
+            closed = true;
             closedHere = Jvm.isDebug() ? new StackTrace("Closed here") : null;
 
             stop();

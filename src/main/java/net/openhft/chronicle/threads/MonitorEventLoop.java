@@ -41,6 +41,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     private final List<EventHandler> handlers = new ArrayList<>();
     private final Pauser pauser;
     private volatile boolean running = true;
+    private volatile boolean closed = false;
 
     public MonitorEventLoop(EventLoop parent, Pauser pauser) {
         this(parent, "", pauser);
@@ -79,7 +80,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public boolean isClosed() {
-        return !service.isShutdown();
+        return closed;
     }
 
     @Override
@@ -88,12 +89,9 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     @Override
-    public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
-        addHandler(handler);
-    }
-
-    @Override
     public void addHandler(@NotNull EventHandler handler) {
+        if (isClosed())
+            throw new IllegalStateException("Event Group has been closed");
         synchronized (handlers) {
             if (!handlers.contains(handler))
                 handlers.add(handler);
@@ -150,5 +148,6 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         Threads.shutdownDaemon(service);
         handlers.forEach(EventHandler::loopFinished);
         net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
+        closed = true;
     }
 }

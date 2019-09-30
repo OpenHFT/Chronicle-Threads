@@ -160,11 +160,6 @@ public class EventGroup implements EventLoop {
     }
 
     @Override
-    public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
-        addHandler(handler);
-    }
-
-    @Override
     public void addHandler(@NotNull EventHandler handler) {
         HandlerPriority t1 = handler.priority();
         switch (t1) {
