@@ -157,7 +157,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public void start() {
-        if (closedHere != null)
+        if (isClosed())
             throw new IllegalStateException("Event Group has been closed", closedHere);
         if (!running.getAndSet(true))
             try {
@@ -192,12 +192,16 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public void addHandler(boolean dontAttemptToRunImmediatelyInCurrentThread, @NotNull EventHandler handler) {
+        if (isClosed())
+            throw new IllegalStateException("Event Group has been closed", closedHere);
+
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
 
         } else {
 
             if (!running.get()) {
+                // TODO: why do we do this?
                 if (!dontAttemptToRunImmediatelyInCurrentThread) {
                     try {
                         if (LOG.isDebugEnabled())
@@ -207,6 +211,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                         Jvm.warn().on(getClass(), e);
 
                     } catch (InvalidEventHandlerException ignored) {
+                    } finally {
+                        handler.loopFinished();
+                        Closeable.closeQuietly(handler);
                     }
                 }
                 return;
@@ -255,7 +262,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     private void runLoop() throws InvalidEventHandlerException {
         while (running.get() && isNotInterrupted()) {
-            if (closedHere != null) {
+            if (isClosed()) {
                 throw new InvalidEventHandlerException();
             }
             boolean busy;
