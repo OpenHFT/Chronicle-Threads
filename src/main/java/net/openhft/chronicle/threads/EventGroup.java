@@ -211,7 +211,7 @@ public class EventGroup implements EventLoop {
     }
 
     @Override
-    public void start() {
+    public synchronized void start() {
         if (!core.isAlive()) {
             core.start();
             blocking.start();
@@ -262,7 +262,7 @@ public class EventGroup implements EventLoop {
                 core);
 
         VanillaEventLoop replication = this.replication;
-        if (replication != null) Closeable.closeQuietly(replication);
+        Closeable.closeQuietly(replication);
         Closeable.closeQuietly(concThreads);
     }
 
