@@ -79,7 +79,7 @@ public class BlockingEventLoop implements EventLoop {
      * @param handler to execute
      */
     @Override
-    public void addHandler(@NotNull EventHandler handler) {
+    public synchronized void addHandler(@NotNull EventHandler handler) {
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         this.handlers.add(handler);
@@ -92,7 +92,7 @@ public class BlockingEventLoop implements EventLoop {
     }
 
     @Override
-    public void start() {
+    public synchronized void start() {
         this.started = true;
         handlers.forEach(this::startHandler);
     }
@@ -127,7 +127,7 @@ public class BlockingEventLoop implements EventLoop {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         closed = true;
         Threads.shutdown(service);
         if (! started)
