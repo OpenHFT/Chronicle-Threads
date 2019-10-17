@@ -212,7 +212,7 @@ public class EventGroup implements EventLoop {
 
     @Override
     public synchronized void start() {
-        if (!core.isAlive()) {
+        if (!isAlive()) {
             core.start();
             blocking.start();
 
@@ -227,6 +227,9 @@ public class EventGroup implements EventLoop {
             monitor.start();
             // this checks that the core threads have stalled
             monitor.addHandler(new LoopBlockMonitor(MONITOR_INTERVAL_MS, EventGroup.this.core));
+
+            while (!isAlive())
+                Jvm.pause(1);
         }
     }
 
