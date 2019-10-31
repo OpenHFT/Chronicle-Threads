@@ -46,7 +46,7 @@ public interface Pauser {
     }
 
     /**
-     * A balanced pauser which tries to be busy for short busrts but backs off when idle.
+     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
      *
      * @return a balanced pauser
      */
@@ -108,8 +108,14 @@ public interface Pauser {
         return SLEEPY ? sleepy() : new BusyTimedPauser();
     }
 
+    /**
+     * Reset pauser internal state back to most aggressive setting. Call this if you just did some work.
+     */
     void reset();
 
+    /**
+     * Depending on the implementation this could do nothing (busy spin), yield, sleep, ... Call this is no work was done
+     */
     void pause();
 
     /**
@@ -119,6 +125,9 @@ public interface Pauser {
         throw new UnsupportedOperationException(this + " is not stateful, use a TimingPauser");
     }
 
+    /**
+     * If pauser is pausing then try and interrupt the pause
+     */
     void unpause();
 
     long timePaused();

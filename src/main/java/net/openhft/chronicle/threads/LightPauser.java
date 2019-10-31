@@ -22,8 +22,6 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.ForceInline;
 import net.openhft.chronicle.core.util.Time;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -80,11 +78,6 @@ public class LightPauser implements Pauser {
         timePaused += time;
         countPaused++;
         pausing.set(false);
-    }
-
-    @Override
-    public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
-        throw new UnsupportedOperationException();
     }
 
     protected void doPause(long maxPauseNS) {
