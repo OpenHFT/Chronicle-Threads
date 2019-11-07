@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 /*
- * Created by peter.lawrey on 11/12/14.
  * @deprecated use LongPauser instead.
  */
 @Deprecated
