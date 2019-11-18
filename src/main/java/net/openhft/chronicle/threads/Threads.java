@@ -29,6 +29,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.Consumer;
 
 /*
  * Created by Peter Lawrey on 24/06/15.
@@ -121,6 +123,8 @@ public enum Threads {
     }
 
     public static void shutdown(@NotNull ExecutorService service) {
+        // without this here, some threads that were in a LockSupport.parkNanos were taking a long time to shut down
+        Threads.unpark(service);
         service.shutdown();
         try {
 
@@ -144,6 +148,22 @@ public enum Threads {
     }
 
     private static void warnRunningThreads(@NotNull ExecutorService service) {
+        forEachThread(service, t -> {
+            StringBuilder b = new StringBuilder("**** THE " +
+                    t.getName() +
+                    " THREAD DID NOT SHUTDOWN ***\n");
+            for (StackTraceElement s : t.getStackTrace()) {
+                b.append("  ").append(s).append("\n");
+            }
+            Jvm.warn().on(Threads.class, b.toString());
+        });
+    }
+
+    public static void unpark(ExecutorService service) {
+        forEachThread(service, LockSupport::unpark);
+    }
+
+    static void forEachThread(ExecutorService service, Consumer<Thread> consumer) {
         try {
             Field workers = ThreadPoolExecutor.class.getDeclaredField("workers");
             workers.setAccessible(true);
@@ -152,16 +172,8 @@ public enum Threads {
                 Field thread = o.getClass().getDeclaredField("thread");
                 thread.setAccessible(true);
                 Thread t = (Thread) thread.get(o);
-                if (t.getState() != State.TERMINATED) {
-
-                    StringBuilder b = new StringBuilder("**** THE " +
-                            "FOLLOWING " +
-                            "THREAD DID NOT SHUTDOWN ***\n");
-                    for (StackTraceElement s : t.getStackTrace()) {
-                        b.append("  ").append(s).append("\n");
-                    }
-                    Jvm.warn().on(Threads.class, b.toString());
-                }
+                if (t.getState() != State.TERMINATED)
+                    consumer.accept(t);
             }
         } catch (Exception e) {
             Jvm.warn().on(Threads.class, e);
