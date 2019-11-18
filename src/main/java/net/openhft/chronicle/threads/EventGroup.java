@@ -157,6 +157,7 @@ public class EventGroup implements EventLoop {
     @Override
     public void unpause() {
         pauser.unpause();
+        blocking.unpause();
     }
 
     @Override

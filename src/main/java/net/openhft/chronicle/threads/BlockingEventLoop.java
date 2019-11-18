@@ -50,7 +50,9 @@ public class BlockingEventLoop implements EventLoop {
     private final String name;
     private volatile boolean closed;
     private volatile boolean started;
-    private List<EventHandler> handlers = new ArrayList<>();
+    private final List<EventHandler> handlers = new ArrayList<>();
+    // store these in a separate collection (so we can see when debugging) so as not to trip over synchronized blocks
+    private final List<EventHandler> handlersRemoved = new ArrayList<>();
 
     public BlockingEventLoop(@NotNull EventLoop parent,
                              @NotNull String name) {
@@ -108,7 +110,7 @@ public class BlockingEventLoop implements EventLoop {
 
     @Override
     public void unpause() {
-
+        Threads.unpark(service);
     }
 
     @Override
@@ -158,7 +160,7 @@ public class BlockingEventLoop implements EventLoop {
 
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.
-
+                handlersRemoved.add(handler);
             } catch (Throwable t) {
                 if (!closed)
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw", t);
