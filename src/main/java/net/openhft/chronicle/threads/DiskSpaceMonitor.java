@@ -23,13 +23,19 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
 
     public static final String DISK_SPACE_CHECKER_NAME = "disk-space-checker";
     static final boolean WARN_DELETED = Boolean.getBoolean("disk.monitor.deleted.warning");
+    private static final boolean DISABLED = Boolean.getBoolean("chronicle.disk.monitor.disable");
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
-    final ScheduledExecutorService executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
+    final ScheduledExecutorService executor;
     private int thresholdPercentage;
 
     DiskSpaceMonitor() {
-        executor.scheduleAtFixedRate(this, 1, 1, TimeUnit.SECONDS);
+        if (!Boolean.getBoolean("chronicle.disk.monitor.disable")) {
+            executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
+            executor.scheduleAtFixedRate(this, 1, 1, TimeUnit.SECONDS);
+        } else {
+            executor = null;
+        }
     }
 
     // used for testing purposes
@@ -39,6 +45,8 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     }
 
     public void pollDiskSpace(File file) {
+        if (DISABLED)
+            return;
         final String absolutePath = file.getAbsolutePath();
         FileStore fs = fileStoreCacheMap.get(absolutePath);
         if (fs == null) {
@@ -85,7 +93,8 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
 
     @Override
     public void close() {
-        Threads.shutdown(executor);
+        if (executor != null)
+            Threads.shutdown(executor);
     }
 
     static class DiskAttributes {
