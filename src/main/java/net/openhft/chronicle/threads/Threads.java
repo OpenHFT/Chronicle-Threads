@@ -39,6 +39,7 @@ public enum Threads {
     ;
 
     static final Field GROUP = Jvm.getField(Thread.class, "group");
+    static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 1_000);
 
     static ExecutorFactory executorFactory;
 
@@ -123,12 +124,16 @@ public enum Threads {
     }
 
     public static void shutdown(@NotNull ExecutorService service) {
+        shutdown(service, SHUTDOWN_WAIT_MILLIS);
+    }
+
+    public static void shutdown(@NotNull ExecutorService service, long waitTimeMillis) {
         // without this here, some threads that were in a LockSupport.parkNanos were taking a long time to shut down
         Threads.unpark(service);
         service.shutdown();
         try {
 
-            if (!service.awaitTermination(1, TimeUnit.SECONDS)) {
+            if (!service.awaitTermination(waitTimeMillis, TimeUnit.MILLISECONDS)) {
                 service.shutdownNow();
 
                 try {
