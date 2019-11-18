@@ -124,16 +124,13 @@ public enum Threads {
     }
 
     public static void shutdown(@NotNull ExecutorService service) {
-        shutdown(service, SHUTDOWN_WAIT_MILLIS);
-    }
-
-    public static void shutdown(@NotNull ExecutorService service, long waitTimeMillis) {
-        // without this here, some threads that were in a LockSupport.parkNanos were taking a long time to shut down
-        Threads.unpark(service);
         service.shutdown();
+        // without these 2 here, some threads that were in a LockSupport.parkNanos were taking a long time to shut down
+        Threads.unpark(service);
+        Threads.interrupt(service);
         try {
 
-            if (!service.awaitTermination(waitTimeMillis, TimeUnit.MILLISECONDS)) {
+            if (!service.awaitTermination(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS)) {
                 service.shutdownNow();
 
                 try {
@@ -157,15 +154,18 @@ public enum Threads {
             StringBuilder b = new StringBuilder("**** THE " +
                     t.getName() +
                     " THREAD DID NOT SHUTDOWN ***\n");
-            for (StackTraceElement s : t.getStackTrace()) {
+            for (StackTraceElement s : t.getStackTrace())
                 b.append("  ").append(s).append("\n");
-            }
             Jvm.warn().on(Threads.class, b.toString());
         });
     }
 
     public static void unpark(ExecutorService service) {
         forEachThread(service, LockSupport::unpark);
+    }
+
+    public static void interrupt(ExecutorService service) {
+        Threads.forEachThread(service, Thread::interrupt);
     }
 
     static void forEachThread(ExecutorService service, Consumer<Thread> consumer) {
@@ -181,7 +181,7 @@ public enum Threads {
                     consumer.accept(t);
             }
         } catch (Exception e) {
-            Jvm.warn().on(Threads.class, e);
+            Jvm.debug().on(Threads.class, e);
         }
     }
 }

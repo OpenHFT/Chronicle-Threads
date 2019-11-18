@@ -41,7 +41,6 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 public class BlockingEventLoop implements EventLoop {
 
     private static final Logger LOG = LoggerFactory.getLogger(BlockingEventLoop.class);
-    private static final long BLOCKING_SHUTDOWN_WAIT_MILLIS = Long.getLong("BLOCKING_SHUTDOWN_WAIT_MILLIS", 500);
 
     @NotNull
     private final EventLoop parent;
@@ -132,7 +131,7 @@ public class BlockingEventLoop implements EventLoop {
     @Override
     public synchronized void close() {
         closed = true;
-        Threads.shutdown(service, BLOCKING_SHUTDOWN_WAIT_MILLIS);
+        Threads.shutdown(service);
         if (! started)
             handlers.forEach(EventHandler::loopFinished);
         closeQuietly(handlers);
