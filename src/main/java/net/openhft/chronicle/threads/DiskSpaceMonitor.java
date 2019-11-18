@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +23,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
 
     public static final String DISK_SPACE_CHECKER_NAME = "disk-space-checker";
     static final boolean WARN_DELETED = Boolean.getBoolean("disk.monitor.deleted.warning");
-    final Map<File, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
+    final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
     final ScheduledExecutorService executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
     private int thresholdPercentage;
@@ -38,13 +39,15 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     }
 
     public void pollDiskSpace(File file) {
-        FileStore fs = fileStoreCacheMap.get(file);
+        final String absolutePath = file.getAbsolutePath();
+        FileStore fs = fileStoreCacheMap.get(absolutePath);
         if (fs == null) {
             if (file.exists()) {
-                Path path = file.getAbsoluteFile().toPath();
+
+                Path path = Paths.get(absolutePath);
                 try {
                     fs = Files.getFileStore(path);
-                    fileStoreCacheMap.put(file, fs);
+                    fileStoreCacheMap.put(absolutePath, fs);
                 } catch (IOException e) {
                     Jvm.warn().on(getClass(), "Error trying to obtain the FileStore for " + path, e);
                     return;
@@ -112,7 +115,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                         "warning: chronicle-queue may crash if it runs out of space.");
 
             } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage / 100) {
-                double diskSpaceFull = 1000 * (totalSpace - unallocatedBytes) / totalSpace / 10.0;
+                double diskSpaceFull = 100.0 * (totalSpace - unallocatedBytes) / totalSpace;
                 Jvm.warn().on(getClass(), "your disk " + fileStore
                         + " is " + diskSpaceFull + "% full, " +
                         "warning: chronicle-queue may crash if it runs out of space.");
