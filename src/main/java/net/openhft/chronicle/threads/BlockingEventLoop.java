@@ -160,7 +160,7 @@ public class BlockingEventLoop implements EventLoop {
 
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.
-                handlersRemoved.add(handler);
+//              TODO:   handlersRemoved.add(handler);
             } catch (Throwable t) {
                 if (!closed)
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw", t);
