@@ -24,6 +24,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.Thread.State;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -172,7 +174,7 @@ public enum Threads {
         try {
             Field workers = ThreadPoolExecutor.class.getDeclaredField("workers");
             workers.setAccessible(true);
-            Set objects = (Set) workers.get(service);
+            List objects = new ArrayList((Set) workers.get(service));
             for (Object o : objects) {
                 Field thread = o.getClass().getDeclaredField("thread");
                 thread.setAccessible(true);
