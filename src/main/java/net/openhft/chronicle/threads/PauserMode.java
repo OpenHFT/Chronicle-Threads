@@ -23,5 +23,11 @@ public enum PauserMode implements Supplier<Pauser> {
         public Pauser get() {
             return Pauser.yielding();
         }
-    }
+    },
+    sleepy {
+        @Override
+        public Pauser get() {
+            return Pauser.sleepy();
+        }
+    },
 }
