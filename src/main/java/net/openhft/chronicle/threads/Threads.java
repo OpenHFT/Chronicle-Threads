@@ -172,10 +172,20 @@ public enum Threads {
 
     static void forEachThread(ExecutorService service, Consumer<Thread> consumer) {
         try {
-            Set workers = Jvm.getValue(service, "workers");
-            if (workers == null)
-                workers = Jvm.getValue(service, "e/workers");
-            if (workers == null) {
+            Object s = service;
+            try {
+                Field e = service.getClass().getDeclaredField("e");
+                e.setAccessible(true);
+                s = e.get(s);
+            } catch (NoSuchFieldException nsfe) {
+                // ok
+            }
+            Set workers;
+            try {
+                Field w = service.getClass().getDeclaredField("workers");
+                w.setAccessible(true);
+                workers = (Set) w.get(s);
+            } catch (NoSuchFieldException e) {
                 Jvm.warn().on(Threads.class, "Couldn't find workers for " + service.getClass());
                 return;
             }
