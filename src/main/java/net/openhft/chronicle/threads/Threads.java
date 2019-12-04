@@ -172,9 +172,15 @@ public enum Threads {
 
     static void forEachThread(ExecutorService service, Consumer<Thread> consumer) {
         try {
-            Field workers = ThreadPoolExecutor.class.getDeclaredField("workers");
-            workers.setAccessible(true);
-            List objects = new ArrayList((Set) workers.get(service));
+            Set workers = Jvm.getValue(service, "workers");
+            if (workers == null)
+                workers = Jvm.getValue(service, "e/workers");
+            if (workers == null) {
+                Jvm.warn().on(Threads.class, "Couldn't find workers for " + service.getClass());
+                return;
+            }
+
+            List objects = new ArrayList(workers);
             for (Object o : objects) {
                 Field thread = o.getClass().getDeclaredField("thread");
                 thread.setAccessible(true);
