@@ -42,6 +42,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     private final Pauser pauser;
     private volatile boolean running = true;
     private volatile boolean closed = false;
+    private final String name;
 
     public MonitorEventLoop(EventLoop parent, Pauser pauser) {
         this(parent, "", pauser);
@@ -50,7 +51,12 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public MonitorEventLoop(EventLoop parent, String name, Pauser pauser) {
         this.parent = parent;
         this.pauser = pauser;
-        service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name + "event-loop-monitor", true));
+        this.name = name + parent.name() + "/event-loop-monitor";
+        service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, true));
+    }
+
+    public String name() {
+        return name;
     }
 
     @Override
@@ -90,6 +96,8 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public void addHandler(@NotNull EventHandler handler) {
+        if (DEBUG_ADDING_HANDLERS)
+            System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         synchronized (handlers) {

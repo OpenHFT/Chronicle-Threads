@@ -1,17 +1,5 @@
 /*
- * Copyright 2016 higherfrequencytrading.com
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright (c) 2016-2019 Chronicle Software Ltd
  */
 
 package net.openhft.chronicle.threads;
@@ -31,7 +19,8 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,33 +34,22 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 /*
  * Created by peter.lawrey on 22/01/15.
  */
-public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
-    public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
-            Collections.unmodifiableSet(
-                    EnumSet.of(HandlerPriority.HIGH,
-                            HandlerPriority.MEDIUM,
-                            HandlerPriority.TIMER,
-                            HandlerPriority.DAEMON));
+public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     public static final int NO_CPU = -1;
     private static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop" +
             ".ignoreInterrupts");
-    private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MediumEventLoop.class);
     private static final EventHandler[] NO_EVENT_HANDLERS = {};
     private static final long FINISHED = Long.MAX_VALUE - 1;
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
-    private final List<EventHandler> highHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
-    private final List<EventHandler> timerHandlers = new CopyOnWriteArrayList<>();
-    private final List<EventHandler> daemonHandlers = new CopyOnWriteArrayList<>();
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     private final Pauser pauser;
-    private final long timerIntervalMS;
     private final boolean daemon;
     private final String name;
     private final String binding;
-    private final Set<HandlerPriority> priorities;
     @NotNull
     private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
     private long lastTimerMS;
@@ -85,50 +63,24 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private volatile boolean closed;
 
     /**
-     * @param parent          the parent event loop
-     * @param name            the name of this event hander
-     * @param pauser          the pause strategy
-     * @param timerIntervalMS how long to pause, Long.MAX_VALUE = always check.
-     * @param daemon          is a demon thread
-     * @param binding         set affinity description, "any", "none", "1", "last-1"
+     * @param parent  the parent event loop
+     * @param name    the name of this event hander
+     * @param pauser  the pause strategy
+     * @param daemon  is a demon thread
+     * @param binding set affinity description, "any", "none", "1", "last-1"
      */
-    public VanillaEventLoop(EventLoop parent,
-                            String name,
-                            Pauser pauser,
-                            long timerIntervalMS,
-                            boolean daemon,
-                            String binding,
-                            Set<HandlerPriority> priorities) {
+    public MediumEventLoop(EventLoop parent,
+                           String name,
+                           Pauser pauser,
+                           boolean daemon,
+                           String binding) {
         this.parent = parent;
         this.name = name;
         this.pauser = pauser;
-        this.timerIntervalMS = timerIntervalMS;
         this.daemon = daemon;
         this.binding = binding;
-        this.priorities = priorities;
         loopStartMS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
-    }
-
-    @Deprecated
-    public VanillaEventLoop(EventLoop parent,
-                            String name,
-                            Pauser pauser,
-                            long timerIntervalMS,
-                            boolean daemon,
-                            boolean binding,
-                            int bindingCpu) {
-        this(parent, name, pauser, timerIntervalMS, daemon, bindingCpu != NO_CPU ? Integer.toString(bindingCpu) : binding ? "any" : "none", ALLOWED_PRIORITIES);
-    }
-
-    @Deprecated
-    public VanillaEventLoop(EventLoop parent,
-                            String name,
-                            Pauser pauser,
-                            long timerIntervalMS,
-                            boolean daemon,
-                            boolean binding) {
-        this(parent, name, pauser, timerIntervalMS, daemon, binding ? "any" : "none", ALLOWED_PRIORITIES);
     }
 
     public static void closeAll(@NotNull List<EventHandler> handlers) {
@@ -155,14 +107,11 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     @NotNull
     @Override
     public String toString() {
-        return "VanillaEventLoop{" +
+        return "MediumEventLoop{" +
                 "name='" + name + '\'' +
                 ", parent=" + parent +
                 ", service=" + service +
-                ", highHandlers=" + highHandlers +
                 ", mediumHandlers=" + mediumHandlers +
-                ", timerHandlers=" + timerHandlers +
-                ", daemonHandlers=" + daemonHandlers +
                 ", newHandler=" + newHandler +
                 ", pauser=" + pauser +
                 ", closedHere=" + closedHere +
@@ -203,8 +152,8 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
-        if (!priorities.contains(priority))
-            throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler + " allows " + priorities);
+        if (priority.alias() != HandlerPriority.MEDIUM)
+            throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
         checkClosed();
 
         if (thread == null || thread == Thread.currentThread()) {
@@ -243,10 +192,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private void loopFinishedAllHandlers() {
-        highHandlers.forEach(EventHandler::loopFinished);
         mediumHandlers.forEach(EventHandler::loopFinished);
-        timerHandlers.forEach(EventHandler::loopFinished);
-        daemonHandlers.forEach(EventHandler::loopFinished);
     }
 
     private void runLoop() throws InvalidEventHandlerException {
@@ -254,16 +200,8 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             if (isClosed()) {
                 throw new InvalidEventHandlerException();
             }
-            boolean busy;
-            if (highHandlers.isEmpty()) {
-                busy = runMediumLoopOnly();
-            } else {
-                busy = runHighAndMediumTasks();
-            }
-            if (lastTimerMS + timerIntervalMS < loopStartMS) {
-                lastTimerMS = loopStartMS;
-                runTimerHandlers();
-            }
+            boolean busy = runMediumLoopOnly();
+
             if (busy) {
                 pauser.reset();
 
@@ -271,7 +209,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 if (acceptNewHandlers())
                     continue;
 
-                runDaemonHandlers();
                 // reset the loop timeout.
                 loopStartMS = Long.MAX_VALUE;
                 pauser.pause();
@@ -288,58 +225,12 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         return runAllMediumHandler();
     }
 
-    private boolean runHighAndMediumTasks() {
-        boolean busy = false;
-        for (int i = 0; i < 4; i++) {
-            loopStartMS = Time.currentTimeMillis();
-            busy |= runAllHighHandlers();
-            busy |= runOneQuarterMediumHandler(i);
-        }
-        return busy;
-    }
-
     private void closeAll() {
         closeAllHandlers();
         LOG.trace("Remaining handlers");
         dumpRunningHandlers();
     }
 
-    @HotMethod
-    private boolean runAllHighHandlers() {
-        boolean busy = false;
-        for (int i = 0; i < highHandlers.size(); i++) {
-            EventHandler handler = highHandlers.get(i);
-            try {
-                boolean action = handler.action();
-                busy |= action;
-            } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, highHandlers);
-
-            } catch (Exception e) {
-                Jvm.warn().on(getClass(), e);
-            }
-        }
-        return busy;
-    }
-
-    @HotMethod
-    private boolean runOneQuarterMediumHandler(int i) {
-        boolean busy = false;
-        EventHandler[] mediumHandlersArray = this.mediumHandlersArray;
-        for (int j = i; j < mediumHandlersArray.length; j += 4) {
-            EventHandler handler = mediumHandlersArray[j];
-            try {
-                busy |= handler.action();
-            } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, mediumHandlers);
-                this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
-
-            } catch (Throwable e) {
-                Jvm.warn().on(getClass(), e);
-            }
-        }
-        return busy;
-    }
 
     @HotMethod
     private boolean runAllMediumHandler() {
@@ -349,8 +240,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             try {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, mediumHandlers);
-                this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
+                removeHandler(handler);
 
             } catch (Exception e) {
                 Jvm.warn().on(getClass(), e);
@@ -359,36 +249,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         return busy;
     }
 
-    @HotMethod
-    private void runTimerHandlers() {
-        for (int i = 0; i < timerHandlers.size(); i++) {
-            EventHandler handler = null;
-            try {
-                handler = timerHandlers.get(i);
-                handler.action();
-            } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, timerHandlers);
-
-            } catch (Exception e) {
-                Jvm.warn().on(getClass(), e);
-            }
-        }
-    }
-
-    @HotMethod
-    private void runDaemonHandlers() {
-        for (int i = 0; i < daemonHandlers.size(); i++) {
-            EventHandler handler = null;
-            try {
-                handler = daemonHandlers.get(i);
-                handler.action();
-            } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, daemonHandlers);
-
-            } catch (Exception e) {
-                Jvm.warn().on(getClass(), e);
-            }
-        }
+    private void removeHandler(EventHandler handler) {
+        removeHandler(handler, mediumHandlers);
+        this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
     }
 
     private void removeHandler(EventHandler handler, @NotNull List<EventHandler> handlers) {
@@ -416,28 +279,13 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private void addNewHandler(@NotNull EventHandler handler) {
         HandlerPriority t1 = handler.priority();
         switch (t1 == null ? HandlerPriority.MEDIUM : t1.alias()) {
-            case HIGH:
-                if (!highHandlers.contains(handler))
-                    highHandlers.add(handler);
-                break;
-
-//            case REPLICATION:
-//            case CONCURRENT:
+            case REPLICATION:
+            case CONCURRENT:
             case MEDIUM:
                 if (!mediumHandlers.contains(handler)) {
                     mediumHandlers.add(handler);
                     mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
                 }
-                break;
-
-            case TIMER:
-                if (!timerHandlers.contains(handler))
-                    timerHandlers.add(handler);
-                break;
-
-            case DAEMON:
-                if (!daemonHandlers.contains(handler))
-                    daemonHandlers.add(handler);
                 break;
 
             default:
@@ -461,11 +309,11 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     public int nonDaemonHandlerCount() {
-        return highHandlers.size() + mediumHandlers.size();
+        return mediumHandlers.size();
     }
 
     public int handlerCount() {
-        return highHandlers.size() + mediumHandlers.size() + daemonHandlers.size() + timerHandlers.size();
+        return mediumHandlers.size();
     }
 
     @Override
@@ -502,20 +350,14 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
         } finally {
             closeAllHandlers();
-            highHandlers.clear();
             mediumHandlers.clear();
             mediumHandlersArray = NO_EVENT_HANDLERS;
-            daemonHandlers.clear();
-            timerHandlers.clear();
             newHandler.set(null);
         }
     }
 
     public void closeAllHandlers() {
-        closeAll(highHandlers);
         closeAll(mediumHandlers);
-        closeAll(daemonHandlers);
-        closeAll(timerHandlers);
         Optional.ofNullable(newHandler.get()).ifPresent(eventHandler -> {
             Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before close " + eventHandler);
             Closeable.closeQuietly(eventHandler);
@@ -526,7 +368,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         final int handlerCount = handlerCount();
         if (handlerCount <= 0)
             return;
-        List<EventHandler> collect = Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
+        List<EventHandler> collect = Stream.of(mediumHandlers)
                 .flatMap(List::stream)
                 .filter(e -> e instanceof Closeable)
                 .collect(Collectors.toList());

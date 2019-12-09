@@ -51,8 +51,6 @@ public class BlockingEventLoop implements EventLoop {
     private volatile boolean closed;
     private volatile boolean started;
     private final List<EventHandler> handlers = new ArrayList<>();
-    // store these in a separate collection (so we can see when debugging) so as not to trip over synchronized blocks
-    private final List<EventHandler> handlersRemoved = new ArrayList<>();
 
     public BlockingEventLoop(@NotNull EventLoop parent,
                              @NotNull String name) {
@@ -76,12 +74,19 @@ public class BlockingEventLoop implements EventLoop {
         }
     }
 
+    @Override
+    public String name() {
+        return name;
+    }
+
     /**
      * This can be called multiple times and each handler will be executed in its own thread
      * @param handler to execute
      */
     @Override
     public synchronized void addHandler(@NotNull EventHandler handler) {
+        if (DEBUG_ADDING_HANDLERS)
+            System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         this.handlers.add(handler);

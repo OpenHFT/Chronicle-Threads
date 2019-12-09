@@ -87,4 +87,9 @@ public class PauserMonitor implements EventHandler {
     public HandlerPriority priority() {
         return HandlerPriority.MONITOR;
     }
+
+    @Override
+    public String toString() {
+        return "PauserMonitor<" + description + '>';
+    }
 }

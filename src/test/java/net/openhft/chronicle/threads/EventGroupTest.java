@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -83,7 +84,8 @@ public class EventGroupTest {
         final AtomicInteger value = new AtomicInteger();
 
         Thread t;
-        try (final EventLoop eventGroup = new EventGroup(true)) {
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "testSimpleEventGroupTest",
+                EventGroup.CONC_THREADS, EnumSet.of(HandlerPriority.MEDIUM))) {
             eventGroup.start();
             t = new Thread(eventGroup::awaitTermination);
             t.start();
@@ -138,7 +140,7 @@ public class EventGroupTest {
     @Test(timeout = 5000)
     public void checkNoThreadsCreatedIfEventGroupNotStarted() throws InterruptedException {
         final ThreadDump threadDump = new ThreadDump();
-        try (final EventLoop eventGroup = new EventGroup(true)) {
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             threadDump.assertNoNewThreads();
@@ -147,7 +149,7 @@ public class EventGroupTest {
 
     @Test(timeout = 5000)
     public void checkAllEventHandlerTypesStartAndStop() throws InterruptedException {
-        try (final EventLoop eventGroup = new EventGroup(true)) {
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             eventGroup.start();
@@ -158,7 +160,7 @@ public class EventGroupTest {
 
     @Test(timeout = 5000)
     public void checkAllEventHandlerTypesStartAndStopAddAgain() throws InterruptedException {
-        try (final EventLoop eventGroup = new EventGroup(true)) {
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             for (TestHandler handler : this.handlers) {
@@ -178,7 +180,7 @@ public class EventGroupTest {
 
     @Test(timeout = 5000)
     public void checkAllEventHandlerTypesStartInvalidEventHandlerException() throws InterruptedException {
-        try (final EventLoop eventGroup = new EventGroup(true)) {
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp, true));
             eventGroup.start();
@@ -190,32 +192,34 @@ public class EventGroupTest {
 
     @Test(timeout = 5000)
     public void testCloseAddHandler() throws InterruptedException {
-        final EventLoop eventGroup = new EventGroup(true);
-        eventGroup.close();
-        for (HandlerPriority hp : HandlerPriority.values())
-            try {
-                TestHandler handler = new TestHandler(hp);
-                eventGroup.addHandler(handler);
-                Assert.fail("Should have failed "+handler);
-            } catch (IllegalStateException e) {
-                // this is what we want
-            }
-        handlers.clear();
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
+            eventGroup.close();
+            for (HandlerPriority hp : HandlerPriority.values())
+                try {
+                    TestHandler handler = new TestHandler(hp);
+                    eventGroup.addHandler(handler);
+                    Assert.fail("Should have failed " + handler);
+                } catch (IllegalStateException e) {
+                    // this is what we want
+                }
+            handlers.clear();
+        }
     }
 
     @Test(timeout = 5000)
     public void testOldOverloadUnsupported() throws InterruptedException {
-        final EventLoop eventGroup = new EventGroup(true);
-        eventGroup.close();
-        for (HandlerPriority hp : HandlerPriority.values())
-            try {
-                TestHandler handler = new TestHandler(hp);
-                eventGroup.addHandler(true, handler);
-                Assert.fail("Should have failed "+handler);
-            } catch (UnsupportedOperationException e) {
-                // this is what we want
-            }
-        handlers.clear();
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
+            eventGroup.close();
+            for (HandlerPriority hp : HandlerPriority.values())
+                try {
+                    TestHandler handler = new TestHandler(hp);
+                    eventGroup.addHandler(true, handler);
+                    Assert.fail("Should have failed " + handler);
+                } catch (UnsupportedOperationException e) {
+                    // this is what we want
+                }
+            handlers.clear();
+        }
     }
 
     class TestHandler implements EventHandler, Closeable {
@@ -259,13 +263,13 @@ public class EventGroupTest {
 
         @Override
         public void loopFinished() {
-            Assert.assertTrue("loopFinished called once only "+this, loopFinishedNS.compareAndSet(0, System.nanoTime()));
+            Assert.assertTrue("loopFinished called once only " + this, loopFinishedNS.compareAndSet(0, System.nanoTime()));
             Jvm.busyWaitMicros(1);
         }
 
         @Override
         public void close() throws IOException {
-            Assert.assertTrue("close called once only "+this, closedNS.compareAndSet(0, System.nanoTime()));
+            Assert.assertTrue("close called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
         }
 
         void checkCloseOrder() {

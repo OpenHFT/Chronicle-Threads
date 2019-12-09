@@ -24,8 +24,11 @@ import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
@@ -40,26 +43,24 @@ public class EventGroup implements EventLoop {
 
     static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 200);
 
-    static final int CONC_THREADS = Integer.getInteger("CONC_THREADS", (Runtime.getRuntime().availableProcessors() + 2) / 2);
+    public static final int CONC_THREADS = Integer.getInteger("CONC_THREADS", (Runtime.getRuntime().availableProcessors() + 2) / 2);
 
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger
             ("replicationEventPauseTime", 20);
     @NotNull
     final EventLoop monitor;
-    @NotNull
     final VanillaEventLoop core;
-    @NotNull
     final BlockingEventLoop blocking;
     @NotNull
     private final Pauser pauser;
     private final String binding;
     private final String bindingReplication;
     private final String name;
+    private final Set<HandlerPriority> priorities;
     @NotNull
     private final VanillaEventLoop[] concThreads;
     private final MilliPauser milliPauser = Pauser.millis(50);
     private VanillaEventLoop replication;
-    private Supplier<Pauser> concThreadPauserSupplier = () -> Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
     private boolean daemon;
 
     /**
@@ -79,7 +80,8 @@ public class EventGroup implements EventLoop {
                 bindingCpuCore != -1 ? Integer.toString(bindingCpuCore) : binding ? "any" : "none",
                 bindingCpuReplication != -1 ? Integer.toString(bindingCpuReplication) : "none",
                 name,
-                concThreads);
+                concThreads,
+                EnumSet.noneOf(HandlerPriority.class));
     }
 
     /**
@@ -91,18 +93,26 @@ public class EventGroup implements EventLoop {
      * @param bindingReplication CPU to bind replication event loop to. -1 means no binding
      * @param name               name of event group. Any created threads are named after this
      */
-    public EventGroup(boolean daemon, @NotNull Pauser pauser, String binding, String bindingReplication, String name, int concThreads) {
+    public EventGroup(boolean daemon, @NotNull Pauser pauser, String binding, String bindingReplication, String name, int concThreadsNum, Set<HandlerPriority> priorities) {
+//        priorities = EnumSet.allOf(HandlerPriority.class);
         this.daemon = daemon;
         this.pauser = pauser;
         this.binding = binding;
         this.bindingReplication = bindingReplication;
         this.name = name;
+        this.priorities = priorities;
 
-        core = new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding);
+        Set<HandlerPriority> corePriorities = priorities.stream().filter(VanillaEventLoop.ALLOWED_PRIORITIES::contains).collect(Collectors.toSet());
+        core = priorities.stream().anyMatch(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
+                ? corePriorities.equals(EnumSet.of(HandlerPriority.MEDIUM))
+                ? new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
+                : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
+                : null;
         monitor = new MonitorEventLoop(this, name, Pauser.millis(Integer.getInteger("monitor.interval", 10)));
-        monitor.addHandler(new PauserMonitor(pauser, name + "core pauser", 30));
-        blocking = new BlockingEventLoop(this, name + "blocking-event-loop");
-        this.concThreads = new VanillaEventLoop[concThreads];
+        if (core != null)
+            monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 30));
+        blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop") : null;
+        concThreads = new VanillaEventLoop[priorities.contains(HandlerPriority.CONCURRENT) ? concThreadsNum : 0];
     }
 
     public EventGroup(boolean daemon) {
@@ -122,7 +132,13 @@ public class EventGroup implements EventLoop {
     }
 
     public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, int bindingCpuCore, int bindingCpuReplication, String name) {
-        this(daemon, pauser, binding, bindingCpuCore, bindingCpuReplication, name, CONC_THREADS);
+        this(daemon,
+                pauser,
+                bindingCpuCore != -1 ? Integer.toString(bindingCpuCore) : binding ? "any" : "none",
+                bindingCpuReplication != -1 ? Integer.toString(bindingCpuReplication) : "none",
+                name,
+                CONC_THREADS,
+                EnumSet.allOf(HandlerPriority.class));
     }
 
     protected int hash(EventHandler handler, int mod) {
@@ -132,14 +148,11 @@ public class EventGroup implements EventLoop {
         return n;
     }
 
-    public void setConcThreadPauserSupplier(Supplier<Pauser> supplier) {
-        concThreadPauserSupplier = supplier;
-    }
-
-    synchronized VanillaEventLoop getReplication() {
+    private synchronized VanillaEventLoop getReplication() {
         if (replication == null) {
             Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
-            replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser, REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication);
+            replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser,
+                    REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION));
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, replication));
             if (isAlive())
                 replication.start();
@@ -150,8 +163,9 @@ public class EventGroup implements EventLoop {
 
     private synchronized VanillaEventLoop getConcThread(int n) {
         if (concThreads[n] == null) {
-            Pauser pauser = concThreadPauserSupplier.get();
-            concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, pauser, REPLICATION_EVENT_PAUSE_TIME, daemon, "none");
+            Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
+            concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, pauser,
+                    REPLICATION_EVENT_PAUSE_TIME, daemon, "none", EnumSet.of(HandlerPriority.CONCURRENT));
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]));
             if (isAlive())
                 concThreads[n].start();
@@ -162,9 +176,11 @@ public class EventGroup implements EventLoop {
 
     @Override
     public void awaitTermination() {
-        core.awaitTermination();
-        blocking.awaitTermination();
         monitor.awaitTermination();
+        if (core != null)
+            core.awaitTermination();
+        if (blocking != null)
+            blocking.awaitTermination();
         if (replication != null)
             replication.awaitTermination();
         for (VanillaEventLoop concThread : concThreads) {
@@ -180,30 +196,44 @@ public class EventGroup implements EventLoop {
     }
 
     @Override
+    public String name() {
+        return name;
+    }
+
+    @Override
     public void addHandler(@NotNull EventHandler handler) {
         HandlerPriority t1 = handler.priority();
         switch (t1) {
-            case HIGH:
-            case MEDIUM:
-            case TIMER:
-            case DAEMON:
-                core.addHandler(handler);
-                break;
-
             case MONITOR:
                 monitor.addHandler(handler);
                 break;
 
+            case HIGH:
+            case MEDIUM:
+            case TIMER:
+            case DAEMON:
+                if (core == null)
+                    throw new IllegalStateException("Cannot add " + t1 + " " + handler + " to " + name);
+                core.addHandler(handler);
+                break;
+
             case BLOCKING:
+                if (blocking == null)
+                    throw new IllegalStateException("Cannot add BLOCKING " + handler + " to " + name);
                 blocking.addHandler(handler);
                 break;
 
             // used only for replication, this is so replication can run in its own thread
             case REPLICATION:
+                if (!priorities.contains(HandlerPriority.REPLICATION))
+                    throw new IllegalStateException("Cannot add REPLICATION " + handler + " to " + name);
+
                 getReplication().addHandler(handler);
                 break;
 
             case CONCURRENT: {
+                if (concThreads.length == 0)
+                    throw new IllegalStateException("Cannot add CONCURRENT " + handler + " to " + name);
                 int n = hash(handler, concThreads.length);
                 getConcThread(n).addHandler(handler);
                 break;
@@ -233,20 +263,25 @@ public class EventGroup implements EventLoop {
     @Override
     public synchronized void start() {
         if (!isAlive()) {
-            core.start();
-            blocking.start();
+            if (core != null)
+                core.start();
+            if (blocking != null)
+                blocking.start();
 
             if (replication != null)
                 replication.start();
 
-            for (VanillaEventLoop concThread : concThreads) {
-                if (concThread != null)
-                    concThread.start();
+            if (concThreads != null) {
+                for (VanillaEventLoop concThread : concThreads) {
+                    if (concThread != null)
+                        concThread.start();
+                }
             }
 
             monitor.start();
             // this checks that the core threads have stalled
-            monitor.addHandler(new LoopBlockMonitor(MONITOR_INTERVAL_MS, EventGroup.this.core));
+            if (core != null)
+                monitor.addHandler(new LoopBlockMonitor(MONITOR_INTERVAL_MS, EventGroup.this.core));
 
             while (!isAlive())
                 Jvm.pause(1);
@@ -262,18 +297,20 @@ public class EventGroup implements EventLoop {
             if (concThread != null)
                 concThread.stop();
         }
-        core.stop();
-        blocking.stop();
+        if (core != null)
+            core.stop();
+        if (blocking != null)
+            blocking.stop();
     }
 
     @Override
     public boolean isClosed() {
-        return core.isClosed();
+        return (core == null ? monitor : core).isClosed();
     }
 
     @Override
     public boolean isAlive() {
-        return core.isAlive();
+        return (core == null ? monitor : core).isAlive();
     }
 
     @Override
@@ -281,11 +318,10 @@ public class EventGroup implements EventLoop {
         stop();
         Closeable.closeQuietly(
                 monitor,
+                replication,
                 blocking,
                 core);
 
-        VanillaEventLoop replication = this.replication;
-        Closeable.closeQuietly(replication);
         Closeable.closeQuietly(concThreads);
     }
 
@@ -303,7 +339,6 @@ public class EventGroup implements EventLoop {
 
         @Override
         public boolean action() throws InvalidEventHandlerException {
-
             long loopStartMS = eventLoop.loopStartMS();
             if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE)
                 return false;
@@ -325,6 +360,17 @@ public class EventGroup implements EventLoop {
                 lastInterval = Math.max(1, blockingInterval);
             }
             return false;
+        }
+
+        @NotNull
+        @Override
+        public HandlerPriority priority() {
+            return HandlerPriority.MONITOR;
+        }
+
+        @Override
+        public String toString() {
+            return "LoopBlockMonitor<" + eventLoop.name() + '>';
         }
     }
 }
