@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -62,13 +61,11 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private final List<EventHandler> timerHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> daemonHandlers = new CopyOnWriteArrayList<>();
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
-    private final Queue<EventHandler> newHandlerQueue = new LinkedTransferQueue<>();
     private final Pauser pauser;
     private final long timerIntervalMS;
     private final boolean daemon;
     private final String name;
-    private final boolean binding;
-    private final int bindingCpu;
+    private final String binding;
     @NotNull
     private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
     private long lastTimerMS;
@@ -85,11 +82,27 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
      * @param parent          the parent event loop
      * @param name            the name of this event hander
      * @param pauser          the pause strategy
-     * @param timerIntervalMS how long to pause
+     * @param timerIntervalMS how long to pause, Long.MAX_VALUE = always check.
      * @param daemon          is a demon thread
-     * @param binding         set affinity
-     * @param bindingCpu      cpu to bind to
+     * @param binding         set affinity description, "any", "none", "1", "last-1"
      */
+    public VanillaEventLoop(EventLoop parent,
+                            String name,
+                            Pauser pauser,
+                            long timerIntervalMS,
+                            boolean daemon,
+                            String binding) {
+        this.parent = parent;
+        this.name = name;
+        this.pauser = pauser;
+        this.timerIntervalMS = timerIntervalMS;
+        this.daemon = daemon;
+        this.binding = binding;
+        loopStartMS = Long.MAX_VALUE;
+        service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
+    }
+
+    @Deprecated
     public VanillaEventLoop(EventLoop parent,
                             String name,
                             Pauser pauser,
@@ -97,24 +110,17 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                             boolean daemon,
                             boolean binding,
                             int bindingCpu) {
-        this.parent = parent;
-        this.name = name;
-        this.pauser = pauser;
-        this.timerIntervalMS = timerIntervalMS;
-        this.daemon = daemon;
-        this.binding = binding;
-        this.bindingCpu = bindingCpu;
-        loopStartMS = Long.MAX_VALUE;
-        service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
+        this(parent, name, pauser, timerIntervalMS, daemon, bindingCpu != NO_CPU ? Integer.toString(bindingCpu) : binding ? "any" : "none");
     }
 
+    @Deprecated
     public VanillaEventLoop(EventLoop parent,
                             String name,
                             Pauser pauser,
                             long timerIntervalMS,
                             boolean daemon,
                             boolean binding) {
-        this(parent, name, pauser, timerIntervalMS, daemon, binding, NO_CPU);
+        this(parent, name, pauser, timerIntervalMS, daemon, binding ? "any" : "none");
     }
 
     public static void closeAll(@NotNull List<EventHandler> handlers) {
@@ -150,7 +156,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 ", timerHandlers=" + timerHandlers +
                 ", daemonHandlers=" + daemonHandlers +
                 ", newHandler=" + newHandler +
-                ", newHandlerQueue=" + newHandlerQueue +
                 ", pauser=" + pauser +
                 ", closedHere=" + closedHere +
                 '}';
@@ -158,8 +163,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public void start() {
-        if (isClosed())
-            throw new IllegalStateException("Event Group has been closed", closedHere);
+        checkClosed();
         if (!running.getAndSet(true))
             try {
                 service.submit(this);
@@ -188,16 +192,21 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public void addHandler(@NotNull EventHandler handler) {
-        if (isClosed())
-            throw new IllegalStateException("Event Group has been closed", closedHere);
+        checkClosed();
 
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
-        } else {
-            pauser.unpause();
-            if (!newHandler.compareAndSet(null, handler))
-                newHandlerQueue.add(handler);
+            return;
         }
+        do {
+            pauser.unpause();
+            checkClosed();
+        } while (!newHandler.compareAndSet(null, handler));
+    }
+
+    void checkClosed() {
+        if (isClosed())
+            throw new IllegalStateException("Event Group has been closed", closedHere);
     }
 
     public long loopStartMS() {
@@ -207,13 +216,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     @Override
     @HotMethod
     public void run() {
-        AffinityLock affinityLock = null;
-        try {
-            if (bindingCpu != NO_CPU)
-                affinityLock = AffinityLock.acquireLock(bindingCpu);
-            else if (binding)
-                affinityLock = AffinityLock.acquireLock();
-
+        try (AffinityLock affinityLock = AffinityLock.acquireLock(binding)) {
             thread = Thread.currentThread();
             runLoop();
         } catch (InvalidEventHandlerException e) {
@@ -223,8 +226,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         } finally {
             loopFinishedAllHandlers();
             loopStartMS = FINISHED;
-            if (affinityLock != null)
-                affinityLock.release();
         }
     }
 
@@ -396,10 +397,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             addNewHandler(handler);
             busy = true;
         }
-        while ((handler = newHandlerQueue.poll()) != null) {
-            addNewHandler(handler);
-            busy = true;
-        }
         return busy;
     }
 
@@ -482,7 +479,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
                 if (i % 10 == 0) {
                     StringBuilder sb = new StringBuilder();
-                    sb.append(name+": Shutting down thread is executing ").append(thread)
+                    sb.append(name + ": Shutting down thread is executing ").append(thread)
                             .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
                     Jvm.trimStackTrace(sb, thread.getStackTrace());
                     Jvm.warn().on(getClass(), sb.toString());
@@ -497,7 +494,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             mediumHandlersArray = NO_EVENT_HANDLERS;
             daemonHandlers.clear();
             timerHandlers.clear();
-            newHandlerQueue.clear();
             newHandler.set(null);
         }
     }
@@ -511,11 +507,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before close " + eventHandler);
             Closeable.closeQuietly(eventHandler);
         });
-
-        for (Object o; (o = newHandlerQueue.poll()) != null; ) {
-            Jvm.warn().on(getClass(), "Handler in newHandlerQueue was not accepted before close " + o);
-            Closeable.closeQuietly(o);
-        }
     }
 
     public void dumpRunningHandlers() {
