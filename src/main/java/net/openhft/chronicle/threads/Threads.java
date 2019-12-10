@@ -41,7 +41,7 @@ public enum Threads {
     ;
 
     static final Field GROUP = Jvm.getField(Thread.class, "group");
-    static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 1_000);
+    static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 500);
 
     static ExecutorFactory executorFactory;
 
@@ -135,16 +135,8 @@ public enum Threads {
             if (!service.awaitTermination(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS)) {
                 service.shutdownNow();
 
-                try {
-                    if (!service.awaitTermination(20, TimeUnit.SECONDS)) {
-                        if (service instanceof ThreadPoolExecutor)
-                            warnRunningThreads(service);
-                        else
-                            service.shutdownNow();
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+                if (service instanceof ThreadPoolExecutor)
+                    warnRunningThreads(service);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -152,6 +144,8 @@ public enum Threads {
     }
 
     private static void warnRunningThreads(@NotNull ExecutorService service) {
+        Jvm.pause(100);
+
         forEachThread(service, t -> {
             StringBuilder b = new StringBuilder("**** THE " +
                     t.getName() +
