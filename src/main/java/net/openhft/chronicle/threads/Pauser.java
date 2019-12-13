@@ -28,8 +28,57 @@ import java.util.concurrent.TimeoutException;
  * Created by peter.lawrey on 11/12/14.
  */
 public interface Pauser {
+
     int MIN_PROCESSORS = Integer.getInteger("pauser.minProcessors", 8);
     boolean SLEEPY = getSleepy();
+
+    /**
+     * Resets the pauser's internal state back to the most aggressive setting.
+     * <p>
+     * Call this if you just did some work.
+     */
+    void reset();
+
+    /**
+     * Pauses the current thread.
+     * <p>
+     * Depending on the implementation this could do nothing (busy spin), yield, sleep, ...
+     * <p>
+     * Call this if no work was done.
+     */
+    void pause();
+
+    /**
+     * use {@link TimingPauser#pause(long, TimeUnit)} instead
+     */
+    default void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
+        throw new UnsupportedOperationException(this + " is not stateful, use a TimingPauser");
+    }
+
+    /**
+     * Try to cancel the pausing if it is pausing.
+     * <p>
+     * No guarantee is made as to if unpause will actually
+     * have an effect.
+     */
+    void unpause();
+
+    /**
+     * Returns the paused time so far in milliseconds.
+     *
+     * @return the paused time so far in milliseconds
+     */
+    long timePaused();
+
+    /**
+     * Returns the number of times the pauser has checked for
+     * completion.
+     *
+     * @return Returns the number of times the pauser has checked for
+     *         completion
+     */
+    long countPaused();
+
 
     static boolean getSleepy() {
         int procs = Runtime.getRuntime().availableProcessors();
@@ -55,7 +104,7 @@ public interface Pauser {
     }
 
     /**
-     * A balanced pauser which tries to be busy for short busrts but backs off when idle.
+     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
      *
      * @param millis maximum millis (unless in debug mode)
      * @return a balanced pauser
@@ -65,7 +114,7 @@ public interface Pauser {
     }
 
     /**
-     * Wait a fixed time befoe running again unless woken
+     * Wait a fixed time before running again unless woken
      *
      * @param millis to wait for
      * @return a waiting pauser
@@ -75,7 +124,7 @@ public interface Pauser {
     }
 
     /**
-     * A balanced pauser which tries to be busy for short busrts but backs off when idle.
+     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
      *
      * @param minMillis starting millis
      * @param maxMillis maximum millis
@@ -107,32 +156,6 @@ public interface Pauser {
     static TimingPauser timedBusy() {
         return SLEEPY ? sleepy() : new BusyTimedPauser();
     }
-
-    /**
-     * Reset pauser internal state back to most aggressive setting. Call this if you just did some work.
-     */
-    void reset();
-
-    /**
-     * Depending on the implementation this could do nothing (busy spin), yield, sleep, ... Call this is no work was done
-     */
-    void pause();
-
-    /**
-     * use {@link TimingPauser#pause(long, TimeUnit)} instead
-     */
-    default void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
-        throw new UnsupportedOperationException(this + " is not stateful, use a TimingPauser");
-    }
-
-    /**
-     * If pauser is pausing then try and interrupt the pause
-     */
-    void unpause();
-
-    long timePaused();
-
-    long countPaused();
 
     enum SleepyWarning {
         ;
