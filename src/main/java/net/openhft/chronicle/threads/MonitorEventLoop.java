@@ -51,7 +51,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public MonitorEventLoop(EventLoop parent, String name, Pauser pauser) {
         this.parent = parent;
         this.pauser = pauser;
-        this.name = name + parent.name() + "/event-loop-monitor";
+        this.name = name + (parent == null ? "" : parent.name()) + "/event-loop-monitor";
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, true));
     }
 
