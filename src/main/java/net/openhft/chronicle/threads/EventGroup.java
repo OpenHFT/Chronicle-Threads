@@ -70,6 +70,7 @@ public class EventGroup implements EventLoop {
      * @param bindingCpuCore        CPU to bind core event loop to. Supersedes binding above
      * @param bindingCpuReplication CPU to bind replication event loop to. -1 means no binding
      * @param name                  name of event group. Any created threads are named after this
+     * @param concThreads           number of concurrent threads to support
      */
     @Deprecated
     public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, int bindingCpuCore, int bindingCpuReplication, String name, int concThreads) {
@@ -90,6 +91,8 @@ public class EventGroup implements EventLoop {
      * @param binding            CPU to bind core event loop to.
      * @param bindingReplication CPU to bind replication event loop to. -1 means no binding
      * @param name               name of event group. Any created threads are named after this
+     * @param concThreadsNum     number of concurrent threads to support
+     * @param priorities         priorities that we expect to support
      */
     public EventGroup(boolean daemon, @NotNull Pauser pauser, String binding, String bindingReplication, String name, int concThreadsNum, Set<HandlerPriority> priorities) {
         this(daemon, pauser, binding, bindingReplication, name, concThreadsNum, "none", Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME), priorities);
