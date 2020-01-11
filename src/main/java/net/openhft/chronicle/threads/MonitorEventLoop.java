@@ -111,7 +111,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     @HotMethod
     public void run() {
         try {
-            // don't do any monitoring for the first 60000 ms.
+            // don't do any monitoring for the first 10000 ms.
             for (int i = 0; i < MONITOR_INITIAL_DELAY_MS; i += 50)
                 if (running)
                     Jvm.pause(50);
