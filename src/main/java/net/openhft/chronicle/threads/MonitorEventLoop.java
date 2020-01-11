@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
-    static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 60_000);
+    static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
     final ExecutorService service;
     private final EventLoop parent;
     private final List<EventHandler> handlers = new ArrayList<>();
