@@ -108,7 +108,7 @@ public class EventGroup implements EventLoop {
                 ? new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
                 : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
                 : null;
-        monitor = new MonitorEventLoop(this, name, Pauser.millis(Integer.getInteger("monitor.interval", 10)));
+        monitor = new MonitorEventLoop(this, name + "monitor", Pauser.millis(Integer.getInteger("monitor.interval", 10)));
         if (core != null)
             monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 30));
         blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop") : null;
