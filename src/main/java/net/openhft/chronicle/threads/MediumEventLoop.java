@@ -31,11 +31,7 @@ import java.util.stream.Stream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
-/*
- * Created by peter.lawrey on 22/01/15.
- */
 public class MediumEventLoop implements EventLoop, Runnable, Closeable {
-    public static final int NO_CPU = -1;
     private static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop" +
             ".ignoreInterrupts");
     private static final Logger LOG = LoggerFactory.getLogger(MediumEventLoop.class);
@@ -52,7 +48,6 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     private final String binding;
     @NotNull
     private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
-    private long lastTimerMS;
     private volatile long loopStartMS;
     @NotNull
     private volatile AtomicBoolean running = new AtomicBoolean();

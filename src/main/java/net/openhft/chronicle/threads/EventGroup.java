@@ -33,9 +33,6 @@ import java.util.stream.Collectors;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
-/*
- * Created by peter.lawrey on 22/01/15.
- */
 public class EventGroup implements EventLoop {
 
     static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong
@@ -53,7 +50,8 @@ public class EventGroup implements EventLoop {
     final BlockingEventLoop blocking;
     @NotNull
     private final Pauser pauser;
-    private final String binding;
+    private final Pauser concPauser;
+    private final String concBinding;
     private final String bindingReplication;
     private final String name;
     private final Set<HandlerPriority> priorities;
@@ -94,10 +92,14 @@ public class EventGroup implements EventLoop {
      * @param name               name of event group. Any created threads are named after this
      */
     public EventGroup(boolean daemon, @NotNull Pauser pauser, String binding, String bindingReplication, String name, int concThreadsNum, Set<HandlerPriority> priorities) {
-//        priorities = EnumSet.allOf(HandlerPriority.class);
+        this(daemon, pauser, binding, bindingReplication, name, concThreadsNum, "none", Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME), priorities);
+    }
+
+    public EventGroup(boolean daemon, @NotNull Pauser pauser, String binding, String bindingReplication, String name, int concThreadsNum, String concBinding, @NotNull Pauser concPauser, Set<HandlerPriority> priorities) {
         this.daemon = daemon;
         this.pauser = pauser;
-        this.binding = binding;
+        this.concBinding = concBinding;
+        this.concPauser = concPauser;
         this.bindingReplication = bindingReplication;
         this.name = name;
         this.priorities = priorities;
@@ -163,9 +165,8 @@ public class EventGroup implements EventLoop {
 
     private synchronized VanillaEventLoop getConcThread(int n) {
         if (concThreads[n] == null) {
-            Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
-            concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, pauser,
-                    REPLICATION_EVENT_PAUSE_TIME, daemon, "none", EnumSet.of(HandlerPriority.CONCURRENT));
+            concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, concPauser,
+                    REPLICATION_EVENT_PAUSE_TIME, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT));
             monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]));
             if (isAlive())
                 concThreads[n].start();
