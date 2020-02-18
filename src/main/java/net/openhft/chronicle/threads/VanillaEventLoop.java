@@ -315,7 +315,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, highHandlers);
 
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 Jvm.warn().on(getClass(), e);
             }
         }
@@ -352,7 +352,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                 removeHandler(handler, mediumHandlers);
                 this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
 
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 Jvm.warn().on(getClass(), e);
             }
         }
@@ -369,7 +369,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, timerHandlers);
 
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 Jvm.warn().on(getClass(), e);
             }
         }
@@ -385,7 +385,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, daemonHandlers);
 
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 Jvm.warn().on(getClass(), e);
             }
         }
