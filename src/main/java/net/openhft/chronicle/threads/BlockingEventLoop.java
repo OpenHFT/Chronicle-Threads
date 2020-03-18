@@ -136,10 +136,12 @@ public class BlockingEventLoop implements EventLoop {
     @Override
     public synchronized void close() {
         closed = true;
-        Threads.shutdown(service);
+
         if (! started)
             handlers.forEach(EventHandler::loopFinished);
         closeQuietly(handlers);
+
+        Threads.shutdown(service);
     }
 
     @Override
