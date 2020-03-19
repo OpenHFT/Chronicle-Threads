@@ -141,6 +141,8 @@ public class BlockingEventLoop implements EventLoop {
             handlers.forEach(EventHandler::loopFinished);
         closeQuietly(handlers);
 
+        Jvm.pause(100);
+
         Threads.shutdown(service);
     }
 
@@ -164,6 +166,8 @@ public class BlockingEventLoop implements EventLoop {
             try {
                 while (!closed)
                     handler.action();
+
+
 
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.
