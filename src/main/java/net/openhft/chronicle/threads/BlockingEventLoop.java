@@ -32,6 +32,8 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
+import static net.openhft.chronicle.threads.Threads.shutdown;
+import static net.openhft.chronicle.threads.Threads.unpark;
 
 /**
  * Event Loop for blocking tasks.
@@ -115,7 +117,7 @@ public class BlockingEventLoop implements EventLoop {
 
     @Override
     public void unpause() {
-        Threads.unpark(service);
+        unpark(service);
     }
 
     @Override
@@ -139,11 +141,9 @@ public class BlockingEventLoop implements EventLoop {
 
         if (! started)
             handlers.forEach(EventHandler::loopFinished);
+
+        shutdown(service);
         closeQuietly(handlers);
-
-        Jvm.pause(100);
-
-        Threads.shutdown(service);
     }
 
     @Override
