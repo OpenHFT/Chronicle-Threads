@@ -26,9 +26,4 @@ The canonical way to make use of `Pauser` is below:
 The various different implementations of `Pauser` allow for varied pausing strategies - see 
 [javadoc](http://openhft.github.io/Chronicle-Threads/apidocs/index.html) 
 
-## Summarise the Thread Stack Traces
-
-The tool to summarise the thread stack traces is here.
-
-net.openhft.chronicle.core.threads.MonitorProfileAnalyserMain
 
