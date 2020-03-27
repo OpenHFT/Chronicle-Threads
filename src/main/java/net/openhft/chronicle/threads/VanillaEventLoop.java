@@ -66,6 +66,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private final List<EventHandler> timerHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> daemonHandlers = new CopyOnWriteArrayList<>();
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
+    @NotNull
+    private final AtomicBoolean running = new AtomicBoolean();
+
     private final Pauser pauser;
     private final long timerIntervalMS;
     private final boolean daemon;
@@ -76,8 +79,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
     private long lastTimerMS;
     private volatile long loopStartMS;
-    @NotNull
-    private volatile AtomicBoolean running = new AtomicBoolean();
     @Nullable
     private volatile Thread thread = null;
     @Nullable
@@ -207,7 +208,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler + " allows " + priorities);
         checkClosed();
 
-        if (thread == null || thread == Thread.currentThread()) {
+        if (thread == null || thread == Thread.currentThread() && !Thread.currentThread().isInterrupted()) {
             addNewHandler(handler);
             return;
         }
@@ -280,7 +281,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private boolean isNotInterrupted() {
-        return !CHECK_INTERRUPTS || !Thread.currentThread().isInterrupted();
+        return !(CHECK_INTERRUPTS && Thread.currentThread().isInterrupted());
     }
 
     private boolean runMediumLoopOnly() {
