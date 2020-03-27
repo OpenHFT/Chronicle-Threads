@@ -66,6 +66,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private final List<EventHandler> timerHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> daemonHandlers = new CopyOnWriteArrayList<>();
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
+    @NotNull
+    private final AtomicBoolean running = new AtomicBoolean();
+
     private final Pauser pauser;
     private final long timerIntervalMS;
     private final boolean daemon;
@@ -76,8 +79,6 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
     private long lastTimerMS;
     private volatile long loopStartMS;
-    @NotNull
-    private volatile AtomicBoolean running = new AtomicBoolean();
     @Nullable
     private volatile Thread thread = null;
     @Nullable
@@ -206,6 +207,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         if (!priorities.contains(priority))
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler + " allows " + priorities);
         checkClosed();
+        checkInterrupted();
 
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
@@ -214,12 +216,18 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         do {
             pauser.unpause();
             checkClosed();
+            checkInterrupted();
         } while (!newHandler.compareAndSet(null, handler));
     }
 
     void checkClosed() {
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed", closedHere);
+    }
+
+    void checkInterrupted() {
+        if (Thread.currentThread().isInterrupted())
+            throw new IllegalStateException("Event Group has been interrupted");
     }
 
     public long loopStartMS() {
@@ -280,7 +288,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private boolean isNotInterrupted() {
-        return !CHECK_INTERRUPTS || !Thread.currentThread().isInterrupted();
+        return !(CHECK_INTERRUPTS && Thread.currentThread().isInterrupted());
     }
 
     private boolean runMediumLoopOnly() {
