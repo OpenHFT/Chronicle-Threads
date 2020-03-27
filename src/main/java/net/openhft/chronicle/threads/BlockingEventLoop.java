@@ -146,15 +146,12 @@ public class BlockingEventLoop implements EventLoop {
         if (closed.getAndSet(true))
             return;
 
-        closeQuietly(handlers);
-
         threadFactory.threads().forEach(Thread::interrupt);
-
-        shutdown(service);
-
+ 
+        Threads.shutdown(service);
         if (! started)
             handlers.forEach(EventHandler::loopFinished);
-
+        closeQuietly(handlers);
     }
 
     @Override
