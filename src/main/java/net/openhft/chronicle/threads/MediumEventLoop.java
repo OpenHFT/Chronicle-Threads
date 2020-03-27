@@ -150,6 +150,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
         if (priority.alias() != HandlerPriority.MEDIUM)
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
         checkClosed();
+        checkInterrupted();
 
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
@@ -158,12 +159,18 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
         do {
             pauser.unpause();
             checkClosed();
+            checkInterrupted();
         } while (!newHandler.compareAndSet(null, handler));
     }
 
     void checkClosed() {
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed", closedHere);
+    }
+
+    void checkInterrupted() {
+        if (Thread.currentThread().isInterrupted())
+            throw new IllegalStateException("Event Group has been interrupted");
     }
 
     public long loopStartMS() {
