@@ -30,6 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.Threads.shutdown;
@@ -50,21 +51,26 @@ public class BlockingEventLoop implements EventLoop {
     private final ExecutorService service;
     @NotNull
     private final String name;
-    private volatile boolean closed;
+    private AtomicBoolean closed = new AtomicBoolean();
     private volatile boolean started;
     private final List<EventHandler> handlers = new ArrayList<>();
+    private NamedThreadFactory threadFactory;
 
     public BlockingEventLoop(@NotNull EventLoop parent,
                              @NotNull String name) {
         this.name = name;
         this.parent = parent;
-        this.service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
+        this.threadFactory = new NamedThreadFactory(name, true);
+        this.service = Executors.newCachedThreadPool(threadFactory);
+
+
     }
 
     public BlockingEventLoop(@NotNull String name) {
         this.name = name;
         this.parent = this;
-        this.service = Executors.newCachedThreadPool(new NamedThreadFactory(name, true));
+        this.threadFactory = new NamedThreadFactory(name, true);
+        this.service = Executors.newCachedThreadPool(threadFactory);
     }
 
     @Override
@@ -127,7 +133,7 @@ public class BlockingEventLoop implements EventLoop {
 
     @Override
     public boolean isClosed() {
-        return closed;
+        return closed.get();
     }
 
     @Override
@@ -137,13 +143,18 @@ public class BlockingEventLoop implements EventLoop {
 
     @Override
     public synchronized void close() {
-        closed = true;
+        if (closed.getAndSet(true))
+            return;
+
+        closeQuietly(handlers);
+
+        threadFactory.threads().forEach(Thread::interrupt);
+
+        shutdown(service);
 
         if (! started)
             handlers.forEach(EventHandler::loopFinished);
 
-        shutdown(service);
-        closeQuietly(handlers);
     }
 
     @Override
@@ -164,7 +175,7 @@ public class BlockingEventLoop implements EventLoop {
         public void run() {
             handler.eventLoop(parent);
             try {
-                while (!closed)
+                while (!closed.get())
                     handler.action();
 
 
@@ -173,7 +184,7 @@ public class BlockingEventLoop implements EventLoop {
                 // expected and logged below.
 //              TODO:   handlersRemoved.add(handler);
             } catch (Throwable t) {
-                if (!closed)
+                if (!closed.get())
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw", t);
 
             } finally {
