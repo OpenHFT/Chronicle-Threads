@@ -35,19 +35,15 @@ import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
 public class EventGroup implements EventLoop {
 
-    static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong
-            ("REPLICATION_MONITOR_INTERVAL_MS", SECONDS.toMillis(15));
-
-    static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 200);
-
     public static final int CONC_THREADS = Integer.getInteger("CONC_THREADS", (Runtime.getRuntime().availableProcessors() + 2) / 2);
+    private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", SECONDS.toMillis(15));
+    private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 200);
+    private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
 
-    private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger
-            ("replicationEventPauseTime", 20);
     @NotNull
-    final EventLoop monitor;
-    final VanillaEventLoop core;
-    final BlockingEventLoop blocking;
+    private final EventLoop monitor;
+    private final VanillaEventLoop core;
+    private final BlockingEventLoop blocking;
     @NotNull
     private final Pauser pauser;
     private final Pauser concPauser;
@@ -58,8 +54,9 @@ public class EventGroup implements EventLoop {
     @NotNull
     private final VanillaEventLoop[] concThreads;
     private final MilliPauser milliPauser = Pauser.millis(50);
+    private final boolean daemon;
+
     private VanillaEventLoop replication;
-    private boolean daemon;
 
     /**
      * Create an EventGroup
@@ -73,7 +70,13 @@ public class EventGroup implements EventLoop {
      * @param concThreads           number of concurrent threads to support
      */
     @Deprecated
-    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, int bindingCpuCore, int bindingCpuReplication, String name, int concThreads) {
+    public EventGroup(final boolean daemon,
+                      @NotNull final Pauser pauser,
+                      final boolean binding,
+                      final int bindingCpuCore,
+                      final int bindingCpuReplication,
+                      final String name,
+                      final int concThreads) {
         this(daemon,
                 pauser,
                 bindingCpuCore != -1 ? Integer.toString(bindingCpuCore) : binding ? "any" : "none",
@@ -94,20 +97,44 @@ public class EventGroup implements EventLoop {
      * @param concThreadsNum     number of concurrent threads to support
      * @param priorities         priorities that we expect to support
      */
-    public EventGroup(boolean daemon, @NotNull Pauser pauser, String binding, String bindingReplication, String name, int concThreadsNum, Set<HandlerPriority> priorities) {
-        this(daemon, pauser, binding, bindingReplication, name, concThreadsNum, "none", Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME), priorities);
+    public EventGroup(final boolean daemon,
+                      final @NotNull Pauser pauser,
+                      final String binding,
+                      final String bindingReplication,
+                      final String name,
+                      final int concThreadsNum,
+                      final Set<HandlerPriority> priorities) {
+        this(daemon,
+                pauser,
+                binding,
+                bindingReplication,
+                name,
+                concThreadsNum,
+                "none",
+                Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME),
+                priorities);
     }
 
-    public EventGroup(boolean daemon, @NotNull Pauser pauser, String binding, String bindingReplication, String name, int concThreadsNum, String concBinding, @NotNull Pauser concPauser, Set<HandlerPriority> priorities) {
+    public EventGroup(final boolean daemon,
+                      @NotNull final Pauser pauser,
+                      final String binding,
+                      final String bindingReplication,
+                      final String name,
+                      final int concThreadsNum,
+                      final String concBinding,
+                      @NotNull final Pauser concPauser,
+                      final Set<HandlerPriority> priorities) {
         this.daemon = daemon;
         this.pauser = pauser;
         this.concBinding = concBinding;
         this.concPauser = concPauser;
         this.bindingReplication = bindingReplication;
         this.name = name;
-        this.priorities = priorities;
+        this.priorities = EnumSet.copyOf(priorities);
 
-        Set<HandlerPriority> corePriorities = priorities.stream().filter(VanillaEventLoop.ALLOWED_PRIORITIES::contains).collect(Collectors.toSet());
+        final Set<HandlerPriority> corePriorities = EnumSet.copyOf(priorities.stream()
+                .filter(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
+                .collect(Collectors.toSet()));
         core = priorities.stream().anyMatch(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
                 ? corePriorities.equals(EnumSet.of(HandlerPriority.MEDIUM))
                 ? new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
@@ -120,23 +147,23 @@ public class EventGroup implements EventLoop {
         concThreads = new VanillaEventLoop[priorities.contains(HandlerPriority.CONCURRENT) ? concThreadsNum : 0];
     }
 
-    public EventGroup(boolean daemon) {
+    public EventGroup(final boolean daemon) {
         this(daemon, false);
     }
 
-    public EventGroup(boolean daemon, boolean binding) {
+    public EventGroup(final boolean daemon, boolean binding) {
         this(daemon, Pauser.balanced(), binding);
     }
 
-    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding) {
+    public EventGroup(final boolean daemon, @NotNull final Pauser pauser, final boolean binding) {
         this(daemon, pauser, binding, NO_CPU, NO_CPU, "");
     }
 
-    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, String name) {
+    public EventGroup(final boolean daemon, @NotNull final Pauser pauser, final boolean binding, final String name) {
         this(daemon, pauser, binding, NO_CPU, NO_CPU, name);
     }
 
-    public EventGroup(boolean daemon, @NotNull Pauser pauser, boolean binding, int bindingCpuCore, int bindingCpuReplication, String name) {
+    public EventGroup(final boolean daemon, @NotNull final Pauser pauser, final boolean binding, final int bindingCpuCore, final int bindingCpuReplication, final String name) {
         this(daemon,
                 pauser,
                 bindingCpuCore != -1 ? Integer.toString(bindingCpuCore) : binding ? "any" : "none",
@@ -146,7 +173,7 @@ public class EventGroup implements EventLoop {
                 EnumSet.allOf(HandlerPriority.class));
     }
 
-    protected int hash(EventHandler handler, int mod) {
+    protected int hash(final EventHandler handler, final int mod) {
         int n = handler.hashCode();
         n = (n >>> 23) ^ (n >>> 9) ^ n;
         n = (n & 0x7FFF_FFFF) % mod;
@@ -205,7 +232,7 @@ public class EventGroup implements EventLoop {
     }
 
     @Override
-    public void addHandler(@NotNull EventHandler handler) {
+    public void addHandler(@NotNull final EventHandler handler) {
         HandlerPriority t1 = handler.priority();
         switch (t1) {
             case MONITOR:
@@ -248,7 +275,7 @@ public class EventGroup implements EventLoop {
         }
     }
 
-    public void setupTimeLimitMonitor(long timeLimitNS, LongSupplier timeOfStart) {
+    public void setupTimeLimitMonitor(final long timeLimitNS, final LongSupplier timeOfStart) {
         // to cleanly shut down the runner, we cannot rely on Thread.interrupt as it
         // can cause nasty exceptions to bubble up from the guts of CQ
         addTimingMonitor(
@@ -258,8 +285,10 @@ public class EventGroup implements EventLoop {
                 core::thread);
     }
 
-    public void addTimingMonitor(String description, long timeLimitNS, LongSupplier timeSupplier,
-                                 Supplier<Thread> threadSupplier) {
+    public void addTimingMonitor(final String description,
+                                 final long timeLimitNS,
+                                 final LongSupplier timeSupplier,
+                                 final Supplier<Thread> threadSupplier) {
         milliPauser.minPauseTimeMS((timeLimitNS + 999_999) / 1_000_000);
         addHandler(new ThreadMonitorEventHandler(description, timeLimitNS, timeSupplier, threadSupplier));
     }
@@ -275,11 +304,9 @@ public class EventGroup implements EventLoop {
             if (replication != null)
                 replication.start();
 
-            if (concThreads != null) {
-                for (VanillaEventLoop concThread : concThreads) {
-                    if (concThread != null)
-                        concThread.start();
-                }
+            for (VanillaEventLoop concThread : concThreads) {
+                if (concThread != null)
+                    concThread.start();
             }
 
             monitor.start();
@@ -329,13 +356,13 @@ public class EventGroup implements EventLoop {
         Closeable.closeQuietly(concThreads);
     }
 
-    class LoopBlockMonitor implements EventHandler {
+    private final class LoopBlockMonitor implements EventHandler {
         private final long monitoryIntervalMs;
         @NotNull
         private final VanillaEventLoop eventLoop;
         long lastInterval = 1;
 
-        public LoopBlockMonitor(long monitoryIntervalMs, @NotNull final VanillaEventLoop eventLoop) {
+        public LoopBlockMonitor(final long monitoryIntervalMs, @NotNull final VanillaEventLoop eventLoop) {
             this.monitoryIntervalMs = monitoryIntervalMs;
             assert eventLoop != null;
             this.eventLoop = eventLoop;

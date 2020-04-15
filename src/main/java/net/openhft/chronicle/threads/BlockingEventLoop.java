@@ -51,22 +51,20 @@ public class BlockingEventLoop implements EventLoop {
     private final ExecutorService service;
     @NotNull
     private final String name;
-    private AtomicBoolean closed = new AtomicBoolean();
-    private volatile boolean started;
+    private final AtomicBoolean closed = new AtomicBoolean();
+    private final AtomicBoolean started = new AtomicBoolean();
     private final List<EventHandler> handlers = new ArrayList<>();
-    private NamedThreadFactory threadFactory;
+    private final NamedThreadFactory threadFactory;
 
-    public BlockingEventLoop(@NotNull EventLoop parent,
-                             @NotNull String name) {
+    public BlockingEventLoop(@NotNull final EventLoop parent,
+                             @NotNull final String name) {
         this.name = name;
         this.parent = parent;
         this.threadFactory = new NamedThreadFactory(name, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
-
-
     }
 
-    public BlockingEventLoop(@NotNull String name) {
+    public BlockingEventLoop(@NotNull final String name) {
         this.name = name;
         this.parent = this;
         this.threadFactory = new NamedThreadFactory(name, true);
@@ -92,28 +90,28 @@ public class BlockingEventLoop implements EventLoop {
      * @param handler to execute
      */
     @Override
-    public synchronized void addHandler(@NotNull EventHandler handler) {
+    public synchronized void addHandler(@NotNull final EventHandler handler) {
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         this.handlers.add(handler);
-        if (started)
+        if (started.get())
             this.startHandler(handler);
     }
 
-    private String asString(Object handler) {
+    private String asString(final Object handler) {
         return Integer.toHexString(System.identityHashCode(handler));
     }
 
     @Override
     public synchronized void start() {
-        this.started = true;
+        started.set(true);
         handlers.forEach(this::startHandler);
     }
 
     @NotNull
-    private void startHandler(EventHandler handler) {
+    private void startHandler(final EventHandler handler) {
         try {
             service.submit(new Runner(handler));
         } catch (RejectedExecutionException e) {
@@ -127,9 +125,7 @@ public class BlockingEventLoop implements EventLoop {
     }
 
     @Override
-    public void stop() {
-
-    }
+    public void stop() {}
 
     @Override
     public boolean isClosed() {
@@ -149,7 +145,7 @@ public class BlockingEventLoop implements EventLoop {
         threadFactory.threads().forEach(Thread::interrupt);
  
         Threads.shutdown(service);
-        if (! started)
+        if (!started.get())
             handlers.forEach(EventHandler::loopFinished);
         closeQuietly(handlers);
     }
@@ -161,10 +157,10 @@ public class BlockingEventLoop implements EventLoop {
                 '}';
     }
 
-    private class Runner implements Runnable {
+    private final class Runner implements Runnable {
         private final EventHandler handler;
 
-        public Runner(EventHandler handler) {
+        public Runner(final EventHandler handler) {
             this.handler = handler;
         }
 
@@ -174,8 +170,6 @@ public class BlockingEventLoop implements EventLoop {
             try {
                 while (!closed.get())
                     handler.action();
-
-
 
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.

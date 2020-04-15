@@ -35,20 +35,22 @@ import java.util.concurrent.TimeUnit;
  */
 public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
-    static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
-    final ExecutorService service;
+    private static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
+
+    private final ExecutorService service;
     private final EventLoop parent;
     private final List<EventHandler> handlers = new ArrayList<>();
     private final Pauser pauser;
-    private volatile boolean running = true;
-    private volatile boolean closed = false;
     private final String name;
 
-    public MonitorEventLoop(EventLoop parent, Pauser pauser) {
+    private volatile boolean running = true;
+    private volatile boolean closed = false;
+
+    public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
     }
 
-    public MonitorEventLoop(EventLoop parent, String name, Pauser pauser) {
+    public MonitorEventLoop(final EventLoop parent, final String name, final Pauser pauser) {
         this.parent = parent;
         this.pauser = pauser;
         this.name = name + (parent == null ? "" : parent.name()) + "/event-loop-monitor";
@@ -95,7 +97,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     @Override
-    public void addHandler(@NotNull EventHandler handler) {
+    public void addHandler(@NotNull final EventHandler handler) {
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
@@ -134,7 +136,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
         boolean busy = false;
         // assumed to be synchronized in run()
         for (int i = 0; i < handlers.size(); i++) {
-            EventHandler handler = handlers.get(i);
+            final EventHandler handler = handlers.get(i);
             // TODO shouldn't need this.
             if (handler == null) continue;
             try {
