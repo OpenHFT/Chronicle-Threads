@@ -87,7 +87,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     /**
      * @param parent          the parent event loop
-     * @param name            the name of this event hander
+     * @param name            the name of this event handler
      * @param pauser          the pause strategy
      * @param timerIntervalMS how long to pause, Long.MAX_VALUE = always check.
      * @param daemon          is a demon thread
@@ -133,10 +133,8 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     public static void closeAll(@NotNull final List<EventHandler> handlers) {
-        handlers.forEach(h -> {
-            closeQuietly(h);
-            // do not remove the handler here, remove all at end instead
-        });
+        // do not remove the handler here, remove all at end instead
+        handlers.forEach(Closeable::closeQuietly);
     }
 
     @Nullable
@@ -259,7 +257,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     private void runLoop() throws InvalidEventHandlerException {
         long lastTimerMS = 0;
-        int acceptNewHandlers = 0;
+        int acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT;
         while (running.get() && isNotInterrupted()) {
             if (isClosed()) {
                 throw new InvalidEventHandlerException();
@@ -281,8 +279,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                  * Each modulo, potentially new event handlers are added even though
                  * there might be other handlers that are busy.
                  */
-                if (acceptNewHandlers++ % ACCEPT_HANDLER_MOD_COUNT == 0) {
+                if (--acceptHandlerModCount <= 0) {
                     acceptNewHandlers();
+                    acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT; // Re-arm
                 }
             } else {
                 if (acceptNewHandlers())
@@ -555,7 +554,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public boolean isAlive() {
-        Thread thread = this.thread;
+        final Thread thread = this.thread;
         return thread != null && thread.isAlive();
     }
 }

@@ -62,7 +62,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
 
     /**
      * @param parent  the parent event loop
-     * @param name    the name of this event hander
+     * @param name    the name of this event handler
      * @param pauser  the pause strategy
      * @param daemon  is a demon thread
      * @param binding set affinity description, "any", "none", "1", "last-1"
@@ -201,10 +201,10 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private void runLoop() throws InvalidEventHandlerException {
-        int acceptNewHandlers = 0;
+        int acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT;
         while (running.get() && isNotInterrupted()) {
             if (isClosed()) {
-                throw new InvalidEventHandlerException();
+                throw new InvalidEventHandlerException("The " + MediumEventLoop.class.getSimpleName() + " has been closed.");
             }
             boolean busy = runMediumLoopOnly();
 
@@ -215,8 +215,9 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
                  * Each modulo, potentially new event handlers are added even though
                  * there might be other handlers that are busy.
                  */
-                if (acceptNewHandlers++ % ACCEPT_HANDLER_MOD_COUNT == 0) {
+                if (--acceptHandlerModCount <= 0) {
                     acceptNewHandlers();
+                    acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT; // Re-arm
                 }
             } else {
                 if (acceptNewHandlers())
