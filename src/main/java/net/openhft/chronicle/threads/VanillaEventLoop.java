@@ -26,6 +26,7 @@ import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.core.util.Time;
+import net.openhft.chronicle.threads.internal.EventLoopUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -41,7 +42,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
-import static net.openhft.chronicle.threads.internal.ThreadsUtil.ACCEPT_HANDLER_MOD_COUNT;
 
 /*
  * Created by peter.lawrey on 22/01/15.
@@ -257,7 +257,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     private void runLoop() throws InvalidEventHandlerException {
         long lastTimerMS = 0;
-        int acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT;
+        int acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT;
         while (running.get() && isNotInterrupted()) {
             if (isClosed()) {
                 throw new InvalidEventHandlerException();
@@ -279,9 +279,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                  * Each modulo, potentially new event handlers are added even though
                  * there might be other handlers that are busy.
                  */
-                if (--acceptHandlerModCount <= 0) {
+                if (EventLoopUtil.IS_ACCEPT_HANDLER_MOD_COUNT && --acceptHandlerModCount <= 0) {
                     acceptNewHandlers();
-                    acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT; // Re-arm
+                    acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT; // Re-arm
                 }
             } else {
                 if (acceptNewHandlers())
@@ -420,13 +420,12 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     @HotMethod
     private boolean acceptNewHandlers() {
-        boolean busy = false;
         final EventHandler handler = newHandler.getAndSet(null);
         if (handler != null) {
             addNewHandler(handler);
-            busy = true;
+            return true;
         }
-        return busy;
+        return false;
     }
 
     private void addNewHandler(@NotNull final EventHandler handler) {
@@ -508,7 +507,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
                 if (i % 10 == 0) {
                     final StringBuilder sb = new StringBuilder();
-                    sb.append(name + ": Shutting down thread is executing ").append(thread)
+                    sb.append(name).append(": Shutting down thread is executing ").append(thread)
                             .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
                     Jvm.trimStackTrace(sb, thread.getStackTrace());
                     Jvm.warn().on(getClass(), sb.toString());

@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
-import static net.openhft.chronicle.threads.internal.ThreadsUtil.ACCEPT_HANDLER_MOD_COUNT;
+import static net.openhft.chronicle.threads.internal.EventLoopUtil.*;
 
 public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     private static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop" +
@@ -215,7 +215,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
                  * Each modulo, potentially new event handlers are added even though
                  * there might be other handlers that are busy.
                  */
-                if (--acceptHandlerModCount <= 0) {
+                if (IS_ACCEPT_HANDLER_MOD_COUNT && --acceptHandlerModCount <= 0) {
                     acceptNewHandlers();
                     acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT; // Re-arm
                 }
