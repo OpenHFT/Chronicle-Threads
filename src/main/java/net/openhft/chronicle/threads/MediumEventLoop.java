@@ -168,12 +168,12 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
 
     void checkClosed() {
         if (isClosed())
-            throw new IllegalStateException("Event Group has been closed", closedHere);
+            throw new IllegalStateException(hasBeen("closed"), closedHere);
     }
 
     void checkInterrupted() {
         if (Thread.currentThread().isInterrupted())
-            throw new IllegalStateException("Event Group has been interrupted");
+            throw new IllegalStateException(hasBeen("interrupted"));
     }
 
     public long loopStartMS() {
@@ -189,7 +189,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
         } catch (InvalidEventHandlerException e) {
             // ignore, already closed
         } catch (Throwable e) {
-            Jvm.warn().on(getClass(), "Loop terminated due to exception", e);
+            Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
         } finally {
             loopFinishedAllHandlers();
             loopStartMS = FINISHED;
@@ -204,7 +204,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
         int acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT;
         while (running.get() && isNotInterrupted()) {
             if (isClosed()) {
-                throw new InvalidEventHandlerException("The " + MediumEventLoop.class.getSimpleName() + " has been closed.");
+                throw new InvalidEventHandlerException(hasBeen("closed"));
             }
             boolean busy = runMediumLoopOnly();
 
@@ -397,4 +397,9 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
         final Thread thread = this.thread;
         return thread != null && thread.isAlive();
     }
+
+    private String hasBeen(String offendingProperty) {
+        return String.format("%s has been %s.", MediumEventLoop.class.getSimpleName(), offendingProperty);
+    }
+
 }
