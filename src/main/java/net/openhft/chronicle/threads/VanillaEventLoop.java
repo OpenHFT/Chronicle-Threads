@@ -220,12 +220,12 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     void checkClosed() {
         if (isClosed())
-            throw new IllegalStateException("Event Group has been closed", closedHere);
+            throw new IllegalStateException(hasBeen("closed"), closedHere);
     }
 
     void checkInterrupted() {
         if (Thread.currentThread().isInterrupted())
-            throw new IllegalStateException("Event Group has been interrupted");
+            throw new IllegalStateException(hasBeen("interrupted"));
     }
 
     public long loopStartMS() {
@@ -241,7 +241,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         } catch (InvalidEventHandlerException e) {
             // ignore, already closed
         } catch (Throwable e) {
-            Jvm.warn().on(getClass(), "Loop terminated due to exception", e);
+            Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
         } finally {
             loopFinishedAllHandlers();
             loopStartMS = FINISHED;
@@ -555,5 +555,9 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     public boolean isAlive() {
         final Thread thread = this.thread;
         return thread != null && thread.isAlive();
+    }
+
+    private String hasBeen(String offendingProperty) {
+        return String.format("%s has been %s.", VanillaEventLoop.class.getSimpleName(), offendingProperty);
     }
 }
