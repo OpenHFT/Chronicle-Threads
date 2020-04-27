@@ -347,8 +347,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             try {
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, mediumHandlers);
-                this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
+                removeMediumHandler(handler);
 
             } catch (Throwable e) {
                 Jvm.warn().on(getClass(), e);
@@ -360,19 +359,58 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     @HotMethod
     private boolean runAllMediumHandler() {
         boolean busy = false;
-        final EventHandler[] mediumHandlersArray = this.mediumHandlersArray;
-        for (EventHandler handler : mediumHandlersArray) {
-            try {
-                busy |= handler.action();
-            } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, mediumHandlers);
-                this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
+        final EventHandler[] handlers = this.mediumHandlersArray;
+        try {
+            switch (handlers.length) {
+                case 4:
+                    try {
+                        busy |= handlers[3].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[3]);
+                    }
+                    // fall through
+                case 3:
+                    try {
+                        busy |= handlers[2].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[2]);
+                    }
+                    // fall through
+                case 2:
+                    try {
+                        busy |= handlers[1].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[1]);
+                    }
+                    // fall through
+                case 1:
+                    try {
+                        busy |= handlers[0].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[0]);
+                    }
+                case 0:
+                    break;
 
-            } catch (Throwable e) {
-                Jvm.warn().on(getClass(), e);
+                default:
+                    for (EventHandler handler : handlers) {
+                        try {
+                            busy |= handler.action();
+                        } catch (InvalidEventHandlerException e) {
+                            removeMediumHandler(handler);
+                        }
+                    }
             }
+
+        } catch (Throwable e) {
+            Jvm.warn().on(getClass(), e);
         }
         return busy;
+    }
+
+    private void removeMediumHandler(EventHandler handler) {
+        removeHandler(handler, mediumHandlers);
+        this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
     }
 
     @HotMethod
