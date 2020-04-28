@@ -206,6 +206,11 @@ public class EventGroupTest {
         }
     }
 
+    @Test
+    public void testEventGroupNoCoreEventLoop() {
+        new EventGroup(true, Pauser.balanced(), "none", "none", "", 0, EnumSet.of(HandlerPriority.REPLICATION)).close();
+    }
+
     @Test(timeout = 5000)
     public void testOldOverloadUnsupported() throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {

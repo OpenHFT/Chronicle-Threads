@@ -132,9 +132,9 @@ public class EventGroup implements EventLoop {
         this.name = name;
         this.priorities = EnumSet.copyOf(priorities);
 
-        final Set<HandlerPriority> corePriorities = EnumSet.copyOf(priorities.stream()
+        final Set<HandlerPriority> corePriorities = priorities.stream()
                 .filter(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
-                .collect(Collectors.toSet()));
+                .collect(Collectors.toSet());
         core = priorities.stream().anyMatch(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
                 ? corePriorities.equals(EnumSet.of(HandlerPriority.MEDIUM))
                 ? new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
