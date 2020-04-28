@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 Chronicle Software Ltd
+ * Copyright (c) 2016-2020 Chronicle Software Ltd
  */
 
 package net.openhft.chronicle.threads;
@@ -14,6 +14,7 @@ import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.core.util.Time;
+import net.openhft.chronicle.threads.internal.EventLoopUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -30,26 +31,24 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
-import static net.openhft.chronicle.threads.internal.EventLoopUtil.*;
+import static net.openhft.chronicle.threads.VanillaEventLoop.*;
 
 public class MediumEventLoop implements EventLoop, Runnable, Closeable {
-    private static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop" +
-            ".ignoreInterrupts");
     private static final Logger LOG = LoggerFactory.getLogger(MediumEventLoop.class);
-    private static final EventHandler[] NO_EVENT_HANDLERS = {};
-    private static final long FINISHED = Long.MAX_VALUE - 1;
 
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
     private final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
+    @NotNull
+    private final AtomicBoolean running = new AtomicBoolean();
+    @NotNull
+    private final AtomicBoolean closed = new AtomicBoolean();
     private final Pauser pauser;
     private final boolean daemon;
     private final String name;
     private final String binding;
-    @NotNull
-    private final AtomicBoolean running = new AtomicBoolean();
 
     @NotNull
     private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
@@ -58,7 +57,6 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     private volatile Thread thread = null;
     @Nullable
     private volatile Throwable closedHere = null;
-    private volatile boolean closed;
 
     /**
      * @param parent  the parent event loop
@@ -82,10 +80,8 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     public static void closeAll(@NotNull final List<EventHandler> handlers) {
-        handlers.forEach(h -> {
-            closeQuietly(h);
-            // do not remove the handler here, remove all at end instead
-        });
+        // do not remove the handler here, remove all at end instead
+        Closeable.closeQuietly(handlers);
     }
 
     @Nullable
@@ -142,7 +138,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
 
     @Override
     public boolean isClosed() {
-        return closed;
+        return closed.get();
     }
 
     @Override
@@ -201,7 +197,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private void runLoop() throws InvalidEventHandlerException {
-        int acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT;
+        int acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT;
         while (running.get() && isNotInterrupted()) {
             if (isClosed()) {
                 throw new InvalidEventHandlerException(hasBeen("closed"));
@@ -215,9 +211,9 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
                  * Each modulo, potentially new event handlers are added even though
                  * there might be other handlers that are busy.
                  */
-                if (IS_ACCEPT_HANDLER_MOD_COUNT && --acceptHandlerModCount <= 0) {
+                if (EventLoopUtil.IS_ACCEPT_HANDLER_MOD_COUNT && --acceptHandlerModCount <= 0) {
                     acceptNewHandlers();
-                    acceptHandlerModCount = ACCEPT_HANDLER_MOD_COUNT; // Re-arm
+                    acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT; // Re-arm
                 }
             } else {
                 if (acceptNewHandlers())
@@ -231,7 +227,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     private boolean isNotInterrupted() {
-        return !CHECK_INTERRUPTS || !Thread.currentThread().isInterrupted();
+        return !(CHECK_INTERRUPTS && Thread.currentThread().isInterrupted());
     }
 
     private boolean runMediumLoopOnly() {
@@ -249,21 +245,56 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     @HotMethod
     private boolean runAllMediumHandler() {
         boolean busy = false;
-        final EventHandler[] mediumHandlersArray = this.mediumHandlersArray;
-        for (EventHandler handler : mediumHandlersArray) {
-            try {
-                busy |= handler.action();
-            } catch (InvalidEventHandlerException e) {
-                removeHandler(handler);
+        final EventHandler[] handlers = this.mediumHandlersArray;
+        try {
+            switch (handlers.length) {
+                case 4:
+                    try {
+                        busy |= handlers[3].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[3]);
+                    }
+                    // fall through
+                case 3:
+                    try {
+                        busy |= handlers[2].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[2]);
+                    }
+                    // fall through
+                case 2:
+                    try {
+                        busy |= handlers[1].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[1]);
+                    }
+                    // fall through
+                case 1:
+                    try {
+                        busy |= handlers[0].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[0]);
+                    }
+                case 0:
+                    break;
 
-            } catch (Exception e) {
-                Jvm.warn().on(getClass(), e);
+                default:
+                    for (EventHandler handler : handlers) {
+                        try {
+                            busy |= handler.action();
+                        } catch (InvalidEventHandlerException e) {
+                            removeMediumHandler(handler);
+                        }
+                    }
             }
+
+        } catch (Throwable e) {
+            Jvm.warn().on(getClass(), e);
         }
         return busy;
     }
 
-    private void removeHandler(final EventHandler handler) {
+    private void removeMediumHandler(EventHandler handler) {
         removeHandler(handler, mediumHandlers);
         this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
     }
@@ -281,16 +312,15 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
 
     @HotMethod
     private boolean acceptNewHandlers() {
-        boolean busy = false;
         final EventHandler handler = newHandler.getAndSet(null);
         if (handler != null) {
             addNewHandler(handler);
-            busy = true;
+            return true;
         }
-        return busy;
+        return false;
     }
 
-    private void addNewHandler(@NotNull final  EventHandler handler) {
+    private void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
         switch (t1 == null ? HandlerPriority.MEDIUM : t1.alias()) {
             case REPLICATION:
@@ -333,7 +363,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
     @Override
     public void close() {
         try {
-            closed = true;
+            closed.set(true);
             closedHere = Jvm.isDebug() ? new StackTrace("Closed here") : null;
 
             stop();
@@ -354,7 +384,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
 
                 if (i % 10 == 0) {
                     final StringBuilder sb = new StringBuilder();
-                    sb.append(name + ": Shutting down thread is executing ").append(thread)
+                    sb.append(name).append(": Shutting down thread is executing ").append(thread)
                             .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
                     Jvm.trimStackTrace(sb, thread.getStackTrace());
                     Jvm.warn().on(getClass(), sb.toString());

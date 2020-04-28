@@ -52,11 +52,10 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
                             HandlerPriority.TIMER,
                             HandlerPriority.DAEMON));
     public static final int NO_CPU = -1;
-    private static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop" +
-            ".ignoreInterrupts");
+    static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop.ignoreInterrupts");
+    static final EventHandler[] NO_EVENT_HANDLERS = {};
+    static final long FINISHED = Long.MAX_VALUE - 1;
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
-    private static final EventHandler[] NO_EVENT_HANDLERS = {};
-    private static final long FINISHED = Long.MAX_VALUE - 1;
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
@@ -67,6 +66,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     @NotNull
     private final AtomicBoolean running = new AtomicBoolean();
+    @NotNull
     private final AtomicBoolean closed = new AtomicBoolean();
     private final Pauser pauser;
     private final long timerIntervalMS;
@@ -132,7 +132,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
 
     public static void closeAll(@NotNull final List<EventHandler> handlers) {
         // do not remove the handler here, remove all at end instead
-        handlers.forEach(Closeable::closeQuietly);
+        Closeable.closeQuietly(handlers);
     }
 
     @Nullable
