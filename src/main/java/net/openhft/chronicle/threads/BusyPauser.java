@@ -21,9 +21,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.ThreadHints;
 
-/*
- * Created by peter.lawrey on 11/12/14.
- */
+
 public enum BusyPauser implements Pauser {
     INSTANCE;
 

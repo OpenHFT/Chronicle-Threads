@@ -30,9 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-/*
- * Created by peter.lawrey on 22/01/15.
- */
+
 public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     private static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);

@@ -25,9 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
 
-/*
- * Created by peter.lawrey on 04/01/2016.
- */
+
 public class PauserMonitor implements EventHandler {
     private static final Logger LOG = LoggerFactory.getLogger(PauserMonitor.class);
 

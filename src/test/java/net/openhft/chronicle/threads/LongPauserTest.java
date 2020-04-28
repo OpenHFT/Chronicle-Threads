@@ -23,9 +23,7 @@ import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
 
-/*
- * Created by peter.lawrey on 11/12/14.
- */
+
 public class LongPauserTest {
     @Test
     public void testLongPauser() throws InterruptedException {

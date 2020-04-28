@@ -34,9 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
-/*
- * Created by Peter Lawrey on 24/06/15.
- */
+
 public enum Threads {
     ;
 

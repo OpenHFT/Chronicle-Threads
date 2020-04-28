@@ -20,9 +20,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 
-/*
- * Created by peter.lawrey on 2/11/2017.
- */
+
 public class YieldingPauser implements Pauser {
     private final int minBusy;
     private int count = 0;

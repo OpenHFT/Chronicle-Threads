@@ -43,9 +43,7 @@ import java.util.stream.Stream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
-/*
- * Created by peter.lawrey on 22/01/15.
- */
+
 public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(

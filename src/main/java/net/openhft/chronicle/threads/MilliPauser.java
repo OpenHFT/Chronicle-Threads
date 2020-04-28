@@ -22,9 +22,7 @@ import net.openhft.chronicle.core.Jvm;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/*
- * Created by rob on 30/11/2015.
- */
+
 public class MilliPauser implements Pauser {
     private final AtomicBoolean pausing = new AtomicBoolean();
     private long pauseTimeMS;

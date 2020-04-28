@@ -28,9 +28,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
-/*
- * Created by rob on 30/11/2015.
- */
+
 public class LongPauser implements Pauser, TimingPauser {
     private static final String SHOW_PAUSES = System.getProperty("pauses.show");
     private final long minPauseTimeNS;
