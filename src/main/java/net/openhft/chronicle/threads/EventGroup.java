@@ -42,7 +42,7 @@ public class EventGroup implements EventLoop {
 
     @NotNull
     private final EventLoop monitor;
-    private final VanillaEventLoop core;
+    private final CoreEventLoop core;
     private final BlockingEventLoop blocking;
     @NotNull
     private final Pauser pauser;
@@ -137,7 +137,7 @@ public class EventGroup implements EventLoop {
                 .collect(Collectors.toSet());
         core = priorities.stream().anyMatch(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
                 ? corePriorities.equals(EnumSet.of(HandlerPriority.MEDIUM))
-                ? new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
+                ? new MediumEventLoop(this, name + "core-event-loop", pauser, daemon, binding)
                 : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
                 : null;
         monitor = new MonitorEventLoop(this, name + "monitor", Pauser.millis(Integer.getInteger("monitor.interval", 10)));
@@ -356,13 +356,12 @@ public class EventGroup implements EventLoop {
         Closeable.closeQuietly(concThreads);
     }
 
-    private final class LoopBlockMonitor implements EventHandler {
+    private static final class LoopBlockMonitor implements EventHandler {
         private final long monitoryIntervalMs;
-        @NotNull
-        private final VanillaEventLoop eventLoop;
+        private final @NotNull CoreEventLoop eventLoop;
         long lastInterval = 1;
 
-        public LoopBlockMonitor(final long monitoryIntervalMs, @NotNull final VanillaEventLoop eventLoop) {
+        public LoopBlockMonitor(final long monitoryIntervalMs, @NotNull final CoreEventLoop eventLoop) {
             this.monitoryIntervalMs = monitoryIntervalMs;
             assert eventLoop != null;
             this.eventLoop = eventLoop;

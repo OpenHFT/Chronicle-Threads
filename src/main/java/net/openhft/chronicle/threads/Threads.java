@@ -183,7 +183,7 @@ public enum Threads {
                 return;
             }
 
-            List objects = new ArrayList(workers);
+            List objects = new ArrayList<>(workers);
             for (Object o : objects) {
                 Field thread = o.getClass().getDeclaredField("thread");
                 thread.setAccessible(true);

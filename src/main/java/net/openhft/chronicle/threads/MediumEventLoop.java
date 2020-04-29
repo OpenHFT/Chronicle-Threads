@@ -30,10 +30,9 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.VanillaEventLoop.*;
 
-public class MediumEventLoop implements EventLoop, Runnable, Closeable {
+public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(MediumEventLoop.class);
 
     private final EventLoop parent;
@@ -84,6 +83,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
         Closeable.closeQuietly(handlers);
     }
 
+    @Override
     @Nullable
     public Thread thread() {
         return thread;
@@ -172,6 +172,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
             throw new IllegalStateException(hasBeen("interrupted"));
     }
 
+    @Override
     public long loopStartMS() {
         return loopStartMS;
     }
@@ -307,7 +308,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
             if (!handlers.isEmpty())
                 throw e2;
         }
-        closeQuietly(handler);
+        Closeable.closeQuietly(handler);
     }
 
     @HotMethod
@@ -342,6 +343,7 @@ public class MediumEventLoop implements EventLoop, Runnable, Closeable {
         return name;
     }
 
+    @Override
     public void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck) {
         final Thread thread = this.thread;
         if (thread == null) return;

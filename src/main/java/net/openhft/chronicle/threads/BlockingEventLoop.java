@@ -33,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
-import static net.openhft.chronicle.threads.Threads.shutdown;
 import static net.openhft.chronicle.threads.Threads.unpark;
 
 /**
@@ -110,7 +109,6 @@ public class BlockingEventLoop implements EventLoop {
         handlers.forEach(this::startHandler);
     }
 
-    @NotNull
     private void startHandler(final EventHandler handler) {
         try {
             service.submit(new Runner(handler));

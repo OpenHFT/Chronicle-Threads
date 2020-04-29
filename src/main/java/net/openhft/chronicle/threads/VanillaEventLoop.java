@@ -41,10 +41,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
-
-
-public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
+public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
                     EnumSet.of(HandlerPriority.HIGH,
@@ -135,6 +132,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         Closeable.closeQuietly(handlers);
     }
 
+    @Override
     @Nullable
     public Thread thread() {
         return thread;
@@ -226,6 +224,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             throw new IllegalStateException(hasBeen("interrupted"));
     }
 
+    @Override
     public long loopStartMS() {
         return loopStartMS;
     }
@@ -451,7 +450,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
             if (!handlers.isEmpty())
                 throw e2;
         }
-        closeQuietly(handler);
+        Closeable.closeQuietly(handler);
     }
 
     @HotMethod
@@ -501,6 +500,7 @@ public class VanillaEventLoop implements EventLoop, Runnable, Closeable {
         return name;
     }
 
+    @Override
     public void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck) {
         final Thread thread = this.thread;
         if (thread == null) return;
