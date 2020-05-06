@@ -223,7 +223,8 @@ public class EventGroup implements EventLoop {
     @Override
     public void unpause() {
         pauser.unpause();
-        blocking.unpause();
+        if (blocking != null)
+            blocking.unpause();
     }
 
     @Override

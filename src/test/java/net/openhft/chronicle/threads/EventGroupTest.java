@@ -208,7 +208,9 @@ public class EventGroupTest {
 
     @Test
     public void testEventGroupNoCoreEventLoop() {
-        new EventGroup(true, Pauser.balanced(), "none", "none", "", 0, EnumSet.of(HandlerPriority.REPLICATION)).close();
+        try (EventLoop eg = new EventGroup(true, Pauser.balanced(), "none", "none", "", 0, EnumSet.of(HandlerPriority.REPLICATION))) {
+            eg.unpause();
+        }
     }
 
     @Test(timeout = 5000)
