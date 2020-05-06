@@ -225,6 +225,8 @@ public class EventGroup implements EventLoop {
         pauser.unpause();
         if (blocking != null)
             blocking.unpause();
+        if (replication != null)
+            replication.unpause();
     }
 
     @Override
