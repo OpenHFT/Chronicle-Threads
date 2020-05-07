@@ -18,6 +18,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.ForceInline;
+import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.util.ObjectUtils;
 import net.openhft.chronicle.core.util.ThrowingCallable;
 import org.jetbrains.annotations.NotNull;
@@ -193,6 +194,14 @@ public enum Threads {
             }
         } catch (Exception e) {
             Jvm.debug().on(Threads.class, e);
+        }
+    }
+
+    static void loopFinishedQuietly(EventHandler eventHandler) {
+        try {
+            eventHandler.loopFinished();
+        } catch (Throwable t) {
+            Jvm.debug().on(Threads.class, t);
         }
     }
 }

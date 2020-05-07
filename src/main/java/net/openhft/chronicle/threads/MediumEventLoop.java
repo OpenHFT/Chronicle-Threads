@@ -30,6 +30,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 import static net.openhft.chronicle.threads.VanillaEventLoop.*;
 
 public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
@@ -194,7 +195,7 @@ public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
     }
 
     private void loopFinishedAllHandlers() {
-        mediumHandlers.forEach(EventHandler::loopFinished);
+        mediumHandlers.forEach(Threads::loopFinishedQuietly);
     }
 
     private void runLoop() throws InvalidEventHandlerException {
@@ -303,7 +304,7 @@ public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
     private void removeHandler(final EventHandler handler, @NotNull final List<EventHandler> handlers) {
         try {
             handlers.remove(handler);
-            handler.loopFinished();
+            loopFinishedQuietly(handler);
         } catch (ArrayIndexOutOfBoundsException e2) {
             if (!handlers.isEmpty())
                 throw e2;

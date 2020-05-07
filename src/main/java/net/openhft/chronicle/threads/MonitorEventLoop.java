@@ -154,7 +154,7 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     public void close() {
         stop();
         Threads.shutdownDaemon(service);
-        handlers.forEach(EventHandler::loopFinished);
+        handlers.forEach(Threads::loopFinishedQuietly);
         net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
         closed = true;
     }

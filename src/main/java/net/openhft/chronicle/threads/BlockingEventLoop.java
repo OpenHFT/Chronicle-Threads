@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
+import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 import static net.openhft.chronicle.threads.Threads.unpark;
 
 /**
@@ -144,7 +145,7 @@ public class BlockingEventLoop implements EventLoop {
  
         Threads.shutdown(service);
         if (!started.get())
-            handlers.forEach(EventHandler::loopFinished);
+            handlers.forEach(Threads::loopFinishedQuietly);
         closeQuietly(handlers);
     }
 
@@ -179,7 +180,7 @@ public class BlockingEventLoop implements EventLoop {
             } finally {
                 if (LOG.isDebugEnabled())
                     Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
-                handler.loopFinished();
+                loopFinishedQuietly(handler);
             }
         }
     }

@@ -41,6 +41,8 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
+
 public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
@@ -246,10 +248,10 @@ public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
     }
 
     private void loopFinishedAllHandlers() {
-        highHandlers.forEach(EventHandler::loopFinished);
-        mediumHandlers.forEach(EventHandler::loopFinished);
-        timerHandlers.forEach(EventHandler::loopFinished);
-        daemonHandlers.forEach(EventHandler::loopFinished);
+        highHandlers.forEach(Threads::loopFinishedQuietly);
+        mediumHandlers.forEach(Threads::loopFinishedQuietly);
+        timerHandlers.forEach(Threads::loopFinishedQuietly);
+        daemonHandlers.forEach(Threads::loopFinishedQuietly);
     }
 
     private void runLoop() throws InvalidEventHandlerException {
@@ -445,7 +447,7 @@ public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
     private void removeHandler(final EventHandler handler, @NotNull final List<EventHandler> handlers) {
         try {
             handlers.remove(handler);
-            handler.loopFinished();
+            loopFinishedQuietly(handler);
         } catch (ArrayIndexOutOfBoundsException e2) {
             if (!handlers.isEmpty())
                 throw e2;
