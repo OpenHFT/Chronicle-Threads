@@ -31,20 +31,28 @@ public interface Pauser {
     boolean SLEEPY = getSleepy();
 
     /**
-     * Resets the pauser's internal state back to the most aggressive setting.
-     * <p>
-     * Call this if you just did some work.
-     */
-    void reset();
-
-    /**
      * Pauses the current thread.
      * <p>
-     * Depending on the implementation this could do nothing (busy spin), yield, sleep, ...
+     * The actual pause time and thread scheduling impact is not specified and depends
+     * on the implementing class. For some implementations, a progressive increase
+     * of the pause time is employed, thread executions may or may not be yielded, whereas
+     * other implementations may not pause or yield at all.
+     * <p>
+     * Thus, depending on the implementation this could do nothing (busy spin), yield, sleep, ...
      * <p>
      * Call this if no work was done.
      */
     void pause();
+
+    /**
+     * Resets the pauser's internal state back (if any) to the most aggressive setting.
+     * <p>
+     * Pausers that progressively increases the pause time are reset back to its lowest
+     * pause time.
+     * <p>
+     * Call this if you just did some work.
+     */
+    void reset();
 
     /**
      * use {@link TimingPauser#pause(long, TimeUnit)} instead
