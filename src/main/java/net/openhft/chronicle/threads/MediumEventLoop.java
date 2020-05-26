@@ -19,8 +19,8 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.StackTrace;
 import net.openhft.chronicle.core.annotation.HotMethod;
+import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
@@ -46,7 +46,7 @@ import java.util.stream.Stream;
 import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 import static net.openhft.chronicle.threads.VanillaEventLoop.*;
 
-public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
+public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop, Runnable, Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(MediumEventLoop.class);
 
     private final EventLoop parent;
@@ -56,8 +56,6 @@ public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     @NotNull
     private final AtomicBoolean running = new AtomicBoolean();
-    @NotNull
-    private final AtomicBoolean closed = new AtomicBoolean();
     private final Pauser pauser;
     private final boolean daemon;
     private final String name;
@@ -68,8 +66,6 @@ public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
     private volatile long loopStartMS;
     @Nullable
     private volatile Thread thread = null;
-    @Nullable
-    private volatile Throwable closedHere = null;
 
     /**
      * @param parent  the parent event loop
@@ -122,13 +118,12 @@ public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
                 ", mediumHandlers=" + mediumHandlers +
                 ", newHandler=" + newHandler +
                 ", pauser=" + pauser +
-                ", closedHere=" + closedHere +
                 '}';
     }
 
     @Override
     public void start() {
-        checkClosed();
+        throwExceptionIfClosed();
         if (!running.getAndSet(true))
             try {
                 service.submit(this);
@@ -151,18 +146,13 @@ public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
     }
 
     @Override
-    public boolean isClosed() {
-        return closed.get();
-    }
-
-    @Override
     public void addHandler(@NotNull final EventHandler handler) {
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
         if (priority.alias() != HandlerPriority.MEDIUM)
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
-        checkClosed();
+        throwExceptionIfClosed();
         checkInterrupted();
 
         if (thread == null || thread == Thread.currentThread()) {
@@ -171,14 +161,9 @@ public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
         }
         do {
             pauser.unpause();
-            checkClosed();
+            throwExceptionIfClosed();
             checkInterrupted();
         } while (!newHandler.compareAndSet(null, handler));
-    }
-
-    void checkClosed() {
-        if (isClosed())
-            throw new IllegalStateException(hasBeen("closed"), closedHere);
     }
 
     void checkInterrupted() {
@@ -377,11 +362,8 @@ public class MediumEventLoop implements CoreEventLoop, Runnable, Closeable {
     }
 
     @Override
-    public void close() {
+    protected void performClose() {
         try {
-            closed.set(true);
-            closedHere = Jvm.isDebug() ? new StackTrace("Closed here") : null;
-
             stop();
             pauser.reset(); // reset the timer.
             pauser.unpause();

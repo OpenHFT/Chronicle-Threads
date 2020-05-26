@@ -19,8 +19,8 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.StackTrace;
 import net.openhft.chronicle.core.annotation.HotMethod;
+import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
@@ -44,7 +44,7 @@ import java.util.stream.Stream;
 
 import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 
-public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
+public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
                     EnumSet.of(HandlerPriority.HIGH,
@@ -66,8 +66,6 @@ public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
     private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     @NotNull
     private final AtomicBoolean running = new AtomicBoolean();
-    @NotNull
-    private final AtomicBoolean closed = new AtomicBoolean();
     private final Pauser pauser;
     private final long timerIntervalMS;
     private final boolean daemon;
@@ -80,8 +78,6 @@ public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
     private volatile long loopStartMS;
     @Nullable
     private volatile Thread thread = null;
-    @Nullable
-    private volatile Throwable closedHere = null;
 
     /**
      * @param parent          the parent event loop
@@ -163,13 +159,12 @@ public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
                 ", daemonHandlers=" + daemonHandlers +
                 ", newHandler=" + newHandler +
                 ", pauser=" + pauser +
-                ", closedHere=" + closedHere +
                 '}';
     }
 
     @Override
     public void start() {
-        checkClosed();
+        throwExceptionIfClosed();
         if (!running.getAndSet(true))
             try {
                 service.submit(this);
@@ -192,18 +187,13 @@ public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
     }
 
     @Override
-    public boolean isClosed() {
-        return closed.get();
-    }
-
-    @Override
     public void addHandler(@NotNull final EventHandler handler) {
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
         if (!priorities.contains(priority))
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler + " allows " + priorities);
-        checkClosed();
+        throwExceptionIfClosed();
         checkInterrupted();
 
         if (thread == null || thread == Thread.currentThread()) {
@@ -212,14 +202,9 @@ public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
         }
         do {
             pauser.unpause();
-            checkClosed();
+            throwExceptionIfClosed();
             checkInterrupted();
         } while (!newHandler.compareAndSet(null, handler));
-    }
-
-    void checkClosed() {
-        if (isClosed())
-            throw new IllegalStateException(hasBeen("closed"), closedHere);
     }
 
     void checkInterrupted() {
@@ -468,7 +453,7 @@ public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
 
     private void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
-        switch (t1 == null ? HandlerPriority.MEDIUM : t1.alias()) {
+        switch (t1.alias()) {
             case HIGH:
                 if (!highHandlers.contains(handler))
                     highHandlers.add(handler);
@@ -521,11 +506,8 @@ public class VanillaEventLoop implements CoreEventLoop, Runnable, Closeable {
     }
 
     @Override
-    public void close() {
+    protected void performClose() {
         try {
-            closed.set(true);
-            closedHere = Jvm.isDebug() ? new StackTrace("Closed here") : null;
-
             stop();
             pauser.reset(); // reset the timer.
             pauser.unpause();
