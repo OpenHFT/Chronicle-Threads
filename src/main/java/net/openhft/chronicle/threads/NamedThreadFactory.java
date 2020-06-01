@@ -17,10 +17,10 @@
  */
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.util.WeakIdentityHashMap;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -32,7 +32,7 @@ public class NamedThreadFactory implements ThreadFactory {
     private final String name;
     private final Boolean daemon;
     private final Integer priority;
-    private Set<Thread> threads = synchronizedSet(newSetFromMap(new WeakHashMap<>()));
+    private Set<Thread> threads = synchronizedSet(newSetFromMap(new WeakIdentityHashMap<>()));
 
     public NamedThreadFactory(String name) {
         this(name, null);
