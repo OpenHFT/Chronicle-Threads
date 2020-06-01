@@ -34,7 +34,7 @@ public class VanillaEventLoopTest {
     }
 
     @Test(timeout = 10_000L)
-    public void testEnsureRemoveInvokesLoopFinishedJustOnce() {
+    public void testEnsureRemoveInvokesLoopFinishedJustOnce() throws InterruptedException {
         final VanillaEventLoop el = new VanillaEventLoop(null, "test-event-loop", PauserMode.busy.get(), 20, false, "none", EnumSet.of(HandlerPriority.MEDIUM));
 
         final TestMediumEventHandler eh0 = new TestMediumEventHandler();
@@ -50,7 +50,11 @@ public class VanillaEventLoopTest {
         System.out.println(eh0);
         System.out.println(eh1);
 
+        Thread thread = el.thread();
+
         el.stop();
+
+        thread.join(1000);
 
         assertEquals(LOOPS, eh0.actionCnt);
         assertEquals(LOOPS, eh1.actionCnt);
@@ -62,8 +66,8 @@ public class VanillaEventLoopTest {
 
     private static final class TestMediumEventHandler implements EventHandler, Closeable {
 
-        private int actionCnt;
-        private int finishedCnt;
+        private volatile int actionCnt;
+        private volatile int finishedCnt;
 
         @Override
         public boolean action() throws InvalidEventHandlerException {
