@@ -10,8 +10,7 @@ import org.junit.Test;
 
 import java.util.EnumSet;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class VanillaEventLoopTest {
 
@@ -45,7 +44,12 @@ public class VanillaEventLoopTest {
 
         el.start();
 
-        Jvm.pause(500);
+        for (int i = 100; i >= 0; i--) {
+            if (el.thread() != null)
+                break;
+            Jvm.pause(10);
+            assertFalse("thread failed to start", i == 0);
+        }
 
         System.out.println(eh0);
         System.out.println(eh1);
