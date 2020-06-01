@@ -197,6 +197,8 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         checkInterrupted();
 
         if (thread == null || thread == Thread.currentThread()) {
+            if (thread == null)
+                throw new NullPointerException();
             addNewHandler(handler);
             return;
         }
@@ -222,6 +224,8 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     public void run() {
         try (AffinityLock lock = AffinityLock.acquireLock(binding)) {
             thread = Thread.currentThread();
+            if (thread == null)
+                throw new NullPointerException();
             runLoop();
         } catch (InvalidEventHandlerException e) {
             // ignore, already closed
