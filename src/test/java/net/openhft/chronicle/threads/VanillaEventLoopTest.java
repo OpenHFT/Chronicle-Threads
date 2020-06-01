@@ -55,7 +55,8 @@ public class VanillaEventLoopTest {
         System.out.println(eh1);
 
         Thread thread = el.thread();
-
+        if (thread == null)
+            return;
         el.stop();
 
         thread.join(1000);
