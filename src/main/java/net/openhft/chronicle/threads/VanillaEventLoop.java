@@ -197,8 +197,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         checkInterrupted();
 
         if (thread == null || thread == Thread.currentThread()) {
-            if (thread == null)
-                throw new NullPointerException();
             addNewHandler(handler);
             return;
         }
