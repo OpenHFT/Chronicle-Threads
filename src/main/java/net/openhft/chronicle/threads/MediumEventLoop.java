@@ -187,7 +187,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
         } finally {
-            loopFinishedAllHandlers();
+            close();
             loopStartMS = FINISHED;
         }
     }
