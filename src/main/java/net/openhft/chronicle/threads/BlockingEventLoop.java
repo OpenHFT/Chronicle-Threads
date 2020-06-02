@@ -174,7 +174,7 @@ public class BlockingEventLoop implements EventLoop {
 //              TODO:   handlersRemoved.add(handler);
             } catch (Throwable t) {
                 if (!closed.get())
-                    Jvm.warn().on(handler.getClass(), asString(handler) + " threw", t);
+                    Jvm.warn().on(handler.getClass(), asString(handler) + " threw ", t);
 
             } finally {
                 if (LOG.isDebugEnabled())
