@@ -1,7 +1,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.io.Closeable;
+import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -69,7 +69,7 @@ public class VanillaEventLoopTest {
 
     }
 
-    private static final class TestMediumEventHandler implements EventHandler, Closeable {
+    private static final class TestMediumEventHandler extends SimpleCloseable implements EventHandler {
 
         private volatile int actionCnt;
         private volatile int finishedCnt;
@@ -84,18 +84,13 @@ public class VanillaEventLoopTest {
 
         @Override
         public void loopFinished() {
-            finishedCnt++;
+            close();
         }
 
         @Override
-        public void close() {
-            throwExceptionIfClosed();
+        protected void performClose() {
+            super.performClose();
             finishedCnt++;
-        }
-
-        @Override
-        public boolean isClosed() {
-            return finishedCnt > 0;
         }
 
         @NotNull
