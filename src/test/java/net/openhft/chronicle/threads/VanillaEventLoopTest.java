@@ -47,7 +47,7 @@ public class VanillaEventLoopTest {
         for (int i = 100; i >= 0; i--) {
             if (el.thread() != null)
                 break;
-            Jvm.pause(10);
+            Jvm.pause(50);
             assertFalse("thread failed to start", i == 0);
         }
 
