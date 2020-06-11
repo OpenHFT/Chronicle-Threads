@@ -22,7 +22,7 @@ import net.openhft.chronicle.core.Jvm;
 import org.junit.Test;
 
 
-public class LightPauserTest {
+public class LightPauserTest extends ThreadsTestCommon {
     @Test
     public void testLightPauser() throws InterruptedException {
         final LightPauser pauser = new LightPauser(100 * 1000, 100 * 1000);

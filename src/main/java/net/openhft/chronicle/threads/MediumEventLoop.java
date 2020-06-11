@@ -85,7 +85,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         this.daemon = daemon;
         this.binding = binding;
         loopStartMS = Long.MAX_VALUE;
-        service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
+        service = Executors.newSingleThreadExecutor(
+                new NamedThreadFactory(name, daemon));
     }
 
     public static void closeAll(@NotNull final List<EventHandler> handlers) {

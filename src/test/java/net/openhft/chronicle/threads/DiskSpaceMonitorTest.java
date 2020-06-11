@@ -10,7 +10,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
-public class DiskSpaceMonitorTest {
+public class DiskSpaceMonitorTest extends ThreadsTestCommon {
 
     @Test
     public void pollDiskSpace() {
@@ -18,7 +18,7 @@ public class DiskSpaceMonitorTest {
         Assume.assumeTrue(!Jvm.isArm());
         Map<ExceptionKey, Integer> map = Jvm.recordExceptions();
         DiskSpaceMonitor.INSTANCE.setThresholdPercentage(100);
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 500; i++) {
             DiskSpaceMonitor.INSTANCE.pollDiskSpace(new File("."));
             Jvm.pause(5);
         }
@@ -27,6 +27,6 @@ public class DiskSpaceMonitorTest {
         long count = map.values().stream().mapToInt(i -> i).sum();
         Jvm.resetExceptionHandlers();
         // look for 5 disk space checks and some debug messages about slow disk checks.
-        assertEquals(6, count, 2);
+        assertEquals(3, count, 1);
     }
 }

@@ -2,7 +2,7 @@ package net.openhft.chronicle.threads;
 
 import org.junit.Test;
 
-public class PauserTest {
+public class PauserTest extends ThreadsTestCommon {
 
     @Test
     public void sleepy() {

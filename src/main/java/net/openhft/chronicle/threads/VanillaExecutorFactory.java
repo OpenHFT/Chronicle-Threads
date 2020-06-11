@@ -34,6 +34,7 @@ public enum VanillaExecutorFactory implements ExecutorFactory {
 
     @Override
     public ScheduledExecutorService acquireScheduledExecutorService(String name, boolean daemon) {
-        return Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory(name, daemon));
+        return Executors.newSingleThreadScheduledExecutor(
+                new NamedThreadFactory(name, daemon));
     }
 }

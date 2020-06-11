@@ -17,22 +17,20 @@
  */
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.util.WeakIdentityHashMap;
+import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.StackTrace;
+import net.openhft.chronicle.core.threads.ThreadDump;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Set;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static java.util.Collections.newSetFromMap;
-import static java.util.Collections.synchronizedSet;
 
 public class NamedThreadFactory implements ThreadFactory {
     private final AtomicInteger id = new AtomicInteger();
     private final String name;
     private final Boolean daemon;
     private final Integer priority;
-    private Set<Thread> threads = synchronizedSet(newSetFromMap(new WeakIdentityHashMap<>()));
+    private final StackTrace createdHere;
 
     public NamedThreadFactory(String name) {
         this(name, null);
@@ -46,6 +44,7 @@ public class NamedThreadFactory implements ThreadFactory {
         this.name = name;
         this.daemon = daemon;
         this.priority = priority;
+        createdHere = Jvm.isResourceTracing() ? new StackTrace("NamedThreadFactory created here") : null;
     }
 
     @Override
@@ -54,7 +53,7 @@ public class NamedThreadFactory implements ThreadFactory {
         int id = this.id.getAndIncrement();
         String nameN = Threads.threadGroupPrefix() + (id == 0 ? this.name : (this.name + '-' + id));
         Thread t = new Thread(r, nameN);
-        threads.add(t);
+        ThreadDump.add(t, createdHere);
         if (daemon != null)
             t.setDaemon(daemon);
         if (priority != null)
@@ -62,7 +61,7 @@ public class NamedThreadFactory implements ThreadFactory {
         return t;
     }
 
-    public Set<Thread> threads() {
-        return threads;
+    public void interruptAll() {
+        // TODO
     }
 }

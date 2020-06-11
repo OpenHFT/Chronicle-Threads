@@ -59,14 +59,14 @@ public class BlockingEventLoop implements EventLoop {
                              @NotNull final String name) {
         this.name = name;
         this.parent = parent;
-        this.threadFactory = new NamedThreadFactory(name, true);
+        this.threadFactory = new NamedThreadFactory(name);
         this.service = Executors.newCachedThreadPool(threadFactory);
     }
 
     public BlockingEventLoop(@NotNull final String name) {
         this.name = name;
         this.parent = this;
-        this.threadFactory = new NamedThreadFactory(name, true);
+        this.threadFactory = new NamedThreadFactory(name);
         this.service = Executors.newCachedThreadPool(threadFactory);
     }
 
@@ -140,7 +140,7 @@ public class BlockingEventLoop implements EventLoop {
         if (closed.getAndSet(true))
             return;
 
-        threadFactory.threads().forEach(Thread::interrupt);
+        threadFactory.interruptAll();
 
         Threads.shutdown(service);
         if (!started.get())

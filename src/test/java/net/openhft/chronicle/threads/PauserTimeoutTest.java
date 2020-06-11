@@ -24,7 +24,7 @@ import org.junit.Test;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class PauserTimeoutTest {
+public class PauserTimeoutTest extends ThreadsTestCommon {
     TimingPauser[] pausersSupportTimeout = new TimingPauser[]{new BusyTimedPauser(), new TimeoutPauser(0),
             new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS)};
     Pauser[] pausersDontSupportTimeout = new Pauser[]{new MilliPauser(1), BusyPauser.INSTANCE, new YieldingPauser(0)};

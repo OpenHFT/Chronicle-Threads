@@ -141,7 +141,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                         "warning: chronicle-queue may crash if it runs out of space.");
 
             } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage / 100) {
-                double diskSpaceFull = 100.0 * (totalSpace - unallocatedBytes) / totalSpace;
+                double diskSpaceFull = ((long) (10000 * (totalSpace - unallocatedBytes) / totalSpace + 0.999)) / 100.0;
                 Jvm.warn().on(getClass(), "your disk " + fileStore
                         + " is " + diskSpaceFull + "% full, " +
                         "warning: chronicle-queue may crash if it runs out of space.");

@@ -24,7 +24,7 @@ import org.junit.Test;
 import java.util.concurrent.TimeUnit;
 
 
-public class LongPauserTest {
+public class LongPauserTest extends ThreadsTestCommon {
     @Test
     public void testLongPauser() throws InterruptedException {
         final LongPauser pauser = new LongPauser(1, 1, 100, 1000, TimeUnit.MICROSECONDS);

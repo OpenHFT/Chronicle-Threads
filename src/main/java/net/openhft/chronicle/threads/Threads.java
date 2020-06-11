@@ -41,7 +41,6 @@ public enum Threads {
 
     static final Field GROUP = Jvm.getField(Thread.class, "group");
     static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 500);
-
     static ExecutorFactory executorFactory;
 
     static {

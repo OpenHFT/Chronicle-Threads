@@ -32,14 +32,13 @@ import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
 public class EventGroup implements EventLoop {
 
     public static final int CONC_THREADS = Integer.getInteger("CONC_THREADS", (Runtime.getRuntime().availableProcessors() + 2) / 2);
-    private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", SECONDS.toMillis(15));
-    private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 200);
+    private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500);
+    private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
 
     @NotNull
@@ -142,7 +141,8 @@ public class EventGroup implements EventLoop {
                 ? new MediumEventLoop(this, name + "core-event-loop", pauser, daemon, binding)
                 : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
                 : null;
-        monitor = new MonitorEventLoop(this, name + "monitor", Pauser.millis(Integer.getInteger("monitor.interval", 10)));
+        monitor = new MonitorEventLoop(this, name + "monitor",
+                Pauser.millis(Integer.getInteger("monitor.interval", 10)));
         if (core != null)
             monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 30));
         blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop") : null;
@@ -361,38 +361,46 @@ public class EventGroup implements EventLoop {
         Closeable.closeQuietly(concThreads);
     }
 
-    private static final class LoopBlockMonitor implements EventHandler {
+    static final class LoopBlockMonitor implements EventHandler {
         private final long monitoryIntervalMs;
         private final @NotNull CoreEventLoop eventLoop;
-        long lastInterval = 1;
+        private long printBlockTimeMS, interval;
 
         public LoopBlockMonitor(final long monitoryIntervalMs, @NotNull final CoreEventLoop eventLoop) {
             this.monitoryIntervalMs = monitoryIntervalMs;
             assert eventLoop != null;
             this.eventLoop = eventLoop;
+            interval = printBlockTimeMS = monitoryIntervalMs;
         }
 
         @Override
         public boolean action() throws InvalidEventHandlerException {
             long loopStartMS = eventLoop.loopStartMS();
-            if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE)
+            if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE) {
+                if (interval != monitoryIntervalMs) {
+                    System.err.println("Reset interval from " + interval);
+                    interval = printBlockTimeMS = monitoryIntervalMs;
+                }
                 return false;
+            }
             if (loopStartMS == Long.MAX_VALUE - 1) {
                 Jvm.warn().on(getClass(), "Monitoring a task which has finished " + eventLoop);
                 throw new InvalidEventHandlerException();
             }
             long now = Time.currentTimeMillis();
             long blockingTimeMS = now - loopStartMS;
-            long blockingInterval = blockingTimeMS / ((monitoryIntervalMs + 1) / 2);
 
-            if (blockingInterval > lastInterval && !Jvm.isDebug() && eventLoop.isAlive()) {
+            if (blockingTimeMS >= printBlockTimeMS && eventLoop.isAlive()) {
                 eventLoop.dumpRunningState(eventLoop.name() + " thread has blocked for "
                                 + blockingTimeMS + " ms.",
                         // check we are still in the loop.
                         () -> eventLoop.loopStartMS() == loopStartMS);
-
-            } else {
-                lastInterval = Math.max(1, blockingInterval);
+                printBlockTimeMS += interval;
+                interval *= 1.41;
+                if (interval > 20 * monitoryIntervalMs) {
+                    interval = monitoryIntervalMs * 20;
+                    printBlockTimeMS -= printBlockTimeMS % interval;
+                }
             }
             return false;
         }

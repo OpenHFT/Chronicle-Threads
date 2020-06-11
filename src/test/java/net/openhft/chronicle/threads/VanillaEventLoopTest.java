@@ -12,7 +12,7 @@ import java.util.EnumSet;
 
 import static org.junit.Assert.*;
 
-public class VanillaEventLoopTest {
+public class VanillaEventLoopTest extends ThreadsTestCommon {
 
     private static final int LOOPS = 2;
 
@@ -66,6 +66,7 @@ public class VanillaEventLoopTest {
 
         assertEquals(1, eh0.finishedCnt);
         assertEquals(1, eh1.finishedCnt);
+        el.close();
 
     }
 

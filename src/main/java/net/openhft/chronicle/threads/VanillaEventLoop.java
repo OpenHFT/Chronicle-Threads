@@ -60,7 +60,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
-    private final List<EventHandler> highHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> timerHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> daemonHandlers = new CopyOnWriteArrayList<>();
@@ -103,7 +102,8 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         this.binding = binding;
         this.priorities = EnumSet.copyOf(priorities);
         loopStartMS = Long.MAX_VALUE;
-        service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
+        service = Executors.newSingleThreadExecutor(
+                new NamedThreadFactory(name, daemon));
     }
 
     @Deprecated
@@ -154,7 +154,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
                 "name='" + name + '\'' +
                 ", parent=" + parent +
                 ", service=" + service +
-                ", highHandlers=" + highHandlers +
                 ", mediumHandlers=" + mediumHandlers +
                 ", timerHandlers=" + timerHandlers +
                 ", daemonHandlers=" + daemonHandlers +
@@ -243,7 +242,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     }
 
     private void loopFinishedAllHandlers() {
-        highHandlers.forEach(Threads::loopFinishedQuietly);
         mediumHandlers.forEach(Threads::loopFinishedQuietly);
         timerHandlers.forEach(Threads::loopFinishedQuietly);
         daemonHandlers.forEach(Threads::loopFinishedQuietly);
@@ -256,12 +254,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
             if (isClosed()) {
                 throw new InvalidEventHandlerException();
             }
-            boolean busy;
-            if (highHandlers.isEmpty()) {
-                busy = runMediumLoopOnly();
-            } else {
-                busy = runHighAndMediumTasks();
-            }
+            boolean busy = runMediumLoopOnly();
             if (lastTimerMS + timerIntervalMS < loopStartMS) {
                 lastTimerMS = loopStartMS;
                 runTimerHandlers();
@@ -298,38 +291,10 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         return runAllMediumHandler();
     }
 
-    private boolean runHighAndMediumTasks() {
-        boolean busy = false;
-        for (int i = 0; i < 4; i++) {
-            loopStartMS = Time.currentTimeMillis();
-            busy |= runAllHighHandlers();
-            busy |= runOneQuarterMediumHandler(i);
-        }
-        return busy;
-    }
-
     private void closeAll() {
         closeAllHandlers();
         LOG.trace("Remaining handlers");
         dumpRunningHandlers();
-    }
-
-    @HotMethod
-    private boolean runAllHighHandlers() {
-        boolean busy = false;
-        for (int i = 0; i < highHandlers.size(); i++) {
-            final EventHandler handler = highHandlers.get(i);
-            try {
-                boolean action = handler.action();
-                busy |= action;
-            } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, highHandlers);
-
-            } catch (Throwable e) {
-                Jvm.warn().on(getClass(), e);
-            }
-        }
-        return busy;
     }
 
     @HotMethod
@@ -464,13 +429,10 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
             case HIGH:
-                if (!highHandlers.contains(handler))
-                    highHandlers.add(handler);
-                break;
-
             case MEDIUM:
                 if (!mediumHandlers.contains(handler)) {
                     mediumHandlers.add(handler);
+                    mediumHandlers.sort(Comparator.comparing(EventHandler::priority));
                     mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
                 }
                 break;
@@ -507,11 +469,11 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     }
 
     public int nonDaemonHandlerCount() {
-        return highHandlers.size() + mediumHandlers.size();
+        return mediumHandlers.size();
     }
 
     public int handlerCount() {
-        return highHandlers.size() + mediumHandlers.size() + daemonHandlers.size() + timerHandlers.size();
+        return mediumHandlers.size() + daemonHandlers.size() + timerHandlers.size();
     }
 
     @Override
@@ -546,7 +508,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
             }
         } finally {
             closeAllHandlers();
-            highHandlers.clear();
             mediumHandlers.clear();
             mediumHandlersArray = NO_EVENT_HANDLERS;
             daemonHandlers.clear();
@@ -556,7 +517,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     }
 
     public void closeAllHandlers() {
-        closeAll(highHandlers);
         closeAll(mediumHandlers);
         closeAll(daemonHandlers);
         closeAll(timerHandlers);
@@ -570,7 +530,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         final int handlerCount = handlerCount();
         if (handlerCount <= 0)
             return;
-        final List<EventHandler> collect = Stream.of(highHandlers, mediumHandlers, daemonHandlers, timerHandlers)
+        final List<EventHandler> collect = Stream.of(mediumHandlers, daemonHandlers, timerHandlers)
                 .flatMap(List::stream)
                 .filter(e -> e instanceof Closeable)
                 .collect(Collectors.toList());

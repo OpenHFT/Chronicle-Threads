@@ -18,7 +18,6 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.onoes.ExceptionKey;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
@@ -31,7 +30,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,10 +38,8 @@ import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.Assert.assertFalse;
 
-public class EventGroupTest {
+public class EventGroupTest extends ThreadsTestCommon {
     private List<TestHandler> handlers;
-    private ThreadDump threadDump;
-    private Map<ExceptionKey, Integer> exceptions;
 
     @Before
     public void handlersInit() {
@@ -53,30 +49,6 @@ public class EventGroupTest {
     @After
     public void checkHandlersClosed() {
         handlers.forEach(TestHandler::checkCloseOrder);
-    }
-
-    @Before
-    public void threadDump() {
-        threadDump = new ThreadDump();
-    }
-
-    @After
-    public void checkThreadDump() {
-        threadDump.assertNoNewThreads();
-    }
-
-    @Before
-    public void recordExceptions() {
-        exceptions = Jvm.recordExceptions();
-    }
-
-    @After
-    public void checkExceptions() {
-        if (Jvm.hasException(exceptions)) {
-            Jvm.dumpException(exceptions);
-            Jvm.resetExceptionHandlers();
-            Assert.fail();
-        }
     }
 
     @Test
