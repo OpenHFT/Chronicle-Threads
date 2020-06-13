@@ -200,7 +200,7 @@ public enum Threads {
         try {
             eventHandler.loopFinished();
         } catch (Throwable t) {
-            Jvm.debug().on(Threads.class, t);
+            Jvm.warn().on(Threads.class, t);
         }
     }
 }
