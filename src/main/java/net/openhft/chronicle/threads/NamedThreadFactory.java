@@ -19,13 +19,14 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.StackTrace;
+import net.openhft.chronicle.core.threads.CleaningThread;
 import net.openhft.chronicle.core.threads.ThreadDump;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class NamedThreadFactory implements ThreadFactory {
+public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
     private final AtomicInteger id = new AtomicInteger();
     private final String name;
     private final Boolean daemon;
@@ -33,7 +34,7 @@ public class NamedThreadFactory implements ThreadFactory {
     private final StackTrace createdHere;
 
     public NamedThreadFactory(String name) {
-        this(name, null);
+        this(name, null, null);
     }
 
     public NamedThreadFactory(String name, Boolean daemon) {
@@ -41,6 +42,7 @@ public class NamedThreadFactory implements ThreadFactory {
     }
 
     public NamedThreadFactory(String name, Boolean daemon, Integer priority) {
+        super(name);
         this.name = name;
         this.daemon = daemon;
         this.priority = priority;
@@ -52,7 +54,7 @@ public class NamedThreadFactory implements ThreadFactory {
     public Thread newThread(@NotNull Runnable r) {
         int id = this.id.getAndIncrement();
         String nameN = Threads.threadGroupPrefix() + (id == 0 ? this.name : (this.name + '-' + id));
-        Thread t = new Thread(r, nameN);
+        Thread t = new CleaningThread(r, nameN);
         ThreadDump.add(t, createdHere);
         if (daemon != null)
             t.setDaemon(daemon);
@@ -62,6 +64,11 @@ public class NamedThreadFactory implements ThreadFactory {
     }
 
     public void interruptAll() {
-        // TODO
+        Thread[] list = new Thread[activeCount() + 1];
+        super.enumerate(list);
+        for (Thread thread : list) {
+            if (thread != null)
+                thread.interrupt();
+        }
     }
 }
