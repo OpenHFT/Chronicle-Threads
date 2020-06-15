@@ -112,6 +112,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     private void startHandler(final EventHandler handler) {
         try {
             service.submit(new Runner(handler));
+
         } catch (RejectedExecutionException e) {
             Jvm.warn().on(getClass(), e);
         }
@@ -158,9 +159,10 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
         @Override
         public void run() {
-            throwExceptionIfClosed();
-            handler.eventLoop(parent);
             try {
+                throwExceptionIfClosed();
+                handler.eventLoop(parent);
+
                 while (!isClosed())
                     handler.action();
 

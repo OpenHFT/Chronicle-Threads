@@ -429,6 +429,9 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     }
 
     private void addNewHandler(@NotNull final EventHandler handler) {
+        if (handler instanceof AbstractCloseable)
+            ((AbstractCloseable) handler).resetUsedByThread();
+
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
             case HIGH:
