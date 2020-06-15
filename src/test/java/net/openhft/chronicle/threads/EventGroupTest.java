@@ -131,7 +131,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 500000)
     public void checkAllEventHandlerTypesStartAndStopAddAgain() throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())

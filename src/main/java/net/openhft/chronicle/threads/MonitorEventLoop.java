@@ -19,19 +19,19 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
+import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
+public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runnable {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     private static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
@@ -42,7 +42,6 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     private final String name;
 
     private volatile boolean running = true;
-    private volatile boolean closed = false;
 
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
@@ -84,11 +83,6 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     @Override
     public void stop() {
         running = false;
-    }
-
-    @Override
-    public boolean isClosed() {
-        return closed;
     }
 
     @Override
@@ -155,11 +149,12 @@ public class MonitorEventLoop implements EventLoop, Runnable, Closeable {
     }
 
     @Override
-    public void close() {
+    protected void performClose() {
+        super.performClose();
+
         stop();
         Threads.shutdownDaemon(service);
         handlers.forEach(Threads::loopFinishedQuietly);
         net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
-        closed = true;
     }
 }

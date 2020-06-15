@@ -433,4 +433,9 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         return String.format("%s has been %s.", MediumEventLoop.class.getSimpleName(), offendingProperty);
     }
 
+    @Override
+    protected boolean threadSafetyCheck() {
+        // Thread safe component.
+        return true;
+    }
 }

@@ -169,7 +169,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
             return;
         }
         try {
-            throwExceptionIfClosed();
             service.submit(this);
         } catch (IllegalStateException ise) {
             // TODO FIX, don't cause tests for fail.
@@ -196,13 +195,13 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
+        checkInterrupted();
+
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
         if (!priorities.contains(priority))
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler + " allows " + priorities);
-        throwExceptionIfClosed();
-        checkInterrupted();
 
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
@@ -228,19 +227,20 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     @Override
     @HotMethod
     public void run() {
-        throwExceptionIfClosed();
-        try (AffinityLock lock = AffinityLock.acquireLock(binding)) {
-            thread = Thread.currentThread();
-            if (thread == null)
-                throw new NullPointerException();
-            runLoop();
-        } catch (InvalidEventHandlerException e) {
-            // ignore, already closed
+        try {
+            try (AffinityLock lock = AffinityLock.acquireLock(binding)) {
+                thread = Thread.currentThread();
+                if (thread == null)
+                    throw new NullPointerException();
+                runLoop();
+            } catch (InvalidEventHandlerException e) {
+                // ignore, already closed
+            } finally {
+                loopFinishedAllHandlers();
+                loopStartMS = FINISHED;
+            }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
-        } finally {
-            loopFinishedAllHandlers();
-            loopStartMS = FINISHED;
         }
     }
 
@@ -551,5 +551,11 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
 
     private String hasBeen(String offendingProperty) {
         return String.format("%s has been %s.", VanillaEventLoop.class.getSimpleName(), offendingProperty);
+    }
+
+    @Override
+    protected boolean threadSafetyCheck() {
+        // Thread safe component.
+        return true;
     }
 }
