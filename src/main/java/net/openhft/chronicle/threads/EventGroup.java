@@ -238,6 +238,7 @@ public class EventGroup implements EventLoop {
 
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
+        throwExceptionIfClosed();
         HandlerPriority t1 = handler.priority();
         switch (t1) {
             case MONITOR:
@@ -281,6 +282,7 @@ public class EventGroup implements EventLoop {
     }
 
     public void setupTimeLimitMonitor(final long timeLimitNS, final LongSupplier timeOfStart) {
+        throwExceptionIfClosed();
         // to cleanly shut down the runner, we cannot rely on Thread.interrupt as it
         // can cause nasty exceptions to bubble up from the guts of CQ
         addTimingMonitor(
@@ -300,6 +302,7 @@ public class EventGroup implements EventLoop {
 
     @Override
     public synchronized void start() {
+        throwExceptionIfClosed();
         if (!isAlive()) {
             if (core != null)
                 core.start();

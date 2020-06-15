@@ -18,6 +18,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -40,7 +41,7 @@ import static net.openhft.chronicle.threads.Threads.unpark;
 /**
  * Event Loop for blocking tasks.
  */
-public class BlockingEventLoop implements EventLoop {
+public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
     private static final Logger LOG = LoggerFactory.getLogger(BlockingEventLoop.class);
 
@@ -50,7 +51,6 @@ public class BlockingEventLoop implements EventLoop {
     private final ExecutorService service;
     @NotNull
     private final String name;
-    private final AtomicBoolean closed = new AtomicBoolean();
     private final AtomicBoolean started = new AtomicBoolean();
     private final List<EventHandler> handlers = new ArrayList<>();
     private final NamedThreadFactory threadFactory;
@@ -126,19 +126,13 @@ public class BlockingEventLoop implements EventLoop {
     public void stop() {}
 
     @Override
-    public boolean isClosed() {
-        return closed.get();
-    }
-
-    @Override
     public boolean isAlive() {
         return !service.isShutdown();
     }
 
     @Override
-    public synchronized void close() {
-        if (closed.getAndSet(true))
-            return;
+    protected void performClose() {
+        super.performClose();
 
         threadFactory.interruptAll();
 
@@ -164,16 +158,17 @@ public class BlockingEventLoop implements EventLoop {
 
         @Override
         public void run() {
+            throwExceptionIfClosed();
             handler.eventLoop(parent);
             try {
-                while (!closed.get())
+                while (!isClosed())
                     handler.action();
 
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.
 //              TODO:   handlersRemoved.add(handler);
             } catch (Throwable t) {
-                if (!closed.get())
+                if (!isClosed())
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw ", t);
 
             } finally {

@@ -164,6 +164,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
 
     @Override
     public void start() {
+        throwExceptionIfClosed();
         if (running.getAndSet(true)) {
             return;
         }
@@ -194,6 +195,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
 
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
+        throwExceptionIfClosed();
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
@@ -226,6 +228,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     @Override
     @HotMethod
     public void run() {
+        throwExceptionIfClosed();
         try (AffinityLock lock = AffinityLock.acquireLock(binding)) {
             thread = Thread.currentThread();
             if (thread == null)
@@ -516,7 +519,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         }
     }
 
-    public void closeAllHandlers() {
+    void closeAllHandlers() {
         closeAll(mediumHandlers);
         closeAll(daemonHandlers);
         closeAll(timerHandlers);

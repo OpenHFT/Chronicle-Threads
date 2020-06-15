@@ -148,6 +148,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
+        throwExceptionIfClosed();
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
