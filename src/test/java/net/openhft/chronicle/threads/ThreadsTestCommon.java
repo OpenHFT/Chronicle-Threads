@@ -29,7 +29,6 @@ public class ThreadsTestCommon {
     }
 
     public void checkThreadDump() {
-        threadDump.ignore("main/disk-space-checker");
         threadDump.assertNoNewThreads();
     }
 

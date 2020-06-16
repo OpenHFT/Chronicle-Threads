@@ -141,7 +141,7 @@ public class EventGroup implements EventLoop {
                 ? new MediumEventLoop(this, name + "core-event-loop", pauser, daemon, binding)
                 : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
                 : null;
-        monitor = new MonitorEventLoop(this, name + "monitor",
+        monitor = new MonitorEventLoop(this, name + "~monitor",
                 Pauser.millis(Integer.getInteger("monitor.interval", 10)));
         if (core != null)
             monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 30));

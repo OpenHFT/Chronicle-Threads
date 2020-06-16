@@ -38,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 public enum DiskSpaceMonitor implements Runnable, Closeable {
     INSTANCE;
 
-    public static final String DISK_SPACE_CHECKER_NAME = "disk-space-checker";
+    public static final String DISK_SPACE_CHECKER_NAME = "disk~space~checker";
     static final boolean WARN_DELETED = Jvm.getBoolean("disk.monitor.deleted.warning");
     private static final boolean DISABLED = Jvm.getBoolean("chronicle.disk.monitor.disable");
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
