@@ -1,5 +1,6 @@
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.FlakyTestRunner;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
@@ -14,7 +15,7 @@ import static org.junit.Assert.*;
 
 public class VanillaEventLoopTest extends ThreadsTestCommon {
 
-    private static final int LOOPS = 2;
+    private static final int LOOPS = 13;
 
     @Test
     public void testActionIsDoneLoopTimes() throws InvalidEventHandlerException {
@@ -29,11 +30,14 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
 
         }
         assertEquals(LOOPS, eh0.actionCnt);
-
     }
 
     @Test(timeout = 10_000L)
     public void testEnsureRemoveInvokesLoopFinishedJustOnce() throws InterruptedException {
+        FlakyTestRunner.run(this::testEnsureRemoveInvokesLoopFinishedJustOnce0);
+    }
+
+    public void testEnsureRemoveInvokesLoopFinishedJustOnce0() throws InterruptedException {
         final VanillaEventLoop el = new VanillaEventLoop(null, "test-event-loop", PauserMode.busy.get(), 20, false, "none", EnumSet.of(HandlerPriority.MEDIUM));
 
         final TestMediumEventHandler eh0 = new TestMediumEventHandler();
