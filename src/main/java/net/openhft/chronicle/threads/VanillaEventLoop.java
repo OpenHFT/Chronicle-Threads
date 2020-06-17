@@ -53,7 +53,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
                             HandlerPriority.TIMER,
                             HandlerPriority.DAEMON));
     public static final int NO_CPU = -1;
-    static final boolean CHECK_INTERRUPTS = !Boolean.getBoolean("chronicle.eventLoop.ignoreInterrupts");
+    static final boolean CHECK_INTERRUPTS = !Jvm.getBoolean("chronicle.eventLoop.ignoreInterrupts");
     static final EventHandler[] NO_EVENT_HANDLERS = {};
     static final long FINISHED = Long.MAX_VALUE - 1;
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);

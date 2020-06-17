@@ -47,7 +47,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     private int thresholdPercentage;
 
     DiskSpaceMonitor() {
-        if (!Boolean.getBoolean("chronicle.disk.monitor.disable")) {
+        if (!Jvm.getBoolean("chronicle.disk.monitor.disable")) {
             executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
             executor.scheduleAtFixedRate(this, 1, 1, TimeUnit.SECONDS);
         } else {
