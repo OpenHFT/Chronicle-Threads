@@ -18,6 +18,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
@@ -35,7 +36,9 @@ import java.util.stream.Collectors;
 
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
-public class EventGroup implements EventLoop {
+public class EventGroup
+        extends AbstractCloseable
+        implements EventLoop {
 
     public static final int CONC_THREADS = Integer.getInteger("CONC_THREADS", (Runtime.getRuntime().availableProcessors() + 2) / 2);
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500);
@@ -174,6 +177,12 @@ public class EventGroup implements EventLoop {
                 name,
                 CONC_THREADS,
                 EnumSet.allOf(HandlerPriority.class));
+    }
+
+    @Override
+    protected boolean threadSafetyCheck() {
+        // thread safe
+        return true;
     }
 
     private synchronized VanillaEventLoop getReplication() {
@@ -336,17 +345,12 @@ public class EventGroup implements EventLoop {
     }
 
     @Override
-    public boolean isClosed() {
-        return (core == null ? monitor : core).isClosed();
-    }
-
-    @Override
     public boolean isAlive() {
         return (core == null ? monitor : core).isAlive();
     }
 
     @Override
-    public void close() {
+    protected void performClose() {
         stop();
         Closeable.closeQuietly(
                 monitor,
