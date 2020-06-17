@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -40,7 +41,7 @@ public class EventGroup implements EventLoop {
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500);
     private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
-
+    private final AtomicInteger counter = new AtomicInteger();
     @NotNull
     private final EventLoop monitor;
     private final CoreEventLoop core;
@@ -175,13 +176,6 @@ public class EventGroup implements EventLoop {
                 EnumSet.allOf(HandlerPriority.class));
     }
 
-    protected int hash(final EventHandler handler, final int mod) {
-        int n = handler.hashCode();
-        n = (n >>> 23) ^ (n >>> 9) ^ n;
-        n = (n & 0x7FFF_FFFF) % mod;
-        return n;
-    }
-
     private synchronized VanillaEventLoop getReplication() {
         if (replication == null) {
             Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
@@ -271,8 +265,7 @@ public class EventGroup implements EventLoop {
             case CONCURRENT: {
                 if (concThreads.length == 0)
                     throw new IllegalStateException("Cannot add CONCURRENT " + handler + " to " + name);
-                int n = hash(handler, concThreads.length);
-                getConcThread(n).addHandler(handler);
+                getConcThread(counter.getAndIncrement() % concThreads.length).addHandler(handler);
                 break;
             }
 
