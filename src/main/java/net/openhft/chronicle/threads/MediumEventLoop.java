@@ -292,7 +292,6 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                         }
                     }
             }
-
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
         }

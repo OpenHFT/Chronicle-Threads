@@ -366,7 +366,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
                         }
                     }
             }
-
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
         }
