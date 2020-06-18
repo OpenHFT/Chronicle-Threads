@@ -125,6 +125,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     @Override
     public void start() {
         throwExceptionIfClosed();
+
         if (!running.getAndSet(true))
             try {
                 service.submit(this);
@@ -149,12 +150,14 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
+
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
         if (priority.alias() != HandlerPriority.MEDIUM)
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
         throwExceptionIfClosed();
+
         checkInterrupted();
 
         if (thread == null || thread == Thread.currentThread()) {
@@ -164,6 +167,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         do {
             pauser.unpause();
             throwExceptionIfClosed();
+
             checkInterrupted();
         } while (!newHandler.compareAndSet(null, handler));
     }
@@ -242,7 +246,6 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         LOG.trace("Remaining handlers");
         dumpRunningHandlers();
     }
-
 
     @HotMethod
     private boolean runAllMediumHandler() {

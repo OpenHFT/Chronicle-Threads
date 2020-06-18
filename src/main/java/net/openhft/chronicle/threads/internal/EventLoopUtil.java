@@ -23,4 +23,3 @@ public enum EventLoopUtil {;
     public static final boolean IS_ACCEPT_HANDLER_MOD_COUNT = ACCEPT_HANDLER_MOD_COUNT > 0;
 }
 
-

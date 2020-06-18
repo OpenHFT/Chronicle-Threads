@@ -71,6 +71,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     @Override
     public void start() {
         throwExceptionIfClosed();
+
         running = true;
         service.submit(this);
     }
@@ -93,6 +94,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
+
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
@@ -108,6 +110,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     @HotMethod
     public void run() {
         throwExceptionIfClosed();
+
         try {
             // don't do any monitoring for the first 10000 ms.
             for (int i = 0; i < MONITOR_INITIAL_DELAY_MS; i += 50)

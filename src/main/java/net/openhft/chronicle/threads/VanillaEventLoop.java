@@ -165,6 +165,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     @Override
     public void start() {
         throwExceptionIfClosed();
+
         if (running.getAndSet(true)) {
             return;
         }
@@ -195,6 +196,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
+
         checkInterrupted();
 
         final HandlerPriority priority = handler.priority();
@@ -210,6 +212,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         do {
             pauser.unpause();
             throwExceptionIfClosed();
+
             checkInterrupted();
         } while (!newHandler.compareAndSet(null, handler));
     }
