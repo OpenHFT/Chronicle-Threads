@@ -329,17 +329,25 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         switch (t1 == null ? HandlerPriority.MEDIUM : t1.alias()) {
             case REPLICATION:
             case CONCURRENT:
+            case HIGH:
             case MEDIUM:
+            case DAEMON:
                 if (!mediumHandlers.contains(handler)) {
                     mediumHandlers.add(handler);
                     mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
                 }
-                break;
+                return;
+            case MONITOR:
+                if (parent != null)
+                    handler.eventLoop(parent);
+                else
+                    Jvm.warn().on(getClass(), "Handler " + handler.getClass() + " ignored");
 
+            case BLOCKING:
+            case TIMER:
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
-        handler.eventLoop(parent);
     }
 
     public String name() {
