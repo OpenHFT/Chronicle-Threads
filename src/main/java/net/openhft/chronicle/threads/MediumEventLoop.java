@@ -26,7 +26,6 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
-import net.openhft.chronicle.core.util.Time;
 import net.openhft.chronicle.threads.internal.EventLoopUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -152,6 +151,13 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         throwExceptionIfClosed();
 
         final HandlerPriority priority = handler.priority();
+        if (parent == null && handler.priority() != HandlerPriority.MEDIUM) {
+            if (handler.priority() == HandlerPriority.MONITOR) {
+                Jvm.warn().on(getClass(), "Ignoring " + handler.getClass());
+                return;
+            }
+            throw new IllegalArgumentException("Cannot handle " + handler.getClass() + " " + handler.priority());
+        }
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
         if (priority.alias() != HandlerPriority.MEDIUM)
@@ -237,7 +243,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     }
 
     private boolean runMediumLoopOnly() {
-        loopStartMS = Time.currentTimeMillis();
+        loopStartMS = System.currentTimeMillis();
         return runAllMediumHandler();
     }
 
