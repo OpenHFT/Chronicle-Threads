@@ -132,7 +132,12 @@ public class LongPauser implements Pauser, TimingPauser {
         long start = System.nanoTime();
         thread = Thread.currentThread();
         pausing.set(true);
-        LockSupport.parkNanos(delayNs);
+        if (!Thread.currentThread().isInterrupted()) {
+            if (delayNs >= 1_000_000)
+                Jvm.pause(delayNs / 1000000);
+            else
+                LockSupport.parkNanos(delayNs);
+        }
         pausing.set(false);
         long time = System.nanoTime() - start;
         timePaused += time;
