@@ -51,7 +51,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         handlers.forEach(TestHandler::checkCloseOrder);
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void testSimpleEventGroupTest() throws InterruptedException {
 
         final AtomicInteger value = new AtomicInteger();
@@ -84,6 +84,15 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
         t.join(100);
         assertFalse(t.isAlive());
+    }
+
+    @Test(timeout = 5000)
+    public void testClosePausedBlockingEventLoop() throws InterruptedException {
+        final EventLoop eventGroup = new EventGroup(true);
+        eventGroup.start();
+        eventGroup.addHandler(new PausingBlockingEventHandler());
+        eventGroup.close();
+        eventGroup.awaitTermination();
     }
 
     @Test(timeout = 5000)
@@ -266,6 +275,20 @@ public class EventGroupTest extends ThreadsTestCommon {
                     ", closedNS=" + closedNS +
                     ", started=" + started.getCount() +
                     '}';
+        }
+    }
+
+    private class PausingBlockingEventHandler implements EventHandler {
+        @Override
+        public boolean action() throws InvalidEventHandlerException, InterruptedException {
+            LockSupport.parkNanos(Long.MAX_VALUE);
+            return false;
+        }
+
+        @NotNull
+        @Override
+        public HandlerPriority priority() {
+            return HandlerPriority.BLOCKING;
         }
     }
 }
