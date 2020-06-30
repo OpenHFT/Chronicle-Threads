@@ -78,7 +78,7 @@ public class LongPauser implements Pauser, TimingPauser {
 
         checkYieldTime();
         if (count <= minBusy + minCount) {
-            yield();
+            this.yield();
             return;
         }
         if (SHOW_PAUSES != null) {
@@ -101,7 +101,7 @@ public class LongPauser implements Pauser, TimingPauser {
         if (count < minBusy)
             return;
         if (count <= minBusy + minCount) {
-            yield();
+            this.yield();
             return;
         }
         if (timeOutStart == Long.MAX_VALUE)

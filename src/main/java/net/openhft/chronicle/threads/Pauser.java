@@ -83,10 +83,10 @@ public interface Pauser {
      */
     long countPaused();
 
-static boolean getSleepy() {
-    int procs = Runtime.getRuntime().availableProcessors();
-    return procs < MIN_PROCESSORS;
-}
+    static boolean getSleepy() {
+        int procs = Runtime.getRuntime().availableProcessors();
+        return procs < MIN_PROCESSORS;
+    }
 
     static Pauser yielding(int minBusy) {
         SleepyWarning.warnSleepy();
