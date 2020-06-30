@@ -25,7 +25,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>chronicle-threads</artifactId>
-    <version>2.19.47</version>
+    <version>2.19.48-SNAPSHOT</version>
     <name>OpenHFT/Chronicle-Threads</name>
     <description>Chronicle-Threads</description>
     <packaging>bundle</packaging>
@@ -182,7 +182,7 @@
         <connection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git
         </developerConnection>
-        <tag>chronicle-threads-2.19.47</tag>
+        <tag>master</tag>
     </scm>
 
 </project>
