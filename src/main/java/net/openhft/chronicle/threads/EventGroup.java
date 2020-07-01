@@ -181,7 +181,7 @@ public class EventGroup
     }
 
     @Override
-    protected boolean threadSafetyCheck() {
+    protected boolean threadSafetyCheck(boolean isUsed) {
         // thread safe
         return true;
     }

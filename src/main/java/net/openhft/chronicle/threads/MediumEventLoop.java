@@ -450,7 +450,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     }
 
     @Override
-    protected boolean threadSafetyCheck() {
+    protected boolean threadSafetyCheck(boolean isUsed) {
         // Thread safe component.
         return true;
     }

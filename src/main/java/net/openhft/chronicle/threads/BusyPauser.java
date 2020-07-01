@@ -30,7 +30,7 @@ public enum BusyPauser implements Pauser {
     @Override
     public void pause() {
         // TODO replace with Jvm.nanoPause();
-        Jvm.optionalSafepoint();
+        Jvm.safepoint();
         ThreadHints.onSpinWait();
     }
 

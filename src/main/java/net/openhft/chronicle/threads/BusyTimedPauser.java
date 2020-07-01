@@ -35,7 +35,7 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
     @Override
     public void pause() {
         // busy wait.
-        Jvm.optionalSafepoint();
+        Jvm.safepoint();
         ThreadHints.onSpinWait();
     }
 
