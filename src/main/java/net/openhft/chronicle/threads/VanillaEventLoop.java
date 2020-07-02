@@ -430,15 +430,19 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         return false;
     }
 
-    private void addNewHandler(@NotNull final EventHandler handler) {
+    private static void clearUsedByThread(@NotNull EventHandler handler) {
         if (handler instanceof AbstractCloseable)
-            ((AbstractCloseable) handler).resetUsedByThread();
+            ((AbstractCloseable) handler).clearUsedByThread();
+    }
+
+    private void addNewHandler(@NotNull final EventHandler handler) {
 
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
             case HIGH:
             case MEDIUM:
                 if (!mediumHandlers.contains(handler)) {
+                    clearUsedByThread(handler);
                     mediumHandlers.add(handler);
                     mediumHandlers.sort(Comparator.comparing(EventHandler::priority));
                     mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
@@ -446,13 +450,17 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
                 break;
 
             case TIMER:
-                if (!timerHandlers.contains(handler))
+                if (!timerHandlers.contains(handler)) {
+                    clearUsedByThread(handler);
                     timerHandlers.add(handler);
+                }
                 break;
 
             case DAEMON:
-                if (!daemonHandlers.contains(handler))
+                if (!daemonHandlers.contains(handler)) {
+                    clearUsedByThread(handler);
                     daemonHandlers.add(handler);
+                }
                 break;
 
             default:
