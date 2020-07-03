@@ -174,20 +174,20 @@ public enum Threads {
                 // ok
             }
             Set workers;
-            try {
-                Field w = service.getClass().getDeclaredField("workers");
-                w.setAccessible(true);
-                workers = (Set) w.get(s);
-            } catch (NoSuchFieldException e) {
+            if (Jvm.isJava9Plus() && !(service instanceof ThreadPoolExecutor)) {
+                workers = Jvm.getValue(service, "e/workers");
+
+            } else {
+                workers = Jvm.getValue(service, "workers");
+            }
+            if (workers == null) {
                 Jvm.warn().on(Threads.class, "Couldn't find workers for " + service.getClass());
                 return;
             }
 
             List objects = new ArrayList<>(workers);
             for (Object o : objects) {
-                Field thread = o.getClass().getDeclaredField("thread");
-                thread.setAccessible(true);
-                Thread t = (Thread) thread.get(o);
+                Thread t = Jvm.getValue(o, "thread");
                 if (t.getState() != State.TERMINATED)
                     consumer.accept(t);
             }

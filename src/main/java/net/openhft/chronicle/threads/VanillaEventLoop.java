@@ -19,6 +19,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.StackTrace;
 import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
@@ -141,8 +142,11 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     @Override
     public void awaitTermination() {
         try {
+            service.shutdownNow();
             service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
         } catch (InterruptedException e) {
+            if (thread != null && thread.isAlive())
+                Jvm.warn().on(getClass(), "Thread still running", StackTrace.forThread(thread));
             Thread.currentThread().interrupt();
         }
     }
