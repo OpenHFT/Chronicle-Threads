@@ -379,42 +379,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         return mediumHandlers.size();
     }
 
-    @Override
-    protected void performClose() {
-        try {
-            stop();
-            pauser.reset(); // reset the timer.
-            pauser.unpause();
-            LockSupport.unpark(thread);
-            Threads.shutdown(service, daemon);
-            if (thread == null) {
-                loopFinishedAllHandlers();
-                return;
-            }
-            if (thread != Thread.currentThread()) {
-                thread.interrupt();
-
-                for (int i = 1; i <= 30; i++) {
-                    if (loopStartMS == FINISHED)
-                        break;
-                    Jvm.pause(i);
-
-                    if (i % 10 == 0) {
-                        final StringBuilder sb = new StringBuilder();
-                        sb.append(name).append(": Shutting down thread is executing ").append(thread)
-                                .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
-                        Jvm.trimStackTrace(sb, thread.getStackTrace());
-                        Jvm.warn().on(getClass(), sb.toString());
-                        dumpRunningHandlers();
-                    }
-                }
-            }
-        } finally {
-            closeAllHandlers();
-            mediumHandlers.clear();
-            mediumHandlersArray = NO_EVENT_HANDLERS;
-            newHandler.set(null);
-        }
+    static String hasBeen(String offendingProperty) {
+        return "MediumEventLoop has been " + offendingProperty;
     }
 
     public void closeAllHandlers() {
@@ -445,8 +411,45 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         return thread != null && thread.isAlive();
     }
 
-    private String hasBeen(String offendingProperty) {
-        return String.format("%s has been %s.", MediumEventLoop.class.getSimpleName(), offendingProperty);
+    @Override
+    protected void performClose() {
+        try {
+            stop();
+            pauser.reset(); // reset the timer.
+            pauser.unpause();
+            LockSupport.unpark(thread);
+            Threads.shutdown(service, daemon);
+            if (thread == null) {
+                loopFinishedAllHandlers();
+                return;
+            }
+            if (thread != Thread.currentThread()) {
+                thread.interrupt();
+
+                for (int i = 1; i <= 40; i++) {
+                    if (loopStartMS == FINISHED)
+                        break;
+                    Thread.sleep(i);
+
+                    if (i == 30 || i == 40) {
+                        final StringBuilder sb = new StringBuilder();
+                        sb.append(name).append(": Shutting down thread is executing ").append(thread)
+                                .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
+                        Jvm.trimStackTrace(sb, thread.getStackTrace());
+                        Jvm.warn().on(getClass(), sb.toString());
+                        dumpRunningHandlers();
+                    }
+                }
+            }
+        } catch (InterruptedException e) {
+            Jvm.warn().on(getClass(), "Interrupted while performing close");
+            Thread.currentThread().interrupt();
+        } finally {
+            closeAllHandlers();
+            mediumHandlers.clear();
+            mediumHandlersArray = NO_EVENT_HANDLERS;
+            newHandler.set(null);
+        }
     }
 
     @Override

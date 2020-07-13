@@ -133,6 +133,11 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         Closeable.closeQuietly(handlers);
     }
 
+    private static void clearUsedByThread(@NotNull EventHandler handler) {
+        if (handler instanceof AbstractCloseable)
+            ((AbstractCloseable) handler).clearUsedByThread();
+    }
+
     @Override
     @Nullable
     public Thread thread() {
@@ -252,9 +257,12 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     }
 
     private void loopFinishedAllHandlers() {
-        mediumHandlers.forEach(Threads::loopFinishedQuietly);
-        timerHandlers.forEach(Threads::loopFinishedQuietly);
-        daemonHandlers.forEach(Threads::loopFinishedQuietly);
+        if (!mediumHandlers.isEmpty())
+            mediumHandlers.forEach(Threads::loopFinishedQuietly);
+        if (!timerHandlers.isEmpty())
+            timerHandlers.forEach(Threads::loopFinishedQuietly);
+        if (!daemonHandlers.isEmpty())
+            daemonHandlers.forEach(Threads::loopFinishedQuietly);
     }
 
     private void runLoop() throws InvalidEventHandlerException {
@@ -434,11 +442,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
         return false;
     }
 
-    private static void clearUsedByThread(@NotNull EventHandler handler) {
-        if (handler instanceof AbstractCloseable)
-            ((AbstractCloseable) handler).clearUsedByThread();
-    }
-
     private void addNewHandler(@NotNull final EventHandler handler) {
 
         final HandlerPriority t1 = handler.priority();
@@ -511,12 +514,12 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
             if (thread != Thread.currentThread()) {
                 thread.interrupt();
 
-                for (int i = 1; i <= 30; i++) {
+                for (int i = 1; i <= 40; i++) {
                     if (loopStartMS == FINISHED)
                         break;
                     Jvm.pause(i);
 
-                    if (i % 10 == 0) {
+                    if (i == 30 || i == 40) {
                         final StringBuilder sb = new StringBuilder();
                         sb.append(name).append(": Shutting down thread is executing ").append(thread)
                                 .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
