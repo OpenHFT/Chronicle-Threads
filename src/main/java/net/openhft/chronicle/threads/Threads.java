@@ -41,6 +41,7 @@ public enum Threads {
 
     static final Field GROUP = Jvm.getField(Thread.class, "group");
     static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 500);
+    static final ThreadLocal<ArrayList> listTL = ThreadLocal.withInitial(ArrayList::new);
     static ExecutorFactory executorFactory;
 
     static {
@@ -165,18 +166,9 @@ public enum Threads {
 
     static void forEachThread(ExecutorService service, Consumer<Thread> consumer) {
         try {
-            Object s = service;
-            try {
-                Field e = service.getClass().getDeclaredField("e");
-                e.setAccessible(true);
-                s = e.get(s);
-            } catch (NoSuchFieldException nsfe) {
-                // ok
-            }
             Set workers;
             if (Jvm.isJava9Plus() && !(service instanceof ThreadPoolExecutor)) {
                 workers = Jvm.getValue(service, "e/workers");
-
             } else {
                 workers = Jvm.getValue(service, "workers");
             }
@@ -185,7 +177,9 @@ public enum Threads {
                 return;
             }
 
-            List objects = new ArrayList<>(workers);
+            List objects = listTL.get();
+            objects.clear();
+            objects.addAll(workers);
             for (Object o : objects) {
                 Thread t = Jvm.getValue(o, "thread");
                 if (t.getState() != State.TERMINATED)
