@@ -58,6 +58,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     static final EventHandler[] NO_EVENT_HANDLERS = {};
     static final long FINISHED = Long.MAX_VALUE - 1;
     private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
+    @Nullable
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
@@ -119,7 +120,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     }
 
     @Deprecated
-    public VanillaEventLoop(final EventLoop parent,
+    public VanillaEventLoop(@Nullable final EventLoop parent,
                             final String name,
                             final Pauser pauser,
                             final long timerIntervalMS,
@@ -443,7 +444,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     }
 
     private void addNewHandler(@NotNull final EventHandler handler) {
-
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
             case HIGH:
@@ -473,7 +473,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
-        handler.eventLoop(parent);
+        handler.eventLoop(parent != null ? parent : this);
     }
 
     public String name() {
