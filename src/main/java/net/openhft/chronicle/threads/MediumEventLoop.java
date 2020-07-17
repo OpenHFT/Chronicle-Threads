@@ -309,11 +309,11 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                     break;
 
                 default:
-                    for (EventHandler handler : handlers) {
+                    for (int i=handlers.length-1; i>=0; i--) {
                         try {
-                            busy |= handler.action();
+                            busy |= handlers[i].action();
                         } catch (InvalidEventHandlerException e) {
-                            removeMediumHandler(handler);
+                            removeMediumHandler(handlers[i]);
                         }
                     }
             }

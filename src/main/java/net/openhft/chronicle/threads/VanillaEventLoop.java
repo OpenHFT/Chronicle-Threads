@@ -317,24 +317,6 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
     }
 
     @HotMethod
-    private boolean runOneQuarterMediumHandler(int i) {
-        boolean busy = false;
-        final EventHandler[] mediumHandlersArray = this.mediumHandlersArray;
-        for (int j = i; j < mediumHandlersArray.length; j += 4) {
-            final EventHandler handler = mediumHandlersArray[j];
-            try {
-                busy |= handler.action();
-            } catch (InvalidEventHandlerException e) {
-                removeMediumHandler(handler);
-
-            } catch (Throwable e) {
-                Jvm.warn().on(getClass(), e);
-            }
-        }
-        return busy;
-    }
-
-    @HotMethod
     private boolean runAllMediumHandler() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
@@ -371,11 +353,11 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
                     break;
 
                 default:
-                    for (EventHandler handler : handlers) {
+                    for (int i=handlers.length-1; i>=0; i--) {
                         try {
-                            busy |= handler.action();
+                            busy |= handlers[i].action();
                         } catch (InvalidEventHandlerException e) {
-                            removeMediumHandler(handler);
+                            removeMediumHandler(handlers[i]);
                         }
                     }
             }
@@ -451,7 +433,7 @@ public class VanillaEventLoop extends AbstractCloseable implements CoreEventLoop
                 if (!mediumHandlers.contains(handler)) {
                     clearUsedByThread(handler);
                     mediumHandlers.add(handler);
-                    mediumHandlers.sort(Comparator.comparing(EventHandler::priority));
+                    mediumHandlers.sort(Comparator.comparing(EventHandler::priority).reversed());
                     mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
                 }
                 break;

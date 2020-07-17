@@ -26,8 +26,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -87,7 +87,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @Test(timeout = 5000)
-    public void testClosePausedBlockingEventLoop() throws InterruptedException {
+    public void testClosePausedBlockingEventLoop() {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.start();
         eventGroup.addHandler(new PausingBlockingEventHandler());
@@ -96,7 +96,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @Test(timeout = 5000)
-    public void testCloseAwaitTermination() throws InterruptedException {
+    public void testCloseAwaitTermination() {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.start();
         eventGroup.close();
@@ -104,7 +104,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @Test(timeout = 5000)
-    public void testCloseStopAwaitTermination() throws InterruptedException {
+    public void testCloseStopAwaitTermination() {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.start();
         eventGroup.stop();
@@ -113,14 +113,14 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @Test(timeout = 5000)
-    public void testCloseAwaitTerminationWithoutStarting() throws InterruptedException {
+    public void testCloseAwaitTerminationWithoutStarting() {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.close();
         eventGroup.awaitTermination();
     }
 
     @Test(timeout = 5000)
-    public void checkNoThreadsCreatedIfEventGroupNotStarted() throws InterruptedException {
+    public void checkNoThreadsCreatedIfEventGroupNotStarted() {
         final ThreadDump threadDump = new ThreadDump();
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())
@@ -140,7 +140,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Test(timeout = 500000)
+    @Test(timeout = 5000)
     public void checkAllEventHandlerTypesStartAndStopAddAgain() throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())
@@ -161,6 +161,28 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @Test(timeout = 5000)
+    public void checkExecutedInOrderOfPriorityInline() throws InterruptedException {
+        checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.HIGH, HandlerPriority.MEDIUM);
+    }
+
+    @Test(timeout = 5000)
+    public void checkExecutedInOrderOfPriorityLoop() throws InterruptedException {
+        checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM);
+    }
+
+    private void checkExecutedOrderOfPriority(HandlerPriority... priorities) throws InterruptedException {
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
+            for (HandlerPriority priority : priorities)
+                eventGroup.addHandler(new TestHandler(priority));
+            eventGroup.start();
+            for (TestHandler handler : this.handlers)
+                handler.started.await(100, TimeUnit.MILLISECONDS);
+            this.handlers.sort(Comparator.comparing(TestHandler::priority));
+            Assert.assertTrue(this.handlers.get(0).firstActionNs.get() < this.handlers.get(1).firstActionNs.get());
+        }
+    }
+
+    @Test(timeout = 5000)
     public void checkAllEventHandlerTypesStartInvalidEventHandlerException() throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())
@@ -173,7 +195,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @Test(timeout = 5000)
-    public void testCloseAddHandler() throws InterruptedException {
+    public void testCloseAddHandler() {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             eventGroup.close();
             for (HandlerPriority hp : HandlerPriority.values())
@@ -196,7 +218,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @Test(timeout = 5000)
-    public void testOldOverloadUnsupported() throws InterruptedException {
+    public void testOldOverloadUnsupported() {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             eventGroup.close();
             for (HandlerPriority hp : HandlerPriority.values())
@@ -216,6 +238,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         final CountDownLatch started = new CountDownLatch(1);
         final AtomicLong loopFinishedNS = new AtomicLong();
         final AtomicLong closedNS = new AtomicLong();
+        final AtomicLong firstActionNs = new AtomicLong();
         final HandlerPriority priority;
         final boolean throwInvalidEventHandlerException;
 
@@ -230,12 +253,14 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
 
         @Override
-        public boolean action() throws InvalidEventHandlerException, InterruptedException {
+        public boolean action() throws InvalidEventHandlerException {
             started.countDown();
             if (throwInvalidEventHandlerException)
                 throw new InvalidEventHandlerException();
             if (priority == HandlerPriority.BLOCKING)
                 LockSupport.park();
+            this.firstActionNs.compareAndSet(0, System.nanoTime());
+            Jvm.pause(1);
             return false;
         }
 
@@ -257,7 +282,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
 
         @Override
-        public void close() throws IOException {
+        public void close() {
             Assert.assertTrue("close called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
         }
 
@@ -280,7 +305,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     private class PausingBlockingEventHandler implements EventHandler {
         @Override
-        public boolean action() throws InvalidEventHandlerException, InterruptedException {
+        public boolean action() {
             LockSupport.parkNanos(Long.MAX_VALUE);
             return false;
         }
