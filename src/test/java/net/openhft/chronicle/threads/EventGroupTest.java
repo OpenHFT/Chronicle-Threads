@@ -39,7 +39,19 @@ import java.util.concurrent.locks.LockSupport;
 import static org.junit.Assert.assertFalse;
 
 public class EventGroupTest extends ThreadsTestCommon {
+    static final AtomicLong lastTime = new AtomicLong();
     private List<TestHandler> handlers;
+
+    public static long uniqueTimeNS() {
+        long time = System.nanoTime();
+        while (true) {
+            long last = lastTime.get();
+            if (time <= last)
+                time = last + 1;
+            if (lastTime.compareAndSet(last, time))
+                return time;
+        }
+    }
 
     @Before
     public void handlersInit() {
@@ -259,8 +271,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                 throw new InvalidEventHandlerException();
             if (priority == HandlerPriority.BLOCKING)
                 LockSupport.park();
-            this.firstActionNs.compareAndSet(0, System.nanoTime());
-            Jvm.pause(1);
+            this.firstActionNs.compareAndSet(0, uniqueTimeNS());
             return false;
         }
 
@@ -277,14 +288,14 @@ public class EventGroupTest extends ThreadsTestCommon {
 
         @Override
         public void loopFinished() {
-            Assert.assertTrue("loopFinished called once only " + this, loopFinishedNS.compareAndSet(0, System.nanoTime()));
+            Assert.assertTrue("loopFinished called once only " + this, loopFinishedNS.compareAndSet(0, uniqueTimeNS()));
             Jvm.busyWaitMicros(1);
         }
 
         @Override
         public void close() {
             // close should expect to be called at least once.
-            closedNS.compareAndSet(0, System.nanoTime());
+            closedNS.compareAndSet(0, uniqueTimeNS());
         }
 
         void checkCloseOrder() {
