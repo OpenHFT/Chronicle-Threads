@@ -283,13 +283,15 @@ public class EventGroupTest extends ThreadsTestCommon {
 
         @Override
         public void close() {
-            Assert.assertTrue("close called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
+            // close should expect to be called at least once.
+            closedNS.compareAndSet(0, System.nanoTime());
         }
 
         void checkCloseOrder() {
-            Assert.assertTrue(this.toString(), loopFinishedNS.get() != 0);
-            Assert.assertTrue(this.toString(), closedNS.get() != 0);
-            Assert.assertTrue(this.toString(), loopFinishedNS.get() < closedNS.get());
+            String message = this.toString();
+            Assert.assertTrue(message, loopFinishedNS.get() != 0);
+            Assert.assertTrue(message, closedNS.get() != 0);
+            Assert.assertTrue(message, loopFinishedNS.get() < closedNS.get());
         }
 
         @Override

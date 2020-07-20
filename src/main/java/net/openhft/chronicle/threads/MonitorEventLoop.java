@@ -158,6 +158,5 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         stop();
         Threads.shutdownDaemon(service);
         handlers.forEach(Threads::loopFinishedQuietly);
-        net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
     }
 }

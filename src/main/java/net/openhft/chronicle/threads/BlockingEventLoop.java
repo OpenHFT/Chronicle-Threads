@@ -142,7 +142,8 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
         Threads.shutdown(service);
         if (!started.get())
             handlers.forEach(Threads::loopFinishedQuietly);
-        closeQuietly(handlers);
+        else
+            closeQuietly(handlers);
     }
 
     @Override

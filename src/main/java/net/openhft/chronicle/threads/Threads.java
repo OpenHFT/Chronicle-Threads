@@ -19,6 +19,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.ForceInline;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.util.ObjectUtils;
 import net.openhft.chronicle.core.util.ThrowingCallable;
@@ -190,11 +191,12 @@ public enum Threads {
         }
     }
 
-    static void loopFinishedQuietly(EventHandler eventHandler) {
+    static void loopFinishedQuietly(EventHandler handler) {
         try {
-            eventHandler.loopFinished();
+            handler.loopFinished();
         } catch (Throwable t) {
             Jvm.warn().on(Threads.class, t);
         }
+        Closeable.closeQuietly(handler);
     }
 }
