@@ -31,8 +31,7 @@ public class TimeoutPauser implements Pauser, TimingPauser {
     private long timeOutStart = Long.MAX_VALUE;
 
     /**
-     * first it will busy wait, then it will yield, then sleep for a small amount of time, then
-     * increases to a large amount of time.
+     * first it will busy wait, then it will yield.
      *
      * @param minBusy the min number of times it will go around doing nothing, after this is
      *                reached it will then start to yield
