@@ -64,6 +64,8 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     public void pollDiskSpace(File file) {
         if (DISABLED)
             return;
+        long start = System.nanoTime();
+
         final String absolutePath = file.getAbsolutePath();
         FileStore fs = fileStoreCacheMap.get(absolutePath);
         if (fs == null) {
@@ -84,6 +86,10 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         }
         DiskAttributes da = diskAttributesMap.computeIfAbsent(fs, DiskAttributes::new);
         da.polled = true;
+
+        final long tookUs = (System.nanoTime() - start) / 1_000;
+        if (tookUs > 250)
+            Jvm.warn().on(getClass(), "Took " + tookUs + " us to pollDiskSpace for " + file.getPath());
     }
 
     @Override
