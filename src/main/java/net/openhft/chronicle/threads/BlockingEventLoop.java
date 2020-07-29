@@ -35,7 +35,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
-import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 import static net.openhft.chronicle.threads.Threads.unpark;
 
 /**
@@ -140,10 +139,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
         threadFactory.interruptAll();
 
         Threads.shutdown(service);
-        if (!started.get())
-            handlers.forEach(Threads::loopFinishedQuietly);
-        else
-            closeQuietly(handlers);
+        closeQuietly(handlers);
     }
 
     @Override
@@ -180,7 +176,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
             } finally {
                 if (LOG.isDebugEnabled())
                     Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
-                loopFinishedQuietly(handler);
+                closeQuietly(handler);
             }
         }
     }

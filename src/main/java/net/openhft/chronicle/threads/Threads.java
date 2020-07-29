@@ -19,8 +19,6 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.ForceInline;
-import net.openhft.chronicle.core.io.Closeable;
-import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.util.ObjectUtils;
 import net.openhft.chronicle.core.util.ThrowingCallable;
 import org.jetbrains.annotations.NotNull;
@@ -152,7 +150,7 @@ public enum Threads {
                     t.getName() +
                     " THREAD DID NOT SHUTDOWN ***\n");
             for (StackTraceElement s : t.getStackTrace())
-                b.append("  ").append(s).append("\n");
+                b.append("  ").append(s).append('\n');
             Jvm.warn().on(Threads.class, b.toString());
         });
     }
@@ -189,14 +187,5 @@ public enum Threads {
         } catch (Exception e) {
             Jvm.debug().on(Threads.class, e);
         }
-    }
-
-    static void loopFinishedQuietly(EventHandler handler) {
-        try {
-            handler.loopFinished();
-        } catch (Throwable t) {
-            Jvm.warn().on(Threads.class, t);
-        }
-        Closeable.closeQuietly(handler);
     }
 }

@@ -18,6 +18,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
@@ -25,7 +26,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -245,7 +245,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    class TestHandler implements EventHandler, Closeable {
+    class TestHandler extends SimpleCloseable implements EventHandler {
         final CountDownLatch installed = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
         final AtomicLong loopFinishedNS = new AtomicLong();
@@ -293,7 +293,10 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
 
         @Override
-        public void close() {
+        public void performClose() {
+            // has to be called explicitly if you still need it.
+            loopFinished();
+
             // close should expect to be called at least once.
             closedNS.compareAndSet(0, uniqueTimeNS());
         }

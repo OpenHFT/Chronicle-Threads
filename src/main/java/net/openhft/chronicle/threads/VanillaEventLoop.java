@@ -142,10 +142,8 @@ public class VanillaEventLoop extends MediumEventLoop {
 
     protected void loopFinishedAllHandlers() {
         super.loopFinishedAllHandlers();
-        if (!timerHandlers.isEmpty())
-            timerHandlers.forEach(Threads::loopFinishedQuietly);
-        if (!daemonHandlers.isEmpty())
-            daemonHandlers.forEach(Threads::loopFinishedQuietly);
+        Closeable.closeQuietly(timerHandlers);
+        Closeable.closeQuietly(daemonHandlers);
     }
 
     protected void runTimerHandlers() {

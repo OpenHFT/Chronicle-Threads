@@ -88,11 +88,6 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
         }
 
         @Override
-        public void loopFinished() {
-            close();
-        }
-
-        @Override
         protected void performClose() {
             super.performClose();
             finishedCnt++;

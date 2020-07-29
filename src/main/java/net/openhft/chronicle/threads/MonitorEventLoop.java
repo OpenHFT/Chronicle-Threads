@@ -19,6 +19,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
@@ -157,6 +158,6 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
 
         stop();
         Threads.shutdownDaemon(service);
-        handlers.forEach(Threads::loopFinishedQuietly);
+        Closeable.closeQuietly(handlers);
     }
 }

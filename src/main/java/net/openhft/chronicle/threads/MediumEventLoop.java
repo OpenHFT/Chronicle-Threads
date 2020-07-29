@@ -43,8 +43,6 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
-
 public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
@@ -119,7 +117,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
             if (!handlers.isEmpty())
                 throw e2;
         }
-        loopFinishedQuietly(handler);
+        Closeable.closeQuietly(handler);
     }
 
     @Override
@@ -245,9 +243,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     }
 
     protected void loopFinishedAllHandlers() {
-        loopFinishedQuietly(highHandler);
-        if (!mediumHandlers.isEmpty())
-            mediumHandlers.forEach(Threads::loopFinishedQuietly);
+        Closeable.closeQuietly(highHandler);
+        Closeable.closeQuietly(mediumHandlers);
     }
 
     protected void runLoop() throws IllegalStateException {
@@ -421,7 +418,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         try {
             return highHandler.action();
         } catch (InvalidEventHandlerException e) {
-            loopFinishedQuietly(highHandler);
+            Closeable.closeQuietly(highHandler);
             highHandler = EventHandlers.NOOP;
         }
         return true;
