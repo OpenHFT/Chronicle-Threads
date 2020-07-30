@@ -20,10 +20,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
-import net.openhft.chronicle.core.threads.EventHandler;
-import net.openhft.chronicle.core.threads.EventLoop;
-import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.core.threads.*;
 import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
 
@@ -249,9 +246,10 @@ public class EventGroup
     }
 
     @Override
-    public void addHandler(@NotNull final EventHandler handler) {
+    public EventHandlerManager addHandler(@NotNull final EventHandler handler0) {
         throwExceptionIfClosed();
 
+        EventHandlerManager handler = EventHandlerManager.wrap(handler0);
         HandlerPriority t1 = handler.priority();
         switch (t1) {
             case MONITOR:
@@ -291,6 +289,7 @@ public class EventGroup
             default:
                 throw new IllegalArgumentException("Unknown priority " + handler.priority());
         }
+        return handler;
     }
 
     public void setupTimeLimitMonitor(final long timeLimitNS, final LongSupplier timeOfStart) {

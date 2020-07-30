@@ -24,10 +24,7 @@ import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
-import net.openhft.chronicle.core.threads.EventHandler;
-import net.openhft.chronicle.core.threads.EventLoop;
-import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.core.threads.*;
 import net.openhft.chronicle.threads.internal.EventLoopUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -184,10 +181,11 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     }
 
     @Override
-    public void addHandler(@NotNull final EventHandler handler) {
+    public EventHandlerManager addHandler(@NotNull final EventHandler handler0) {
         throwExceptionIfClosed();
 
         checkInterrupted();
+        EventHandlerManager handler = EventHandlerManager.wrap(handler0);
 
         final HandlerPriority priority = handler.priority().alias();
         if (DEBUG_ADDING_HANDLERS)
@@ -195,14 +193,14 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         if (!ALLOWED_PRIORITIES.contains(priority)) {
             if (handler.priority() == HandlerPriority.MONITOR) {
                 Jvm.warn().on(getClass(), "Ignoring " + handler.getClass());
-                return;
+                return handler;
             }
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
         }
 
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
-            return;
+            return handler;
         }
         do {
             pauser.unpause();
@@ -210,6 +208,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
             checkInterrupted();
         } while (!newHandler.compareAndSet(null, handler));
+        return handler;
     }
 
     void checkInterrupted() {

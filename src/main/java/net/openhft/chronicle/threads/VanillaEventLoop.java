@@ -20,10 +20,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
-import net.openhft.chronicle.core.threads.EventHandler;
-import net.openhft.chronicle.core.threads.EventLoop;
-import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -117,11 +114,11 @@ public class VanillaEventLoop extends MediumEventLoop {
     }
 
     @Override
-    public void addHandler(@NotNull final EventHandler handler) {
+    public EventHandlerManager addHandler(@NotNull final EventHandler handler0) {
         throwExceptionIfClosed();
 
         checkInterrupted();
-
+        EventHandlerManager handler = EventHandlerManager.wrap(handler0);
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
@@ -130,7 +127,7 @@ public class VanillaEventLoop extends MediumEventLoop {
 
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
-            return;
+            return handler;
         }
         do {
             pauser.unpause();
@@ -138,6 +135,7 @@ public class VanillaEventLoop extends MediumEventLoop {
 
             checkInterrupted();
         } while (!newHandler.compareAndSet(null, handler));
+        return handler;
     }
 
     protected void loopFinishedAllHandlers() {
