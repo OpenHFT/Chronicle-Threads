@@ -19,8 +19,10 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
+import net.openhft.chronicle.core.threads.EventHandlerManager;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
@@ -92,9 +94,10 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     }
 
     @Override
-    public void addHandler(@NotNull final EventHandler handler) {
+    public EventHandlerManager addHandler(@NotNull final EventHandler handler0) {
         throwExceptionIfClosed();
 
+        EventHandlerManager handler = EventHandlerManager.wrap(handler0);
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
@@ -104,6 +107,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
                 handlers.add(handler);
             handler.eventLoop(parent);
         }
+        return handler;
     }
 
     @Override
@@ -157,7 +161,6 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
 
         stop();
         Threads.shutdownDaemon(service);
-        handlers.forEach(Threads::loopFinishedQuietly);
-        net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
+        Closeable.closeQuietly(handlers);
     }
 }

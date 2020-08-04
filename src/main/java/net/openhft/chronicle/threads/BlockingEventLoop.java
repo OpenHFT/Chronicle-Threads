@@ -18,8 +18,10 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
+import net.openhft.chronicle.core.threads.EventHandlerManager;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
@@ -35,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
-import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 import static net.openhft.chronicle.threads.Threads.unpark;
 
 /**
@@ -52,7 +53,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     @NotNull
     private final String name;
     private final AtomicBoolean started = new AtomicBoolean();
-    private final List<EventHandler> handlers = new ArrayList<>();
+    private final List<EventHandlerManager> handlers = new ArrayList<>();
     private final NamedThreadFactory threadFactory;
 
     public BlockingEventLoop(@NotNull final EventLoop parent,
@@ -86,17 +87,20 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
     /**
      * This can be called multiple times and each handler will be executed in its own thread
+     *
      * @param handler to execute
      */
     @Override
-    public synchronized void addHandler(@NotNull final EventHandler handler) {
+    public synchronized Closeable addHandler(@NotNull final EventHandler handler) {
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
-        this.handlers.add(handler);
+        EventHandlerManager seHandler = EventHandlerManager.wrap(handler);
+        this.handlers.add(seHandler);
         if (started.get())
-            this.startHandler(handler);
+            this.startHandler(seHandler);
+        return seHandler;
     }
 
     private String asString(final Object handler) {
@@ -140,8 +144,6 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
         threadFactory.interruptAll();
 
         Threads.shutdown(service);
-        if (!started.get())
-            handlers.forEach(Threads::loopFinishedQuietly);
         closeQuietly(handlers);
     }
 
@@ -179,7 +181,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
             } finally {
                 if (LOG.isDebugEnabled())
                     Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
-                loopFinishedQuietly(handler);
+                closeQuietly(handler);
             }
         }
     }

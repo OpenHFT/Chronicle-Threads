@@ -18,6 +18,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
@@ -25,7 +26,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -36,10 +36,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.*;
 
 public class EventGroupTest extends ThreadsTestCommon {
+    static final AtomicLong lastTime = new AtomicLong();
     private List<TestHandler> handlers;
+    private boolean currentThread;
+
+    public static long uniqueTimeNS() {
+        long time = System.nanoTime();
+        while (true) {
+            long last = lastTime.get();
+            if (time <= last)
+                time = last + 1;
+            if (lastTime.compareAndSet(last, time))
+                return time;
+        }
+    }
 
     @Before
     public void handlersInit() {
@@ -75,7 +88,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                 Jvm.pause(10);
             }
 
-            Assert.assertTrue(System.currentTimeMillis() < start + TimeUnit.SECONDS.toMillis(5));
+            assertTrue(System.currentTimeMillis() < start + TimeUnit.SECONDS.toMillis(5));
 
             for (int i = 0; i < 10; i++) {
                 Assert.assertEquals(10, value.get());
@@ -178,7 +191,7 @@ public class EventGroupTest extends ThreadsTestCommon {
             for (TestHandler handler : this.handlers)
                 handler.started.await(100, TimeUnit.MILLISECONDS);
             this.handlers.sort(Comparator.comparing(TestHandler::priority));
-            Assert.assertTrue(this.handlers.get(0).firstActionNs.get() < this.handlers.get(1).firstActionNs.get());
+            assertTrue(this.handlers.get(0).firstActionNs.get() < this.handlers.get(1).firstActionNs.get());
         }
     }
 
@@ -217,30 +230,14 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Test(timeout = 5000)
-    public void testOldOverloadUnsupported() {
-        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
-            eventGroup.close();
-            for (HandlerPriority hp : HandlerPriority.values())
-                try {
-                    TestHandler handler = new TestHandler(hp);
-                    eventGroup.addHandler(true, handler);
-                    Assert.fail("Should have failed " + handler);
-                } catch (UnsupportedOperationException e) {
-                    // this is what we want
-                }
-            handlers.clear();
-        }
-    }
-
-    class TestHandler implements EventHandler, Closeable {
+    class TestHandler extends SimpleCloseable implements EventHandler {
         final CountDownLatch installed = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
-        final AtomicLong loopFinishedNS = new AtomicLong();
         final AtomicLong closedNS = new AtomicLong();
         final AtomicLong firstActionNs = new AtomicLong();
         final HandlerPriority priority;
         final boolean throwInvalidEventHandlerException;
+        private Thread thread;
 
         TestHandler(HandlerPriority priority) {
             this(priority, false);
@@ -259,8 +256,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                 throw new InvalidEventHandlerException();
             if (priority == HandlerPriority.BLOCKING)
                 LockSupport.park();
-            this.firstActionNs.compareAndSet(0, System.nanoTime());
-            Jvm.pause(1);
+            this.firstActionNs.compareAndSet(0, uniqueTimeNS());
             return false;
         }
 
@@ -276,27 +272,23 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
 
         @Override
-        public void loopFinished() {
-            Assert.assertTrue("loopFinished called once only " + this, loopFinishedNS.compareAndSet(0, System.nanoTime()));
-            Jvm.busyWaitMicros(1);
-        }
-
-        @Override
-        public void close() {
-            Assert.assertTrue("close called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
+        public void performClose() {
+            this.thread = Thread.currentThread();
+            // close should expect to be called at least once.
+            closedNS.compareAndSet(0, uniqueTimeNS());
         }
 
         void checkCloseOrder() {
-            Assert.assertTrue(this.toString(), loopFinishedNS.get() != 0);
-            Assert.assertTrue(this.toString(), closedNS.get() != 0);
-            Assert.assertTrue(this.toString(), loopFinishedNS.get() < closedNS.get());
+            String message = this.toString();
+            assertTrue(message, closedNS.get() != 0);
+            assertEquals(currentThread, Thread.currentThread() == thread);
         }
 
         @Override
         public String toString() {
             return "TestHandler{" +
                     "priority=" + priority +
-                    ", loopFinishedNS=" + loopFinishedNS +
+                    ", thread=" + thread +
                     ", closedNS=" + closedNS +
                     ", started=" + started.getCount() +
                     '}';

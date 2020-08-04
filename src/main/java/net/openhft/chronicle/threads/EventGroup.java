@@ -20,14 +20,12 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
-import net.openhft.chronicle.core.threads.EventHandler;
-import net.openhft.chronicle.core.threads.EventLoop;
-import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.core.threads.*;
 import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
@@ -142,7 +140,7 @@ public class EventGroup
                 .filter(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
                 .collect(Collectors.toSet());
         core = priorities.stream().anyMatch(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
-                ? corePriorities.equals(EnumSet.of(HandlerPriority.MEDIUM))
+                ? isHighOrMedium(corePriorities)
                 ? new MediumEventLoop(this, name + "core-event-loop", pauser, daemon, binding)
                 : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
                 : null;
@@ -178,6 +176,13 @@ public class EventGroup
                 name,
                 CONC_THREADS,
                 EnumSet.allOf(HandlerPriority.class));
+    }
+
+    private boolean isHighOrMedium(Set<HandlerPriority> priorities) {
+        Set<HandlerPriority> copy = new HashSet<>(priorities);
+        copy.remove(HandlerPriority.HIGH);
+        copy.remove(HandlerPriority.MEDIUM);
+        return copy.isEmpty();
     }
 
     @Override
@@ -241,9 +246,10 @@ public class EventGroup
     }
 
     @Override
-    public void addHandler(@NotNull final EventHandler handler) {
+    public EventHandlerManager addHandler(@NotNull final EventHandler handler0) {
         throwExceptionIfClosed();
 
+        EventHandlerManager handler = EventHandlerManager.wrap(handler0);
         HandlerPriority t1 = handler.priority();
         switch (t1) {
             case MONITOR:
@@ -283,6 +289,7 @@ public class EventGroup
             default:
                 throw new IllegalArgumentException("Unknown priority " + handler.priority());
         }
+        return handler;
     }
 
     public void setupTimeLimitMonitor(final long timeLimitNS, final LongSupplier timeOfStart) {

@@ -52,7 +52,7 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
             if (el.thread() != null)
                 break;
             Jvm.pause(50);
-            assertFalse("thread failed to start", i == 0);
+            assertNotEquals("thread failed to start", 0, i);
         }
 
         System.out.println(eh0);
@@ -85,11 +85,6 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
                 throw InvalidEventHandlerException.reusable();
             actionCnt++;
             return false;
-        }
-
-        @Override
-        public void loopFinished() {
-            close();
         }
 
         @Override

@@ -24,18 +24,14 @@ import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
-import net.openhft.chronicle.core.threads.EventHandler;
-import net.openhft.chronicle.core.threads.EventLoop;
-import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.core.threads.*;
 import net.openhft.chronicle.threads.internal.EventLoopUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -44,30 +40,37 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
-import static net.openhft.chronicle.threads.VanillaEventLoop.*;
-
 public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop, Runnable, Closeable {
+    public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
+            Collections.unmodifiableSet(
+                    EnumSet.of(HandlerPriority.HIGH,
+                            HandlerPriority.MEDIUM));
+    public static final int NO_CPU = -1;
+
+    protected static final EventHandler[] NO_EVENT_HANDLERS = {};
+    protected static final long FINISHED = Long.MAX_VALUE - 1;
+
     private static final Logger LOG = LoggerFactory.getLogger(MediumEventLoop.class);
 
     @Nullable
-    private final EventLoop parent;
+    protected final EventLoop parent;
     @NotNull
-    private final ExecutorService service;
-    private final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
-    private final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
+    protected final ExecutorService service;
+    protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
+    protected final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     @NotNull
-    private final AtomicBoolean running = new AtomicBoolean();
-    private final Pauser pauser;
-    private final boolean daemon;
-    private final String name;
-    private final String binding;
+    protected final AtomicBoolean running = new AtomicBoolean();
+    protected final Pauser pauser;
+    protected final boolean daemon;
+    protected final String name;
+    protected final String binding;
 
     @NotNull
-    private EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
-    private volatile long loopStartMS;
+    protected EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
+    protected EventHandler highHandler = EventHandlers.NOOP;
+    protected volatile long loopStartMS;
     @Nullable
-    private volatile Thread thread = null;
+    protected volatile Thread thread = null;
 
     /**
      * @param parent  the parent event loop
@@ -100,6 +103,20 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
             ((AbstractCloseable) handler).clearUsedByThread();
     }
 
+    static String hasBeen(String offendingProperty) {
+        return "MediumEventLoop has been " + offendingProperty;
+    }
+
+    protected static void removeHandler(final EventHandler handler, @NotNull final List<EventHandler> handlers) {
+        try {
+            handlers.remove(handler);
+        } catch (ArrayIndexOutOfBoundsException e2) {
+            if (!handlers.isEmpty())
+                throw e2;
+        }
+        Closeable.closeQuietly(handler);
+    }
+
     @Override
     @Nullable
     public Thread thread() {
@@ -125,6 +142,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 "name='" + name + '\'' +
                 ", parent=" + parent +
                 ", service=" + service +
+                ", highHandler=" + highHandler +
                 ", mediumHandlers=" + mediumHandlers +
                 ", newHandler=" + newHandler +
                 ", pauser=" + pauser +
@@ -163,27 +181,26 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     }
 
     @Override
-    public void addHandler(@NotNull final EventHandler handler) {
+    public EventHandlerManager addHandler(@NotNull final EventHandler handler0) {
         throwExceptionIfClosed();
 
         checkInterrupted();
+        EventHandlerManager handler = EventHandlerManager.wrap(handler0);
 
-        final HandlerPriority priority = handler.priority();
-        if (parent == null && handler.priority() != HandlerPriority.MEDIUM) {
-            if (handler.priority() == HandlerPriority.MONITOR) {
-                Jvm.warn().on(getClass(), "Ignoring " + handler.getClass());
-                return;
-            }
-            throw new IllegalArgumentException("Cannot handle " + handler.getClass() + " " + handler.priority());
-        }
+        final HandlerPriority priority = handler.priority().alias();
         if (DEBUG_ADDING_HANDLERS)
             System.out.println("Adding " + priority + " " + handler + " to " + this.name);
-        if (priority.alias() != HandlerPriority.MEDIUM)
+        if (!ALLOWED_PRIORITIES.contains(priority)) {
+            if (handler.priority() == HandlerPriority.MONITOR) {
+                Jvm.warn().on(getClass(), "Ignoring " + handler.getClass());
+                return handler;
+            }
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
+        }
 
         if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
-            return;
+            return handler;
         }
         do {
             pauser.unpause();
@@ -191,6 +208,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
             checkInterrupted();
         } while (!newHandler.compareAndSet(null, handler));
+        return handler;
     }
 
     void checkInterrupted() {
@@ -212,7 +230,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 if (thread == null)
                     throw new NullPointerException();
                 runLoop();
-            } catch (InvalidEventHandlerException e) {
+            } catch (IllegalStateException e) {
                 // ignore, already closed
             } finally {
                 loopFinishedAllHandlers();
@@ -223,18 +241,27 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         }
     }
 
-    private void loopFinishedAllHandlers() {
-        mediumHandlers.forEach(Threads::loopFinishedQuietly);
+    protected void loopFinishedAllHandlers() {
+        Closeable.closeQuietly(highHandler);
+        Closeable.closeQuietly(mediumHandlers);
     }
 
-    private void runLoop() throws InvalidEventHandlerException {
+    protected void runLoop() throws IllegalStateException {
+        long lastTimerMS = 0;
         int acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT;
-        while (running.get() && isNotInterrupted()) {
-            if (isClosed()) {
-                throw new InvalidEventHandlerException(hasBeen("closed"));
-            }
-            boolean busy = runMediumLoopOnly();
+        while (running.get()) {
+            throwExceptionIfClosed();
 
+            loopStartMS = System.currentTimeMillis();
+            boolean busy =
+                    highHandler == EventHandlers.NOOP
+                            ? runAllMediumHandler()
+                            : runAllHandlers();
+
+            if (lastTimerMS + timerIntervalMS() < loopStartMS) {
+                lastTimerMS = loopStartMS;
+                runTimerHandlers();
+            }
             if (busy) {
                 pauser.reset();
                 /*
@@ -250,6 +277,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 if (acceptNewHandlers())
                     continue;
 
+                runDaemonHandlers();
                 // reset the loop timeout.
                 loopStartMS = Long.MAX_VALUE;
                 pauser.pause();
@@ -257,13 +285,15 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         }
     }
 
-    private boolean isNotInterrupted() {
-        return !(CHECK_INTERRUPTS && Thread.currentThread().isInterrupted());
+    protected long timerIntervalMS() {
+        return Long.MAX_VALUE / 2;
     }
 
-    private boolean runMediumLoopOnly() {
-        loopStartMS = System.currentTimeMillis();
-        return runAllMediumHandler();
+    protected void runTimerHandlers() {
+    }
+
+    protected void runDaemonHandlers() {
+
     }
 
     private void closeAll() {
@@ -272,12 +302,22 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         dumpRunningHandlers();
     }
 
-    @HotMethod
-    private boolean runAllMediumHandler() {
+    // NOTE The loop is unrolled to reduce megamorphic calls.
+    protected boolean runAllMediumHandler() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
         try {
             switch (handlers.length) {
+                default:
+                    for (int i = handlers.length - 1; i >= 4; i--) {
+                        try {
+                            busy |= handlers[i].action();
+                        } catch (InvalidEventHandlerException e) {
+                            removeMediumHandler(handlers[i]);
+                        }
+                    }
+                    // fallthrough.
+
                 case 4:
                     try {
                         busy |= handlers[3].action();
@@ -308,14 +348,6 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 case 0:
                     break;
 
-                default:
-                    for (int i=handlers.length-1; i>=0; i--) {
-                        try {
-                            busy |= handlers[i].action();
-                        } catch (InvalidEventHandlerException e) {
-                            removeMediumHandler(handlers[i]);
-                        }
-                    }
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
@@ -323,20 +355,77 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         return busy;
     }
 
+    // NOTE The loop is unrolled to reduce megamorphic calls.
+    protected boolean runAllHandlers() {
+        boolean busy = false;
+        final EventHandler[] handlers = this.mediumHandlersArray;
+        try {
+            switch (handlers.length) {
+                default:
+                    for (int i = handlers.length - 1; i >= 4; i--) {
+                        busy |= callHighHandler();
+                        try {
+                            busy |= handlers[i].action();
+                        } catch (InvalidEventHandlerException e) {
+                            removeMediumHandler(handlers[i]);
+                        }
+                    }
+                    // fallthrough.
+
+                case 4:
+                    busy |= callHighHandler();
+                    try {
+                        busy |= handlers[3].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[3]);
+                    }
+                    // fall through
+                case 3:
+                    busy |= callHighHandler();
+                    try {
+                        busy |= handlers[2].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[2]);
+                    }
+                    // fall through
+                case 2:
+                    busy |= callHighHandler();
+                    try {
+                        busy |= handlers[1].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[1]);
+                    }
+                    // fall through
+                case 1:
+                    busy |= callHighHandler();
+                    try {
+                        busy |= handlers[0].action();
+                    } catch (InvalidEventHandlerException e) {
+                        removeMediumHandler(handlers[0]);
+                    }
+                case 0:
+                    break;
+
+            }
+        } catch (Throwable e) {
+            Jvm.warn().on(getClass(), e);
+        }
+        return busy;
+    }
+
+    private boolean callHighHandler() throws InterruptedException {
+        try {
+            return highHandler.action();
+        } catch (InvalidEventHandlerException e) {
+            Closeable.closeQuietly(highHandler);
+            highHandler = EventHandlers.NOOP;
+        }
+        return true;
+    }
+
     private void removeMediumHandler(EventHandler handler) {
         removeHandler(handler, mediumHandlers);
         this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
-    }
-
-    private void removeHandler(final EventHandler handler, @NotNull final List<EventHandler> handlers) {
-        try {
-            handlers.remove(handler);
-            loopFinishedQuietly(handler);
-        } catch (ArrayIndexOutOfBoundsException e2) {
-            if (!handlers.isEmpty())
-                throw e2;
-        }
-        Closeable.closeQuietly(handler);
     }
 
     @HotMethod
@@ -349,32 +438,41 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         return false;
     }
 
-    private void addNewHandler(@NotNull final EventHandler handler) {
+    protected void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
-        switch (t1 == null ? HandlerPriority.MEDIUM : t1.alias()) {
+        switch (t1.alias()) {
+            case HIGH:
+                if (highHandler == EventHandlers.NOOP || highHandler == handler) {
+                    highHandler = handler;
+                    break;
+                } else {
+                    Jvm.warn().on(getClass(), "Only one high handler supported was " + highHandler + ", treating " + handler + " as MEDIUM");
+                    // fall through to MEDIUM
+                }
+
             case REPLICATION:
             case CONCURRENT:
-            case HIGH:
-            case MEDIUM:
             case DAEMON:
+            case MEDIUM:
                 if (!mediumHandlers.contains(handler)) {
                     clearUsedByThread(handler);
                     mediumHandlers.add(handler);
                     mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
-                    handler.eventLoop(parent != null ? parent : this);
                 }
-                return;
+                break;
+
             case MONITOR:
-                if (parent != null)
-                    handler.eventLoop(parent);
-                else
+                if (parent != null) {
                     Jvm.warn().on(getClass(), "Handler " + handler.getClass() + " ignored");
+                    return;
+                }
 
             case BLOCKING:
             case TIMER:
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
+        handler.eventLoop(parent != null ? parent : this);
     }
 
     public String name() {
@@ -393,31 +491,31 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     }
 
     public int nonDaemonHandlerCount() {
-        return mediumHandlers.size();
+        return (highHandler == EventHandlers.NOOP ? 0 : 1) +
+                mediumHandlers.size();
     }
 
     public int handlerCount() {
-        return mediumHandlers.size();
+        return nonDaemonHandlerCount();
     }
 
-    static String hasBeen(String offendingProperty) {
-        return "MediumEventLoop has been " + offendingProperty;
-    }
-
-    public void closeAllHandlers() {
+    protected void closeAllHandlers() {
+        Closeable.closeQuietly(highHandler);
         closeAll(mediumHandlers);
-        Optional.ofNullable(newHandler.get()).ifPresent(eventHandler -> {
-            Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before close " + eventHandler);
-            Closeable.closeQuietly(eventHandler);
-        });
+        Optional.ofNullable(newHandler.get())
+                .ifPresent(eventHandler -> {
+                    Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before close " + eventHandler);
+                    Closeable.closeQuietly(eventHandler);
+                });
     }
 
     public void dumpRunningHandlers() {
         final int handlerCount = handlerCount();
         if (handlerCount <= 0)
             return;
-        final List<EventHandler> collect = Stream.of(mediumHandlers)
+        final List<EventHandler> collect = Stream.of(Collections.singletonList(highHandler), mediumHandlers)
                 .flatMap(List::stream)
+                .filter(e -> e != EventHandlers.NOOP)
                 .filter(e -> e instanceof Closeable)
                 .collect(Collectors.toList());
         if (collect.isEmpty())
@@ -464,6 +562,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
             }
         } finally {
             closeAllHandlers();
+            highHandler = EventHandlers.NOOP;
             mediumHandlers.clear();
             mediumHandlersArray = NO_EVENT_HANDLERS;
             newHandler.set(null);
