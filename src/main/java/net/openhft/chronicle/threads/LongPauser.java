@@ -106,7 +106,7 @@ public class LongPauser implements Pauser, TimingPauser {
         }
         if (timeOutStart == Long.MAX_VALUE)
             timeOutStart = System.nanoTime();
-        else if (timeOutStart + timeUnit.toNanos(timeout) < System.nanoTime())
+        else if (timeOutStart + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
             throw new TimeoutException();
         checkYieldTime();
         doPause(pauseTimeNS);

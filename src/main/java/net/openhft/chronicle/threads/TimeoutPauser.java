@@ -31,11 +31,9 @@ public class TimeoutPauser implements Pauser, TimingPauser {
     private long timeOutStart = Long.MAX_VALUE;
 
     /**
-     * first it will busy wait, then it will yield, then sleep for a small amount of time, then
-     * increases to a large amount of time.
+     * first it will busy wait, then it will yield, then sleep for a small amount of time, then increases to a large amount of time.
      *
-     * @param minBusy the min number of times it will go around doing nothing, after this is
-     *                reached it will then start to yield
+     * @param minBusy the min number of times it will go around doing nothing, after this is reached it will then start to yield
      */
     public TimeoutPauser(int minBusy) {
         this.minBusy = minBusy;
@@ -67,7 +65,7 @@ public class TimeoutPauser implements Pauser, TimingPauser {
 
         if (timeOutStart == Long.MAX_VALUE)
             timeOutStart = System.nanoTime();
-        else if (timeOutStart + timeUnit.toNanos(timeout) < System.nanoTime())
+        else if (timeOutStart + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
             throw new TimeoutException();
         checkYieldTime();
     }

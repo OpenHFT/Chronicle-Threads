@@ -43,7 +43,7 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
     public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
         if (time == Long.MAX_VALUE)
             time = System.nanoTime();
-        if (time + timeUnit.toNanos(timeout) < System.nanoTime())
+        if (time + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
             throw new TimeoutException();
     }
 
