@@ -54,6 +54,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     private final AtomicBoolean started = new AtomicBoolean();
     private final List<EventHandler> handlers = new ArrayList<>();
     private final NamedThreadFactory threadFactory;
+    private final Pauser pauser = Pauser.balanced();
 
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name) {
@@ -166,8 +167,12 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
                 handler.eventLoop(parent);
 
-                while (!isClosed())
-                    handler.action();
+                while (!isClosed()) {
+                    if (handler.action())
+                        pauser.reset();
+                    else
+                        pauser.pause();
+                }
 
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.
