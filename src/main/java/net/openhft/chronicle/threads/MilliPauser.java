@@ -28,8 +28,7 @@ public class MilliPauser implements Pauser {
     private long countPaused = 0;
 
     /**
-     * first it will busy wait, then it will yield, then sleep for a small amount of time, then
-     * increases to a large amount of time.
+     * Pauses for a fixed time
      *
      * @param pauseTimeMS the pause time for each loop.
      */
