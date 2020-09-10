@@ -26,7 +26,96 @@ import java.util.concurrent.TimeoutException;
 public interface Pauser {
 
     int MIN_PROCESSORS = Integer.getInteger("pauser.minProcessors", 8);
+    boolean BALANCED = getBalanced();
     boolean SLEEPY = getSleepy();
+
+    static boolean getBalanced() {
+        int procs = Runtime.getRuntime().availableProcessors();
+        return procs < MIN_PROCESSORS * 2;
+    }
+
+    static boolean getSleepy() {
+        int procs = Runtime.getRuntime().availableProcessors();
+        return procs < MIN_PROCESSORS;
+    }
+
+    static Pauser yielding(int minBusy) {
+        SleepyWarning.warnSleepy();
+        return SLEEPY ? sleepy()
+                : BALANCED ? balanced()
+                : new YieldingPauser(minBusy);
+    }
+
+    static TimingPauser sleepy() {
+        return new LongPauser(0, 100, 500, 20_000, TimeUnit.MICROSECONDS);
+    }
+
+    /**
+     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
+     *
+     * @return a balanced pauser
+     */
+    static TimingPauser balanced() {
+        return balancedUpToMillis(20);
+    }
+
+    /**
+     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
+     *
+     * @param millis maximum millis (unless in debug mode)
+     * @return a balanced pauser
+     */
+    static TimingPauser balancedUpToMillis(int millis) {
+        return SLEEPY ? sleepy() : new LongPauser(20000, 250, 50, (Jvm.isDebug() ? 200_000 : 0) + millis * 1_000, TimeUnit.MICROSECONDS);
+    }
+
+    /**
+     * Wait a fixed time before running again unless woken
+     *
+     * @param millis to wait for
+     * @return a waiting pauser
+     */
+    static MilliPauser millis(int millis) {
+        return new MilliPauser(millis);
+    }
+
+    /**
+     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
+     *
+     * @param minMillis starting millis
+     * @param maxMillis maximum millis
+     * @return a balanced pauser
+     */
+    static Pauser millis(int minMillis, int maxMillis) {
+        return new LongPauser(0, 0, minMillis, maxMillis, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Yielding pauser. simpler than LongPauser but slightly more friendly to other processes
+     */
+    static Pauser yielding() {
+        return yielding(2);
+    }
+
+    /**
+     * A busy pauser which never waits
+     *
+     * @return a busy/non pauser
+     */
+    @NotNull
+    static Pauser busy() {
+        SleepyWarning.warnSleepy();
+        return SLEEPY ? sleepy()
+                : BALANCED ? balanced()
+                : BusyPauser.INSTANCE;
+    }
+
+    @NotNull
+    static TimingPauser timedBusy() {
+        return SLEEPY ? sleepy()
+                : BALANCED ? balanced()
+                : new BusyTimedPauser();
+    }
 
     /**
      * Pauses the current thread.
@@ -83,83 +172,6 @@ public interface Pauser {
      */
     long countPaused();
 
-    static boolean getSleepy() {
-        int procs = Runtime.getRuntime().availableProcessors();
-        return procs < MIN_PROCESSORS;
-    }
-
-    static Pauser yielding(int minBusy) {
-        SleepyWarning.warnSleepy();
-        return SLEEPY ? sleepy() : new YieldingPauser(minBusy);
-    }
-
-    static TimingPauser sleepy() {
-        return new LongPauser(0, 100, 500, 20_000, TimeUnit.MICROSECONDS);
-    }
-
-    /**
-     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
-     *
-     * @return a balanced pauser
-     */
-    static Pauser balanced() {
-        return balancedUpToMillis(20);
-    }
-
-    /**
-     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
-     *
-     * @param millis maximum millis (unless in debug mode)
-     * @return a balanced pauser
-     */
-    static Pauser balancedUpToMillis(int millis) {
-        return SLEEPY ? sleepy() : new LongPauser(20000, 250, 50, (Jvm.isDebug() ? 200_000 : 0) + millis * 1_000, TimeUnit.MICROSECONDS);
-    }
-
-    /**
-     * Wait a fixed time before running again unless woken
-     *
-     * @param millis to wait for
-     * @return a waiting pauser
-     */
-    static MilliPauser millis(int millis) {
-        return new MilliPauser(millis);
-    }
-
-    /**
-     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
-     *
-     * @param minMillis starting millis
-     * @param maxMillis maximum millis
-     * @return a balanced pauser
-     */
-    static Pauser millis(int minMillis, int maxMillis) {
-        return new LongPauser(0, 0, minMillis, maxMillis, TimeUnit.MILLISECONDS);
-    }
-
-    /**
-     * Yielding pauser. simpler than LongPauser but slightly more friendly to other processes
-     */
-    static Pauser yielding() {
-        return yielding(2);
-    }
-
-    /**
-     * A busy pauser which never waits
-     *
-     * @return a busy/non pauser
-     */
-    @NotNull
-    static Pauser busy() {
-        SleepyWarning.warnSleepy();
-        return SLEEPY ? sleepy() : BusyPauser.INSTANCE;
-    }
-
-    @NotNull
-    static TimingPauser timedBusy() {
-        return SLEEPY ? sleepy() : new BusyTimedPauser();
-    }
-
     enum SleepyWarning {
         ;
 
@@ -167,6 +179,9 @@ public interface Pauser {
             if (SLEEPY) {
                 int procs = Runtime.getRuntime().availableProcessors();
                 Jvm.warn().on(Pauser.class, "Using Pauser.sleepy() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS + "+");
+            } else if (BALANCED) {
+                int procs = Runtime.getRuntime().availableProcessors();
+                Jvm.warn().on(Pauser.class, "Using Pauser.balanced() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS * 2 + "+");
             }
         }
 
