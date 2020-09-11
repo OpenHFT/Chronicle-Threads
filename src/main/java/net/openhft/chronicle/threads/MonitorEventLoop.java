@@ -50,7 +50,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     public MonitorEventLoop(final EventLoop parent, final String name, final Pauser pauser) {
         this.parent = parent;
         this.pauser = pauser;
-        this.name = name + (parent == null ? "" : parent.name()) + "/event-loop-monitor";
+        this.name = name + (parent == null ? "" : parent.name()) + "/event~loop~monitor";
         service = Executors.newSingleThreadExecutor(
                 new NamedThreadFactory(name, true));
     }
