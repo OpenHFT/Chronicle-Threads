@@ -447,12 +447,12 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
             if (thread != Thread.currentThread()) {
                 thread.interrupt();
 
-                for (int i = 1; i <= 40; i++) {
+                for (int i = 1; i <= 50; i++) {
                     if (loopStartMS == FINISHED)
                         break;
                     Jvm.pause(i);
 
-                    if (i == 30 || i == 40) {
+                    if (i == 35 || i == 50) {
                         final StringBuilder sb = new StringBuilder();
                         sb.append(name).append(": Shutting down thread is executing ").append(thread)
                                 .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
