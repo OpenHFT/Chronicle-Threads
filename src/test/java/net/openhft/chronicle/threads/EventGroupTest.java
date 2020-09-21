@@ -170,6 +170,11 @@ public class EventGroupTest extends ThreadsTestCommon {
         checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM);
     }
 
+    @Test(timeout = 5000)
+    public void checkHighCalledMore() throws InterruptedException {
+        checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.HIGH);
+    }
+
     private void checkExecutedOrderOfPriority(HandlerPriority... priorities) throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority priority : priorities)
@@ -180,6 +185,7 @@ public class EventGroupTest extends ThreadsTestCommon {
             this.handlers.sort(Comparator.comparing(TestHandler::priority));
             Assert.assertTrue(this.handlers.get(0).firstActionNs.get() < this.handlers.get(1).firstActionNs.get());
         }
+        Assert.assertTrue(this.handlers.get(0).actionCalled.get() > this.handlers.get(1).actionCalled.get());
     }
 
     @Test(timeout = 5000)
@@ -210,7 +216,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void testEventGroupNoCoreEventLoop() {
         try (EventLoop eg = new EventGroup(true, Pauser.balanced(), "none", "none", "", 0, EnumSet.of(HandlerPriority.REPLICATION))) {
             eg.unpause();
@@ -241,6 +247,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         final AtomicLong firstActionNs = new AtomicLong();
         final HandlerPriority priority;
         final boolean throwInvalidEventHandlerException;
+        final AtomicInteger actionCalled = new AtomicInteger();
 
         TestHandler(HandlerPriority priority) {
             this(priority, false);
@@ -255,6 +262,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         @Override
         public boolean action() throws InvalidEventHandlerException {
             started.countDown();
+            actionCalled.incrementAndGet();
             if (throwInvalidEventHandlerException)
                 throw new InvalidEventHandlerException();
             if (priority == HandlerPriority.BLOCKING)
