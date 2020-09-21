@@ -20,10 +20,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -170,6 +167,14 @@ public class EventGroupTest extends ThreadsTestCommon {
         checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM);
     }
 
+    @Ignore("https://github.com/OpenHFT/Chronicle-Threads/issues/53")
+    @Test(timeout = 5000)
+    public void checkHighCalledMore() throws InterruptedException {
+        checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.HIGH);
+
+        Assert.assertTrue(this.handlers.get(0).actionCalled.get() > this.handlers.get(1).actionCalled.get());
+    }
+
     private void checkExecutedOrderOfPriority(HandlerPriority... priorities) throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority priority : priorities)
@@ -210,7 +215,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void testEventGroupNoCoreEventLoop() {
         try (EventLoop eg = new EventGroup(true, Pauser.balanced(), "none", "none", "", 0, EnumSet.of(HandlerPriority.REPLICATION))) {
             eg.unpause();
@@ -241,6 +246,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         final AtomicLong firstActionNs = new AtomicLong();
         final HandlerPriority priority;
         final boolean throwInvalidEventHandlerException;
+        final AtomicInteger actionCalled = new AtomicInteger();
 
         TestHandler(HandlerPriority priority) {
             this(priority, false);
@@ -255,6 +261,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         @Override
         public boolean action() throws InvalidEventHandlerException {
             started.countDown();
+            actionCalled.incrementAndGet();
             if (throwInvalidEventHandlerException)
                 throw new InvalidEventHandlerException();
             if (priority == HandlerPriority.BLOCKING)
