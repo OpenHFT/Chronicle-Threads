@@ -469,6 +469,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                     mediumHandlers.add(handler);
                     mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
                     handler.eventLoop(parent != null ? parent : this);
+                    handler.loopStarted();
                 }
                 break;
 
@@ -484,6 +485,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
         handler.eventLoop(parent != null ? parent : this);
+        handler.loopStarted();
     }
 
     public String name() {

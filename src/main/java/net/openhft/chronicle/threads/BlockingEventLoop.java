@@ -166,6 +166,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
                 throwExceptionIfClosed();
 
                 handler.eventLoop(parent);
+                handler.loopStarted();
 
                 while (!isClosed()) {
                     if (handler.action())

@@ -222,6 +222,7 @@ public class VanillaEventLoop extends MediumEventLoop {
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
         handler.eventLoop(parent != null ? parent : this);
+        handler.loopStarted();
     }
 
     public int handlerCount() {
