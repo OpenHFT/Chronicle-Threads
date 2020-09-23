@@ -36,14 +36,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class VanillaEventLoop extends MediumEventLoop {
-    private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
                     EnumSet.of(HandlerPriority.HIGH,
                             HandlerPriority.MEDIUM,
                             HandlerPriority.TIMER,
                             HandlerPriority.DAEMON));
-
+    private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     private final List<EventHandler> timerHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> daemonHandlers = new CopyOnWriteArrayList<>();
     private final long timerIntervalMS;
@@ -140,6 +139,15 @@ public class VanillaEventLoop extends MediumEventLoop {
         } while (!newHandler.compareAndSet(null, handler));
     }
 
+    @Override
+    protected void loopStartedAllHandlers() {
+        super.loopStartedAllHandlers();
+        if (!timerHandlers.isEmpty())
+            timerHandlers.forEach(EventHandler::loopStarted);
+        if (!daemonHandlers.isEmpty())
+            daemonHandlers.forEach(EventHandler::loopStarted);
+    }
+
     protected void loopFinishedAllHandlers() {
         super.loopFinishedAllHandlers();
         if (!timerHandlers.isEmpty())
@@ -222,7 +230,8 @@ public class VanillaEventLoop extends MediumEventLoop {
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
         handler.eventLoop(parent != null ? parent : this);
-        handler.loopStarted();
+        if (thread != null)
+            handler.loopStarted();
     }
 
     public int handlerCount() {

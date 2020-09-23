@@ -182,7 +182,14 @@ public class EventGroupTest extends ThreadsTestCommon {
             for (TestHandler handler : this.handlers)
                 handler.started.await(100, TimeUnit.MILLISECONDS);
             this.handlers.sort(Comparator.comparing(TestHandler::priority));
-            Assert.assertTrue(this.handlers.get(0).firstActionNs.get() < this.handlers.get(1).firstActionNs.get());
+            long l0;
+            long l1;
+            do {
+                Jvm.pause(1);
+                l0 = this.handlers.get(0).firstActionNs.get();
+                l1 = this.handlers.get(1).firstActionNs.get();
+            } while (l0 == 0 || l1 == 0);
+            Assert.assertTrue(l0 < l1);
         }
         Jvm.pause(100);
         Assert.assertTrue(this.handlers.get(0).actionCalled.get() > this.handlers.get(1).actionCalled.get());
@@ -262,8 +269,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
         @Override
         public boolean action() throws InvalidEventHandlerException {
-            System.out.println("action " + priority + " " + super.toString());
-            started.countDown();
+//            System.out.println("action " + priority + " " + super.toString());
             actionCalled.incrementAndGet();
             if (throwInvalidEventHandlerException)
                 throw new InvalidEventHandlerException();
@@ -272,6 +278,11 @@ public class EventGroupTest extends ThreadsTestCommon {
             this.firstActionNs.compareAndSet(0, System.nanoTime());
             Jvm.pause(1);
             return false;
+        }
+
+        @Override
+        public void loopStarted() {
+            started.countDown();
         }
 
         @NotNull
@@ -295,7 +306,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         protected void performClose() {
             super.performClose();
 
-            System.out.println("closed " + this);
+//            System.out.println("closed " + this);
             closed.countDown();
             Assert.assertTrue("close should be called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
         }

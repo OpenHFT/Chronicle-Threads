@@ -103,7 +103,8 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
             if (!handlers.contains(handler))
                 handlers.add(handler);
             handler.eventLoop(parent);
-            handler.loopStarted();
+            if (!running)
+                handler.loopStarted();
         }
     }
 

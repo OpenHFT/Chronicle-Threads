@@ -27,7 +27,9 @@ import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
@@ -137,21 +139,29 @@ public class EventGroup
         this.bindingReplication = bindingReplication;
         this.name = name;
         this.priorities = EnumSet.copyOf(priorities);
-
-        final Set<HandlerPriority> corePriorities = priorities.stream()
-                .filter(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
-                .collect(Collectors.toSet());
-        core = priorities.stream().anyMatch(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
-                ? corePriorities.equals(EnumSet.of(HandlerPriority.MEDIUM))
-                ? new MediumEventLoop(this, name + "core-event-loop", pauser, daemon, binding)
-                : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
-                : null;
-        monitor = new MonitorEventLoop(this, name + "~monitor",
-                Pauser.millis(Integer.getInteger("monitor.interval", 10)));
-        if (core != null)
-            monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 30));
-        blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop") : null;
-        concThreads = new VanillaEventLoop[priorities.contains(HandlerPriority.CONCURRENT) ? concThreadsNum : 0];
+        List<Object> closeable = new ArrayList<>();
+        try {
+            final Set<HandlerPriority> corePriorities = priorities.stream()
+                    .filter(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
+                    .collect(Collectors.toSet());
+            core = priorities.stream().anyMatch(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
+                    ? corePriorities.equals(EnumSet.of(HandlerPriority.MEDIUM))
+                    ? new MediumEventLoop(this, name + "core-event-loop", pauser, daemon, binding)
+                    : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
+                    : null;
+            closeable.add(core);
+            monitor = new MonitorEventLoop(this, name + "~monitor",
+                    Pauser.millis(Integer.getInteger("monitor.interval", 10)));
+            closeable.add(monitor);
+            if (core != null)
+                monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 30));
+            blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop") : null;
+            closeable.add(blocking);
+            concThreads = new VanillaEventLoop[priorities.contains(HandlerPriority.CONCURRENT) ? concThreadsNum : 0];
+            closeable.clear();
+        } finally {
+            Closeable.closeQuietly(closeable);
+        }
     }
 
     public EventGroup(final boolean daemon) {

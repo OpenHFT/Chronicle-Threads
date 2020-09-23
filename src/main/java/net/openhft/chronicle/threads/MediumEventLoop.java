@@ -232,6 +232,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 thread = Thread.currentThread();
                 if (thread == null)
                     throw new NullPointerException();
+                loopStartedAllHandlers();
                 runLoop();
             } catch (IllegalStateException e) {
                 // ignore, already closed
@@ -243,6 +244,12 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
         }
+    }
+
+    protected void loopStartedAllHandlers() {
+        highHandler.loopStarted();
+        if (!mediumHandlers.isEmpty())
+            mediumHandlers.forEach(EventHandler::loopStarted);
     }
 
     protected void loopFinishedAllHandlers() {
@@ -485,7 +492,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
         handler.eventLoop(parent != null ? parent : this);
-        handler.loopStarted();
+        if (thread != null)
+            handler.loopStarted();
     }
 
     public String name() {
