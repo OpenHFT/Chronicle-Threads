@@ -18,9 +18,13 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -44,7 +48,9 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @After
-    public void checkHandlersClosed() {
+    public void checkHandlersClosed() throws InterruptedException {
+        for (TestHandler handler : this.handlers)
+            handler.closed.await(100, TimeUnit.MILLISECONDS);
         handlers.forEach(TestHandler::checkCloseOrder);
     }
 
@@ -167,14 +173,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM);
     }
 
-    @Ignore("https://github.com/OpenHFT/Chronicle-Threads/issues/53")
-    @Test(timeout = 5000)
-    public void checkHighCalledMore() throws InterruptedException {
-        checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.HIGH);
-
-        Assert.assertTrue(this.handlers.get(0).actionCalled.get() > this.handlers.get(1).actionCalled.get());
-    }
-
+    //    @Ignore("https://github.com/OpenHFT/Chronicle-Threads/issues/53")
     private void checkExecutedOrderOfPriority(HandlerPriority... priorities) throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority priority : priorities)
@@ -185,6 +184,8 @@ public class EventGroupTest extends ThreadsTestCommon {
             this.handlers.sort(Comparator.comparing(TestHandler::priority));
             Assert.assertTrue(this.handlers.get(0).firstActionNs.get() < this.handlers.get(1).firstActionNs.get());
         }
+        Jvm.pause(100);
+        Assert.assertTrue(this.handlers.get(0).actionCalled.get() > this.handlers.get(1).actionCalled.get());
     }
 
     @Test(timeout = 5000)
@@ -238,9 +239,10 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    class TestHandler implements EventHandler, Closeable {
+    class TestHandler extends SimpleCloseable implements EventHandler, Closeable {
         final CountDownLatch installed = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
+        final CountDownLatch closed = new CountDownLatch(1);
         final AtomicLong loopFinishedNS = new AtomicLong();
         final AtomicLong closedNS = new AtomicLong();
         final AtomicLong firstActionNs = new AtomicLong();
@@ -260,6 +262,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
         @Override
         public boolean action() throws InvalidEventHandlerException {
+            System.out.println("action " + priority + " " + super.toString());
             started.countDown();
             actionCalled.incrementAndGet();
             if (throwInvalidEventHandlerException)
@@ -289,8 +292,12 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
 
         @Override
-        public void close() {
-            Assert.assertTrue("close called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
+        protected void performClose() {
+            super.performClose();
+
+            System.out.println("closed " + this);
+            closed.countDown();
+            Assert.assertTrue("close should be called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
         }
 
         void checkCloseOrder() {
