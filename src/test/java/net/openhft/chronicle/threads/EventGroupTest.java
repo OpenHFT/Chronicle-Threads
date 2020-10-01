@@ -230,22 +230,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Test(timeout = 5000)
-    public void testOldOverloadUnsupported() {
-        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
-            eventGroup.close();
-            for (HandlerPriority hp : HandlerPriority.values())
-                try {
-                    TestHandler handler = new TestHandler(hp);
-                    eventGroup.addHandler(true, handler);
-                    Assert.fail("Should have failed " + handler);
-                } catch (UnsupportedOperationException e) {
-                    // this is what we want
-                }
-            handlers.clear();
-        }
-    }
-
     class TestHandler extends SimpleCloseable implements EventHandler, Closeable {
         final CountDownLatch installed = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
