@@ -21,6 +21,8 @@ import java.util.function.Supplier;
 
 /**
  * Because {@link Pauser} is not an enum, and implementations are not Marshallable, this makes Pausers more yaml friendly
+ *
+ * <a href="https://github.com/OpenHFT/Chronicle-Threads">Pauser Mode features</a>
  */
 public enum PauserMode implements Supplier<Pauser> {
     balanced {
@@ -34,11 +36,21 @@ public enum PauserMode implements Supplier<Pauser> {
         public Pauser get() {
             return Pauser.busy();
         }
+
+        @Override
+        public boolean isolcpus() {
+            return true;
+        }
+
+        @Override
+        public boolean monitor() {
+            return false;
+        }
     },
-    yielding {
+    milli {
         @Override
         public Pauser get() {
-            return Pauser.yielding();
+            return Pauser.millis(1);
         }
     },
     sleepy {
@@ -47,4 +59,29 @@ public enum PauserMode implements Supplier<Pauser> {
             return Pauser.sleepy();
         }
     },
+    timedBusy {
+        @Override
+        public Pauser get() {
+            return Pauser.timedBusy();
+        }
+
+        @Override
+        public boolean isolcpus() {
+            return true;
+        }
+    },
+    yielding {
+        @Override
+        public Pauser get() {
+            return Pauser.yielding();
+        }
+    };
+
+    public boolean isolcpus() {
+        return false;
+    }
+
+    public boolean monitor() {
+        return true;
+    }
 }
