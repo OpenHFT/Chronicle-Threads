@@ -22,7 +22,7 @@ import java.util.function.Supplier;
 /**
  * Because {@link Pauser} is not an enum, and implementations are not Marshallable, this makes Pausers more yaml friendly
  *
- * <a href="https://github.com/OpenHFT/Chronicle-Threads">Pauser Mode features</a>
+ * <a href="https://github.com/OpenHFT/Chronicle-Threads#pauser-modes">Pauser Mode features</a>
  */
 public enum PauserMode implements Supplier<Pauser> {
     balanced {
