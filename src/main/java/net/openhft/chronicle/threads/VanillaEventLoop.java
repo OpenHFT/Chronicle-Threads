@@ -241,40 +241,10 @@ public class VanillaEventLoop extends MediumEventLoop {
     @Override
     protected void performClose() {
         try {
-            stop();
-            pauser.reset(); // reset the timer.
-            pauser.unpause();
-            LockSupport.unpark(thread);
-            Threads.shutdown(service, daemon);
-            if (thread == null) {
-                loopFinishedAllHandlers();
-                return;
-            }
-            if (thread != Thread.currentThread()) {
-                thread.interrupt();
-
-                for (int i = 1; i <= 50; i++) {
-                    if (loopStartMS == FINISHED)
-                        break;
-                    Jvm.pause(i);
-
-                    if (i == 35 || i == 50) {
-                        final StringBuilder sb = new StringBuilder();
-                        sb.append(name).append(": Shutting down thread is executing ").append(thread)
-                                .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
-                        Jvm.trimStackTrace(sb, thread.getStackTrace());
-                        Jvm.warn().on(getClass(), sb.toString());
-                        dumpRunningHandlers();
-                    }
-                }
-            }
+            super.performClose();
         } finally {
-            closeAllHandlers();
-            mediumHandlers.clear();
-            mediumHandlersArray = NO_EVENT_HANDLERS;
             daemonHandlers.clear();
             timerHandlers.clear();
-            newHandler.set(null);
         }
     }
 
