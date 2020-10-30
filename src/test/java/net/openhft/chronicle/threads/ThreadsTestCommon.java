@@ -3,6 +3,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractReferenceCounted;
 import net.openhft.chronicle.core.onoes.ExceptionKey;
+import net.openhft.chronicle.core.threads.CleaningThread;
 import net.openhft.chronicle.core.threads.ThreadDump;
 import org.junit.After;
 import org.junit.Assert;
@@ -47,6 +48,8 @@ public class ThreadsTestCommon {
 
     @After
     public void afterChecks() {
+        CleaningThread.performCleanup(Thread.currentThread());
+        System.gc();
         assertReferencesReleased();
         checkThreadDump();
         checkExceptions();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 Chronicle Software
+ * Copyright 2016-2020 chronicle.software
  *
  * https://chronicle.software
  *
@@ -269,8 +269,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         collect.forEach(h -> LOG.info("\t" + h));
     }
 
-
-    @Override
+@Override
     public boolean isAlive() {
         final Thread thread = this.thread;
         return thread != null && thread.isAlive();

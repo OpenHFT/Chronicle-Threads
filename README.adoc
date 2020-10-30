@@ -1,0 +1,48 @@
+= Chronicle Threads
+Peter Lawrey
+
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg)](https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads)
+
+== Thread pool
+
+This library provide a high performance thread pool.
+This thread pool is design to share blocking, monitoring and busy waiting threads.
+Busy waiting tasks can be prioritised for HIGH, MEDIUM, DAEMON (low priority) as well as TIMER (fixed rate events) tasks in a single thread without creating garbage.
+
+See `net.openhft.chronicle.core.threads.EventLoop` and `net.openhft.chronicle.threads.EventGroup`
+
+== Pauser
+
+Chronicle Threads provides a number of implementations of the `net.openhft.chronicle.threads.Pauser` interface.
+The canonical way to make use of `Pauser` is below:
+
+[source,java]
+----
+    while (running) {}
+        // pollForWork returns true if it does something, false if it does nothing
+        if (pollForWork())
+            pauser.reset();
+        else
+            pauser.pause();
+    }
+----
+
+The various different implementations of `Pauser` allow for varied pausing strategies - see
+http://openhft.github.io/Chronicle-Threads/apidocs/index.html[javadoc]
+
+== Pauser modes
+
+For the best performance, the default `busy` `PauserMode` will minimise jitter however it will maximise CPU usage.
+If you have too many threads in `busy` mode you can have a slow machine.
+
+.Alternative pauser modes
+[cols="2,6,6,1,1"]
+|===
+| Mode | Benefits | Downside | monitoring | isolcpus
+| busy | Minimise jitter | Uses more CPU, no monitoring support | &#9746; | &#9745;
+| timedBusy | Minimise jitter | Uses more CPU, Slight overhead for monitoring. | &#9745; | &#9745;
+| yielding | Low jitter, can be shared | Uses more CPU | &#9745; | &#9746;
+| balanced | Good balance of busy waiting and back off | Uses less CPU, but more jitter | &#9745; | &#9746;
+| milli | Regular checks every 1 ms | Uses minimal CPU, but 1 ms jitter | &#9745; | &#9746;
+| sleepy | Minimal CPU, like balanced but less CPU | More millisecond jitter | &#9745; | &#9746;
+|===
