@@ -37,7 +37,7 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
         FlakyTestRunner.run(this::testEnsureRemoveInvokesLoopFinishedJustOnce0);
     }
 
-    public void testEnsureRemoveInvokesLoopFinishedJustOnce0() throws InterruptedException {
+    private void testEnsureRemoveInvokesLoopFinishedJustOnce0() throws InterruptedException {
         final VanillaEventLoop el = new VanillaEventLoop(null, "test-event-loop", PauserMode.busy.get(), 20, false, "none", EnumSet.of(HandlerPriority.MEDIUM));
 
         final TestMediumEventHandler eh0 = new TestMediumEventHandler();

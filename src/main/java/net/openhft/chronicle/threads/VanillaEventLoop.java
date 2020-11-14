@@ -56,7 +56,7 @@ public class VanillaEventLoop extends MediumEventLoop {
      * @param daemon          is a demon thread
      * @param binding         set affinity description, "any", "none", "1", "last-1"
      */
-    public VanillaEventLoop(final EventLoop parent,
+    public VanillaEventLoop(@Nullable final EventLoop parent,
                             final String name,
                             final Pauser pauser,
                             final long timerIntervalMS,

@@ -24,7 +24,6 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
-import net.openhft.chronicle.core.util.Time;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -336,7 +335,7 @@ public class EventGroup
             monitor.start();
             // this checks that the core threads have stalled
             if (core != null)
-                monitor.addHandler(new LoopBlockMonitor(MONITOR_INTERVAL_MS, EventGroup.this.core));
+                monitor.addHandler(new LoopBlockMonitor(MONITOR_INTERVAL_MS, core));
 
             while (!isAlive())
                 Jvm.pause(1);
@@ -401,7 +400,7 @@ public class EventGroup
                 Jvm.warn().on(getClass(), "Monitoring a task which has finished " + eventLoop);
                 throw new InvalidEventHandlerException();
             }
-            long now = Time.currentTimeMillis();
+            long now = System.currentTimeMillis();
             long blockingTimeMS = now - loopStartMS;
 
             if (blockingTimeMS >= printBlockTimeMS && eventLoop.isAlive()) {
