@@ -366,10 +366,11 @@ public class EventGroup
     protected void performClose() {
         stop();
         Closeable.closeQuietly(
+                core,
                 monitor,
                 replication,
-                blocking,
-                core);
+                blocking
+        );
 
         Closeable.closeQuietly(concThreads);
     }

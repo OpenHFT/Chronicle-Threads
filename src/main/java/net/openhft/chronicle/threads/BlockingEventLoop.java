@@ -87,6 +87,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
     /**
      * This can be called multiple times and each handler will be executed in its own thread
+     *
      * @param handler to execute
      */
     @Override
@@ -115,7 +116,8 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
             service.submit(new Runner(handler));
 
         } catch (RejectedExecutionException e) {
-            Jvm.warn().on(getClass(), e);
+            if (!service.isShutdown())
+                Jvm.warn().on(getClass(), e);
         }
     }
 
