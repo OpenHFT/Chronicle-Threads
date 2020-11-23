@@ -569,16 +569,23 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 return;
             }
             if (thread != Thread.currentThread()) {
+                long startTimeMillis = System.currentTimeMillis();
+                long waitUntilMs = startTimeMillis;
                 thread.interrupt();
 
                 for (int i = 1; i <= 50; i++) {
                     if (loopStartMS == FINISHED)
                         break;
-                    Jvm.pause(i);
+                    // we do this loop below to protect from Jvm.pause not pausing for as long as it should
+                    waitUntilMs += i;
+                    while (System.currentTimeMillis() < waitUntilMs)
+                        Jvm.pause(i);
 
                     if (i == 35 || i == 50) {
                         final StringBuilder sb = new StringBuilder();
-                        sb.append(name).append(": Shutting down thread is executing ").append(thread)
+                        long ms = System.currentTimeMillis() - startTimeMillis;
+                        sb.append(name).append(": Shutting down thread is executing after ").
+                                append(ms).append("ms ").append(thread)
                                 .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
                         Jvm.trimStackTrace(sb, thread.getStackTrace());
                         Jvm.warn().on(getClass(), sb.toString());
