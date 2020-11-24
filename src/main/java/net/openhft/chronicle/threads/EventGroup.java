@@ -19,7 +19,6 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
-import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -35,6 +34,7 @@ import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
 public class EventGroup
@@ -159,7 +159,7 @@ public class EventGroup
             concThreads = new VanillaEventLoop[priorities.contains(HandlerPriority.CONCURRENT) ? concThreadsNum : 0];
             closeable.clear();
         } finally {
-            Closeable.closeQuietly(closeable);
+            closeQuietly(closeable);
         }
     }
 
@@ -365,14 +365,15 @@ public class EventGroup
     @Override
     protected void performClose() {
         stop();
-        Closeable.closeQuietly(
+        closeQuietly(
                 core,
                 monitor,
                 replication,
                 blocking
         );
 
-        Closeable.closeQuietly(concThreads);
+        closeQuietly(concThreads);
+        awaitTermination();
     }
 
     static final class LoopBlockMonitor implements EventHandler {
