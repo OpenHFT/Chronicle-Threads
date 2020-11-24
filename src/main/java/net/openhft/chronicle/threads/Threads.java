@@ -26,13 +26,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.Thread.State;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
@@ -41,7 +37,7 @@ public enum Threads {
 
     static final Field GROUP = Jvm.getField(Thread.class, "group");
     static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 500);
-    static final ThreadLocal<ArrayList> listTL = ThreadLocal.withInitial(ArrayList::new);
+    static final ThreadLocal<List> listTL = ThreadLocal.withInitial(CopyOnWriteArrayList::new);
     static ExecutorFactory executorFactory;
 
     static {
