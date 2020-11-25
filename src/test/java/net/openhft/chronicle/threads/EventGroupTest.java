@@ -173,7 +173,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM);
     }
 
-    //    @Ignore("https://github.com/OpenHFT/Chronicle-Threads/issues/53")
     private void checkExecutedOrderOfPriority(HandlerPriority... priorities) throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority priority : priorities)
@@ -312,7 +311,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    private class PausingBlockingEventHandler implements EventHandler {
+    private static class PausingBlockingEventHandler implements EventHandler {
         @Override
         public boolean action() {
             LockSupport.parkNanos(Long.MAX_VALUE);

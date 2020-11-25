@@ -26,10 +26,12 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.Thread.State;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 public enum Threads {
@@ -37,7 +39,7 @@ public enum Threads {
 
     static final Field GROUP = Jvm.getField(Thread.class, "group");
     static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 500);
-    static final ThreadLocal<List> listTL = ThreadLocal.withInitial(CopyOnWriteArrayList::new);
+    static final ThreadLocal<List> listTL = ThreadLocal.withInitial(ArrayList::new);
     static ExecutorFactory executorFactory;
 
     static {
@@ -162,7 +164,7 @@ public enum Threads {
 
     static void forEachThread(ExecutorService service, Consumer<Thread> consumer) {
         try {
-            Set workers;
+            final Set workers;
             if (Jvm.isJava9Plus() && !(service instanceof ThreadPoolExecutor)) {
                 workers = Jvm.getValue(service, "e/workers");
             } else {
@@ -172,10 +174,23 @@ public enum Threads {
                 Jvm.warn().on(Threads.class, "Couldn't find workers for " + service.getClass());
                 return;
             }
+            ReentrantLock mainLock = null;
+            try {
+                mainLock = Jvm.getValue(service, "mainLock");
+            } catch (Error e) {
+                Jvm.debug().on(Threads.class, e);
+            }
 
             List objects = listTL.get();
             objects.clear();
-            objects.addAll(workers);
+            if (mainLock != null) mainLock.lock();
+            try {
+                // from ThreadPoolExecutor source docs: workers field is protected by mainLock
+                objects.addAll(workers);
+            } finally {
+                if (mainLock != null) mainLock.unlock();
+            }
+
             for (Object o : objects) {
                 Thread t = Jvm.getValue(o, "thread");
                 if (t.getState() != State.TERMINATED)

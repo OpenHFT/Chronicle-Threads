@@ -179,7 +179,6 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.
-//              TODO:   handlersRemoved.add(handler);
             } catch (Throwable t) {
                 if (!isClosed())
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw ", t);
