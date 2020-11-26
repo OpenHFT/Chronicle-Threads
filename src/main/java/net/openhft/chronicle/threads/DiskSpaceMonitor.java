@@ -89,7 +89,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
 
         final long tookUs = (System.nanoTime() - start) / 1_000;
         if (tookUs > 250)
-            Jvm.warn().on(getClass(), "Took " + tookUs + " us to pollDiskSpace for " + file.getPath());
+            Jvm.perf().on(getClass(), "Took " + tookUs / 1000.0 + " ms to pollDiskSpace for " + file.getPath());
     }
 
     @Override
@@ -147,7 +147,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                         "warning: chronicle-queue may crash if it runs out of space.");
 
             } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage / 100) {
-                double diskSpaceFull = ((long) (10000 * (totalSpace - unallocatedBytes) / totalSpace + 0.999)) / 100.0;
+                double diskSpaceFull = ((long) (1000 * (totalSpace - unallocatedBytes) / totalSpace + 0.999)) / 10.0;
                 Jvm.warn().on(getClass(), "your disk " + fileStore
                         + " is " + diskSpaceFull + "% full, " +
                         "warning: chronicle-queue may crash if it runs out of space.");
@@ -158,7 +158,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             }
             long time = System.nanoTime() - start;
             if (time > 1_000_000)
-                Jvm.debug().on(getClass(), "Took " + time / 10_000 / 100.0 + " ms to check the disk space of " + fileStore);
+                Jvm.perf().on(getClass(), "Took " + time / 10_000 / 100.0 + " ms to check the disk space of " + fileStore);
         }
     }
 }
