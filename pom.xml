@@ -95,6 +95,9 @@
                         <goals>
                             <goal>enforcer</goal>
                         </goals>
+                        <configuration>
+                            <referenceVersion>2.20.2</referenceVersion>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
