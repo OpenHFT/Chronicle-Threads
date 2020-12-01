@@ -1,7 +1,10 @@
 = Chronicle Threads
 Peter Lawrey
 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg)](https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads)
+[#image-maven]
+[caption="",link=https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads]
+image:https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg[link="https://search.maven.org/artifact/net.openhft/chronicle-threads/2.20.104/jar"]
+image:https://javadoc.io/badge2/net.openhft/chronicle-threads/javadoc.svg[link="https://www.javadoc.io/doc/net.openhft/chronicle-threads/latest/index.html"]
 
 == Thread pool
 
