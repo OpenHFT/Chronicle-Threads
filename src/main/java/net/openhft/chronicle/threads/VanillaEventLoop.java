@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -68,7 +67,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         this.priorities = EnumSet.copyOf(priorities);
     }
 
-    @Deprecated
+    @Deprecated(/* to be removed in x.22 */)
     public VanillaEventLoop(final EventLoop parent,
                             final String name,
                             final Pauser pauser,
@@ -79,7 +78,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         this(parent, name, pauser, timerIntervalMS, daemon, bindingCpu != NO_CPU ? Integer.toString(bindingCpu) : binding ? "any" : "none", ALLOWED_PRIORITIES);
     }
 
-    @Deprecated
+    @Deprecated(/* to be removed in x.22 */)
     public VanillaEventLoop(@Nullable final EventLoop parent,
                             final String name,
                             final Pauser pauser,
