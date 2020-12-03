@@ -27,7 +27,7 @@ import java.util.concurrent.locks.LockSupport;
 /*
  * @deprecated use LongPauser instead.
  */
-@Deprecated
+@Deprecated(/* to be removed in x.22 */)
 public class LightPauser implements Pauser {
     public static final long NO_BUSY_PERIOD = -1;
     private final AtomicBoolean pausing = new AtomicBoolean();

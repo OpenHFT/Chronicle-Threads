@@ -76,7 +76,7 @@ public class EventGroup
      * @param name                  name of event group. Any created threads are named after this
      * @param concThreads           number of concurrent threads to support
      */
-    @Deprecated
+    @Deprecated(/* to be removed in x.22 */)
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
                       final boolean binding,
