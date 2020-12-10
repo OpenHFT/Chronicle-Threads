@@ -92,7 +92,7 @@ public class LongPauser implements Pauser, TimingPauser {
     private void showPauses() {
         String name = Thread.currentThread().getName();
         if (name.startsWith(SHOW_PAUSES))
-            System.out.println(name + " p" + pauseTimeNS / 1000);
+            Jvm.perf().on(getClass(), " paused for " + pauseTimeNS / 1000 + " us.");
     }
 
     @Override
