@@ -86,13 +86,6 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <altReleaseDeploymentRepository>chronicle-enterprise-release::https://nexus.chronicle.software/content/repositories/releases</altReleaseDeploymentRepository>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>net.openhft</groupId>
                 <artifactId>binary-compatibility-enforcer-plugin</artifactId>
                 <version>1.0.2</version>
