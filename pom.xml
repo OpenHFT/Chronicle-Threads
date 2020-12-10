@@ -89,7 +89,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
                 <configuration>
-                    <altReleaseDeploymentRepository>chronicle-enterprise-release::default::https://nexus.chronicle.software/content/repositories/releases</altReleaseDeploymentRepository>
+                    <altReleaseDeploymentRepository>chronicle-enterprise-release::https://nexus.chronicle.software/content/repositories/releases</altReleaseDeploymentRepository>
                 </configuration>
             </plugin>
             <plugin>
