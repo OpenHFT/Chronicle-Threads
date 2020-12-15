@@ -393,7 +393,8 @@ public class EventGroup
             long loopStartMS = eventLoop.loopStartMS();
             if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE) {
                 if (interval != monitoryIntervalMs) {
-                    Jvm.warn().on(getClass(), "Reset interval from " + interval);
+                    if (Jvm.isDebugEnabled(getClass()))
+                        Jvm.debug().on(getClass(), "Reset interval from " + interval);
                     interval = printBlockTimeMS = monitoryIntervalMs;
                 }
                 return false;
