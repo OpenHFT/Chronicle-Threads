@@ -46,6 +46,7 @@ public class EventGroup
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500);
     private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
+    private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Boolean.getBoolean("disableLoopBlockMonitor");
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
     private final EventLoop monitor;
@@ -200,7 +201,9 @@ public class EventGroup
             Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
             replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser,
                     REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION));
-            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, replication));
+
+            if (ENABLE_LOOP_BLOCK_MONITOR)
+                monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, replication));
             if (isAlive())
                 replication.start();
             monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 60));
