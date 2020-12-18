@@ -45,7 +45,7 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
             while (System.nanoTime() < start + timeoutNS * 2)
                 ;
             try {
-                System.out.println(start + " timeoutNS " + (start + timeoutNS) + " now " + Time.uniqueId() + " past " + (System.nanoTime() > (start + timeoutNS)));
+               // System.out.println(start + " timeoutNS " + (start + timeoutNS) + " now " + Time.uniqueId() + " past " + (System.nanoTime() > (start + timeoutNS)));
                 p.pause(timeoutNS, TimeUnit.NANOSECONDS);
             } catch (TimeoutException e) {
                 continue;

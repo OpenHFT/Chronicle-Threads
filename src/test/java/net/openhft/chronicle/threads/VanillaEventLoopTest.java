@@ -55,8 +55,8 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
             assertFalse("thread failed to start", i == 0);
         }
 
-        System.out.println(eh0);
-        System.out.println(eh1);
+       // System.out.println(eh0);
+       // System.out.println(eh1);
 
         Thread thread = el.thread();
         if (thread == null)

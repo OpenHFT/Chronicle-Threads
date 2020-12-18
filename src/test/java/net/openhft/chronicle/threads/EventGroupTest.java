@@ -252,7 +252,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
         @Override
         public boolean action() throws InvalidEventHandlerException {
-//            System.out.println("action " + priority + " " + super.toString());
+           // // System.out.println("action " + priority + " " + super.toString());
             actionCalled.incrementAndGet();
             if (throwInvalidEventHandlerException)
                 throw new InvalidEventHandlerException();
@@ -289,7 +289,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         protected void performClose() {
             super.performClose();
 
-//            System.out.println("closed " + this);
+           // // System.out.println("closed " + this);
             closed.countDown();
             Assert.assertTrue("close should be called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
         }
