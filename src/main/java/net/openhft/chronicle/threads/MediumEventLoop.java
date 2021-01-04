@@ -194,7 +194,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
         final HandlerPriority priority = handler.priority().alias();
         if (DEBUG_ADDING_HANDLERS)
-           // System.out.println("Adding " + priority + " " + handler + " to " + this.name);
+            System.out.println("Adding " + priority + " " + handler + " to " + this.name);
         if (!ALLOWED_PRIORITIES.contains(priority)) {
             if (handler.priority() == HandlerPriority.MONITOR) {
                 Jvm.warn().on(getClass(), "Ignoring " + handler.getClass());

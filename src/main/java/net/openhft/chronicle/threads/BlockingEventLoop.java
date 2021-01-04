@@ -93,7 +93,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     @Override
     public synchronized void addHandler(@NotNull final EventHandler handler) {
         if (DEBUG_ADDING_HANDLERS)
-           // System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
+            System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         this.handlers.add(handler);
