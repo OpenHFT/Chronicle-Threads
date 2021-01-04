@@ -187,6 +187,9 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
                 if (LOG.isDebugEnabled())
                     Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
                 loopFinishedQuietly(handler);
+                // remove handler for clarity when debugging
+                handlers.remove(handler);
+                closeQuietly(handler);
             }
         }
     }
