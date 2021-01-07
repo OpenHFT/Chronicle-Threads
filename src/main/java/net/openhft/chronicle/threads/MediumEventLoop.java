@@ -256,6 +256,11 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         loopFinishedQuietly(highHandler);
         if (!mediumHandlers.isEmpty())
             mediumHandlers.forEach(Threads::loopFinishedQuietly);
+        Optional.ofNullable(newHandler.get())
+                .ifPresent(eventHandler -> {
+                    Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before loop finished " + eventHandler);
+                    loopFinishedQuietly(eventHandler);
+                });
     }
 
     private void runLoop() {
