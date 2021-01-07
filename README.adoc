@@ -37,7 +37,7 @@ Use any stack trace information to improve the design for efficiency.
 
 === Recommendations:
 
-- Impose an interval of 100µs for every event loop.
+- Impose an interval of 100ms for every event loop.
 - Code out of an unacceptable delay by returning quickly.
 
 
@@ -46,7 +46,7 @@ Use any stack trace information to improve the design for efficiency.
 
 Chronicle Threads provides a number of implementations of the `net.openhft.chronicle.threads.Pauser` interface.
 
-The canonical way to use `Pauser`:
+The recommended way to use `Pauser`:
 
 [source,java]
 ----
@@ -64,7 +64,7 @@ http://openhft.github.io/Chronicle-Threads/apidocs/index.html[javadoc].
 
 === Pauser modes
 
-For the best performance, the default `busy` Pauser mode minimises jitter. However, it does maximise CPU usage. If there are too many threads in `busy` mode, a machine may slow down.
+For the best performance, the default `busy` Pauser mode minimises jitter. However, it does maximise CPU usage and CPUs will run hotter. If there are too many threads in `busy` mode, a machine may slow down.
 
 .Alternative pauser modes
 [cols="2,6,6,1,1"]
