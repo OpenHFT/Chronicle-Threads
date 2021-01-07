@@ -6,18 +6,47 @@ Peter Lawrey
 image:https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg[link="https://search.maven.org/artifact/net.openhft/chronicle-threads/2.20.104/jar"]
 image:https://javadoc.io/badge2/net.openhft/chronicle-threads/javadoc.svg[link="https://www.javadoc.io/doc/net.openhft/chronicle-threads/latest/index.html"]
 
+
 == Thread pool
 
-This library provide a high performance thread pool.
-This thread pool is design to share blocking, monitoring and busy waiting threads.
-Busy waiting tasks can be prioritised for HIGH, MEDIUM, DAEMON (low priority) as well as TIMER (fixed rate events) tasks in a single thread without creating garbage.
+This library provides a high performance thread pool that shares blocking, monitoring, and busy waiting threads.
+Busy waiting tasks have `HIGH`, `MEDIUM`, or `DAEMON` (low) priority, or `TIMER` (fixed rate events) status. All tasks run on a single thread without creating garbage.
 
-See `net.openhft.chronicle.core.threads.EventLoop` and `net.openhft.chronicle.threads.EventGroup`
+See `net.openhft.chronicle.core.threads.EventLoop` and `net.openhft.chronicle.threads.EventGroup`.
+
+
+== Monitoring the event loop
+
+The `MonitorEventLoop` thread monitors supplier threads to make sure event loop latency remains within acceptable bounds. The thread monitors latency by measuring the time the `action` method in the `ThreadMonitorEventHandler` takes to run. Whenever a supplier thread runs beyond an acceptable latency limit, the system prints a stack trace.
+
+Set the monitor event interval with system property `MONITOR_INTERVAL_MS` from the `EventGroup` class:
+
+[source,java]
+----
+private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
+----
+
+Disable the monitor by setting the system property:
+
+[source,java]
+----
+disableLoopBlockMonitor=False
+----
+
+Use any stack trace information to improve the design for efficiency.
+
+=== Recommendations:
+
+- Impose an interval of 100µs for every event loop.
+- Code out of an unacceptable delay by returning quickly.
+
+
 
 == Pauser
 
 Chronicle Threads provides a number of implementations of the `net.openhft.chronicle.threads.Pauser` interface.
-The canonical way to make use of `Pauser` is below:
+
+The canonical way to use `Pauser`:
 
 [source,java]
 ----
@@ -30,22 +59,22 @@ The canonical way to make use of `Pauser` is below:
     }
 ----
 
-The various different implementations of `Pauser` allow for varied pausing strategies - see
-http://openhft.github.io/Chronicle-Threads/apidocs/index.html[javadoc]
+The various implementations of `Pauser` allow for varied pausing strategies - see the
+http://openhft.github.io/Chronicle-Threads/apidocs/index.html[javadoc].
 
-== Pauser modes
+=== Pauser modes
 
-For the best performance, the default `busy` `PauserMode` will minimise jitter however it will maximise CPU usage.
-If you have too many threads in `busy` mode you can have a slow machine.
+For the best performance, the default `busy` Pauser mode minimises jitter. However, it does maximise CPU usage. If there are too many threads in `busy` mode, a machine may slow down.
 
 .Alternative pauser modes
 [cols="2,6,6,1,1"]
 |===
 | Mode | Benefits | Downside | monitoring | isolcpus
-| busy | Minimise jitter | Uses more CPU, no monitoring support | &#9746; | &#9745;
-| timedBusy | Minimise jitter | Uses more CPU, Slight overhead for monitoring. | &#9745; | &#9745;
-| yielding | Low jitter, can be shared | Uses more CPU | &#9745; | &#9746;
-| balanced | Good balance of busy waiting and back off | Uses less CPU, but more jitter | &#9745; | &#9746;
-| milli | Regular checks every 1 ms | Uses minimal CPU, but 1 ms jitter | &#9745; | &#9746;
-| sleepy | Minimal CPU, like balanced but less CPU | More millisecond jitter | &#9745; | &#9746;
+| `busy` | Minimises jitter | Uses more CPU, no monitoring support | &#9746; | &#9745;
+| `timedBusy` | Minimises jitter | Uses more CPU, slight overhead for monitoring | &#9745; | &#9745;
+| `yielding` | Low jitter, can be shared | Uses more CPU | &#9745; | &#9746;
+| `balanced` | Good balance of busy waiting and back off | Uses less CPU, but more jitter | &#9745; | &#9746;
+| `milli` | Regular checks every 1 ms | Uses minimal CPU, but 1 ms jitter | &#9745; | &#9746;
+| `sleepy` | Minimal CPU, like balanced but less CPU | More millisecond jitter | &#9745; | &#9746;
 |===
+
