@@ -73,7 +73,10 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     @NotNull
     protected EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
     protected EventHandler highHandler = EventHandlers.NOOP;
+    @Deprecated(/* to be removed in x.23 */)
     protected volatile long loopStartMS;
+
+    protected volatile long loopStartNS;
     @Nullable
     protected volatile Thread thread = null;
 
@@ -95,6 +98,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         this.daemon = daemon;
         this.binding = binding;
         loopStartMS = Long.MAX_VALUE;
+        loopStartNS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon));
     }
 
@@ -225,6 +229,11 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     }
 
     @Override
+    public long loopStartNS() {
+        return loopStartNS;
+    }
+
+    @Override
     @HotMethod
     public void run() {
         try {
@@ -240,6 +249,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 loopFinishedAllHandlers();
                 closeAllHandlers();
                 loopStartMS = FINISHED;
+                loopStartNS = FINISHED;
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
@@ -265,18 +275,19 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
     private void runLoop() {
         int acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT;
-        long lastTimerMS = 0;
+        long lastTimerNS = 0;
         while (running.get()) {
             throwExceptionIfClosed();
 
             loopStartMS = System.currentTimeMillis();
+            loopStartNS = System.nanoTime();
             boolean busy =
                     highHandler == EventHandlers.NOOP
                             ? runAllMediumHandler()
                             : runAllHandlers();
 
-            if (lastTimerMS + timerIntervalMS() < loopStartMS) {
-                lastTimerMS = loopStartMS;
+            if (lastTimerNS + timerIntervalMS() * 1_000_000 < loopStartNS) {
+                lastTimerNS = loopStartNS;
                 runTimerHandlers();
             }
             if (busy) {
@@ -297,6 +308,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 runDaemonHandlers();
                 // reset the loop timeout.
                 loopStartMS = Long.MAX_VALUE;
+                loopStartNS = Long.MAX_VALUE;
                 pauser.pause();
             }
         }
@@ -579,7 +591,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 thread.interrupt();
 
                 for (int i = 1; i <= 50; i++) {
-                    if (loopStartMS == FINISHED)
+                    if (loopStartNS == FINISHED)
                         break;
                     // we do this loop below to protect from Jvm.pause not pausing for as long as it should
                     waitUntilMs += i;

@@ -22,7 +22,8 @@ import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.threads.internal.EventLoopThreadHolder;
+import net.openhft.chronicle.threads.internal.ThreadMonitorHarness;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -203,7 +204,7 @@ public class EventGroup
                     REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION));
 
             if (ENABLE_LOOP_BLOCK_MONITOR)
-                monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, replication));
+                monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(REPLICATION_MONITOR_INTERVAL_MS, replication)));
             if (isAlive())
                 replication.start();
             monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 60));
@@ -215,7 +216,7 @@ public class EventGroup
         if (concThreads[n] == null) {
             concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, concPauser,
                     REPLICATION_EVENT_PAUSE_TIME, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT));
-            monitor.addHandler(new LoopBlockMonitor(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]));
+            monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n])));
             if (isAlive())
                 concThreads[n].start();
             monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 60));
@@ -314,7 +315,7 @@ public class EventGroup
                                  final LongSupplier timeSupplier,
                                  final Supplier<Thread> threadSupplier) {
         milliPauser.minPauseTimeMS((timeLimitNS + 999_999) / 1_000_000);
-        addHandler(new ThreadMonitorEventHandler(description, timeLimitNS, timeSupplier, threadSupplier));
+        addHandler(ThreadMonitors.forThread(description, timeLimitNS, timeSupplier, threadSupplier));
     }
 
     @Override
@@ -338,7 +339,7 @@ public class EventGroup
             monitor.start();
             // this checks that the core threads have stalled
             if (core != null)
-                monitor.addHandler(new LoopBlockMonitor(MONITOR_INTERVAL_MS, core));
+                monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(MONITOR_INTERVAL_MS, core)));
 
             while (!isAlive())
                 Jvm.pause(1);
@@ -379,60 +380,4 @@ public class EventGroup
         awaitTermination();
     }
 
-    static final class LoopBlockMonitor implements EventHandler {
-        private final long monitoryIntervalMs;
-        private final @NotNull CoreEventLoop eventLoop;
-        private long printBlockTimeMS, interval;
-
-        public LoopBlockMonitor(final long monitoryIntervalMs, @NotNull final CoreEventLoop eventLoop) {
-            this.monitoryIntervalMs = monitoryIntervalMs;
-            assert eventLoop != null;
-            this.eventLoop = eventLoop;
-            interval = printBlockTimeMS = monitoryIntervalMs;
-        }
-
-        @Override
-        public boolean action() throws InvalidEventHandlerException {
-            long loopStartMS = eventLoop.loopStartMS();
-            if (loopStartMS <= 0 || loopStartMS == Long.MAX_VALUE) {
-                if (interval != monitoryIntervalMs) {
-                    if (Jvm.isDebugEnabled(getClass()))
-                        Jvm.debug().on(getClass(), "Reset interval from " + interval);
-                    interval = printBlockTimeMS = monitoryIntervalMs;
-                }
-                return false;
-            }
-            if (loopStartMS == Long.MAX_VALUE - 1) {
-                Jvm.warn().on(getClass(), "Monitoring a task which has finished " + eventLoop);
-                throw new InvalidEventHandlerException();
-            }
-            long now = System.currentTimeMillis();
-            long blockingTimeMS = now - loopStartMS;
-
-            if (blockingTimeMS >= printBlockTimeMS && eventLoop.isAlive()) {
-                eventLoop.dumpRunningState(eventLoop.name() + " thread has blocked for "
-                                + blockingTimeMS + " ms.",
-                        // check we are still in the loop.
-                        () -> eventLoop.loopStartMS() == loopStartMS);
-                printBlockTimeMS += interval;
-                interval *= 1.41;
-                if (interval > 20 * monitoryIntervalMs) {
-                    interval = monitoryIntervalMs * 20;
-                    printBlockTimeMS -= printBlockTimeMS % interval;
-                }
-            }
-            return false;
-        }
-
-        @NotNull
-        @Override
-        public HandlerPriority priority() {
-            return HandlerPriority.MONITOR;
-        }
-
-        @Override
-        public String toString() {
-            return "LoopBlockMonitor<" + eventLoop.name() + '>';
-        }
-    }
 }

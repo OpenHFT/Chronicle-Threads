@@ -26,7 +26,7 @@ public abstract class TimedEventHandler implements EventHandler {
     private long nextRunNS = 0;
 
     @Override
-    public boolean action() throws InvalidEventHandlerException, InterruptedException {
+    public boolean action() throws InvalidEventHandlerException {
         long now = System.nanoTime();
         if (nextRunNS <= now) {
             long delayUS = timedAction();
@@ -42,7 +42,7 @@ public abstract class TimedEventHandler implements EventHandler {
      *
      * @return the delay in micro-seconds.
      */
-    protected abstract long timedAction() throws InvalidEventHandlerException, InterruptedException;
+    protected abstract long timedAction() throws InvalidEventHandlerException;
 
     @NotNull
     @Override

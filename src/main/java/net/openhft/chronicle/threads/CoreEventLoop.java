@@ -25,7 +25,10 @@ import java.util.function.BooleanSupplier;
 public interface CoreEventLoop extends EventLoop {
     Thread thread();
 
+    @Deprecated(/* To be removed in x.23 */)
     long loopStartMS();
+
+    long loopStartNS();
 
     void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck);
 }
