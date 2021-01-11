@@ -203,8 +203,7 @@ public class EventGroup
             replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser,
                     REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION));
 
-            if (ENABLE_LOOP_BLOCK_MONITOR)
-                monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(REPLICATION_MONITOR_INTERVAL_MS, replication)));
+            addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, replication);
             if (isAlive())
                 replication.start();
             monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 60));
@@ -212,11 +211,16 @@ public class EventGroup
         return replication;
     }
 
+    private void addThreadMonitoring(long replicationMonitorIntervalMs, CoreEventLoop replication) {
+        if (ENABLE_LOOP_BLOCK_MONITOR)
+            monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(replicationMonitorIntervalMs, replication)));
+    }
+
     private synchronized VanillaEventLoop getConcThread(int n) {
         if (concThreads[n] == null) {
             concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, concPauser,
                     REPLICATION_EVENT_PAUSE_TIME, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT));
-            monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n])));
+            addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]);
             if (isAlive())
                 concThreads[n].start();
             monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 60));
@@ -339,7 +343,7 @@ public class EventGroup
             monitor.start();
             // this checks that the core threads have stalled
             if (core != null)
-                monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(MONITOR_INTERVAL_MS, core)));
+                addThreadMonitoring(MONITOR_INTERVAL_MS, core);
 
             while (!isAlive())
                 Jvm.pause(1);
