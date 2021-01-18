@@ -18,6 +18,7 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
         // todo investigate why this fails on arm
         Assume.assumeTrue(!Jvm.isArm());
         Map<ExceptionKey, Integer> map = Jvm.recordExceptions();
+        assertEquals(0, DiskSpaceMonitor.INSTANCE.getThresholdPercentage());
         DiskSpaceMonitor.INSTANCE.setThresholdPercentage(100);
         for (int i = 0; i < 51; i++) {
             DiskSpaceMonitor.INSTANCE.pollDiskSpace(new File("."));
