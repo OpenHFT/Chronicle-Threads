@@ -47,7 +47,7 @@ public class EventGroup
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500);
     private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
-    private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Boolean.getBoolean("disableLoopBlockMonitor");
+    private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
     private final EventLoop monitor;
