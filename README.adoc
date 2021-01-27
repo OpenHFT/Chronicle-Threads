@@ -17,7 +17,7 @@ See `net.openhft.chronicle.core.threads.EventLoop` and `net.openhft.chronicle.th
 
 == Monitoring the event loop
 
-The `MonitorEventLoop` thread monitors supplier threads to make sure event loop latency remains within acceptable bounds. The thread monitors latency by measuring the time the `action` method in the `ThreadMonitorEventHandler` takes to run. Whenever a supplier thread runs beyond an acceptable latency limit, the system prints a stack trace.
+The `MonitorEventLoop` thread monitors application threads to make sure event loop latency remains within acceptable bounds. The thread monitors latency by measuring the time the `action` method in the `ThreadMonitorEventHandler` takes to run. Whenever a thread runs beyond an acceptable latency limit, the system prints a stack trace.
 
 Set the monitor event interval with system property `MONITOR_INTERVAL_MS` from the `EventGroup` class:
 
@@ -30,7 +30,7 @@ Disable the monitor by setting the system property:
 
 [source,java]
 ----
-disableLoopBlockMonitor=False
+disableLoopBlockMonitor=false
 ----
 
 Use any stack trace information to improve the design for efficiency.
@@ -39,6 +39,7 @@ Use any stack trace information to improve the design for efficiency.
 
 - Impose an interval of 100ms for every event loop.
 - Code out of an unacceptable delay by returning quickly.
+- Consider adding `Jvm.safepoint` calls with the Hotspot JVM.
 
 
 
