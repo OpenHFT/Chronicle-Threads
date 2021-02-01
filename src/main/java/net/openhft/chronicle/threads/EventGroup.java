@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -213,7 +214,8 @@ public class EventGroup
 
     private void addThreadMonitoring(long replicationMonitorIntervalMs, CoreEventLoop replication) {
         if (ENABLE_LOOP_BLOCK_MONITOR)
-            monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(replicationMonitorIntervalMs, replication)));
+            monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(
+                    TimeUnit.NANOSECONDS.convert(replicationMonitorIntervalMs, TimeUnit.MILLISECONDS), replication)));
     }
 
     private synchronized VanillaEventLoop getConcThread(int n) {
