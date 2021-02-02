@@ -139,7 +139,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
             service.shutdownNow();
             service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
         } catch (InterruptedException e) {
-            if (thread != null && thread.isAlive())
+            if (thread != null && thread != Thread.currentThread() && thread.isAlive())
                 Jvm.warn().on(getClass(), "Thread still running", StackTrace.forThread(thread));
             Thread.currentThread().interrupt();
         }
