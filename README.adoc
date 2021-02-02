@@ -41,7 +41,7 @@ Use any stack trace information to improve the design for efficiency.
 - Consider adding `Jvm.safepoint` calls to help identify hotspots in the code.
 
 
-=== Even loop Action Handlers
+=== Event loop Action Handlers
 
 Each event loop services multiple event handlers. The aggressiveness with which any one handler is serviced is influenced by the handler's priority as well as other activity on the event loop as a whole. If an event handler returns true from action() it biases the event loop to service the same handler again "soon". How soon depends on a variety of factors and the other work the event loop has to do across the other handlers.
 
