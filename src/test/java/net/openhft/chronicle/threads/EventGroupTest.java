@@ -266,6 +266,8 @@ public class EventGroupTest extends ThreadsTestCommon {
         @Override
         public void loopStarted() {
             started.countDown();
+            String name = Thread.currentThread().getName();
+            Assert.assertTrue("loopStarted should be called on EL thread " + name, name.contains("event"));
         }
 
         @NotNull
