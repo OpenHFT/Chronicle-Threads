@@ -27,7 +27,6 @@ import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.threads.internal.EventLoopUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -79,6 +78,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     protected volatile long loopStartNS;
     @Nullable
     protected volatile Thread thread = null;
+    @NotNull
+    protected final ExceptionHandlerStrategy exceptionThrownByHandler = ExceptionHandlerStrategy.strategy();
 
     /**
      * @param parent  the parent event loop
@@ -340,7 +341,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                         try {
                             busy |= handlers[i].action();
                         } catch (Exception e) {
-                            removeMediumHandler(handlers[i], e);
+                            handleExceptionMediumHandler(handlers[i], e);
                         }
                     }
                     // fallthrough.
@@ -349,28 +350,28 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                     try {
                         busy |= handlers[3].action();
                     } catch (Exception e) {
-                        removeMediumHandler(handlers[3], e);
+                        handleExceptionMediumHandler(handlers[3], e);
                     }
                     // fall through
                 case 3:
                     try {
                         busy |= handlers[2].action();
                     } catch (Exception e) {
-                        removeMediumHandler(handlers[2], e);
+                        handleExceptionMediumHandler(handlers[2], e);
                     }
                     // fall through
                 case 2:
                     try {
                         busy |= handlers[1].action();
                     } catch (Exception e) {
-                        removeMediumHandler(handlers[1], e);
+                        handleExceptionMediumHandler(handlers[1], e);
                     }
                     // fall through
                 case 1:
                     try {
                         busy |= handlers[0].action();
                     } catch (Exception e) {
-                        removeMediumHandler(handlers[0], e);
+                        handleExceptionMediumHandler(handlers[0], e);
                     }
                 case 0:
                     break;
@@ -397,7 +398,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                         try {
                             busy |= handlers[i].action();
                         } catch (Exception e) {
-                            removeMediumHandler(handlers[i], e);
+                            handleExceptionMediumHandler(handlers[i], e);
                         }
                     }
                     // fallthrough.
@@ -407,7 +408,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                     try {
                         busy |= handlers[3].action();
                     } catch (Exception e) {
-                        removeMediumHandler(handlers[3], e);
+                        handleExceptionMediumHandler(handlers[3], e);
                     }
                     // fall through
                 case 3:
@@ -415,7 +416,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                     try {
                         busy |= handlers[2].action();
                     } catch (Exception e) {
-                        removeMediumHandler(handlers[2], e);
+                        handleExceptionMediumHandler(handlers[2], e);
                     }
                     // fall through
                 case 2:
@@ -423,7 +424,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                     try {
                         busy |= handlers[1].action();
                     } catch (Exception e) {
-                        removeMediumHandler(handlers[1], e);
+                        handleExceptionMediumHandler(handlers[1], e);
                     }
                     // fall through
                 case 1:
@@ -431,7 +432,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                     try {
                         busy |= handlers[0].action();
                     } catch (Exception e) {
-                        removeMediumHandler(handlers[0], e);
+                        handleExceptionMediumHandler(handlers[0], e);
                     }
                 case 0:
                     break;
@@ -450,21 +451,20 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         try {
             return highHandler.action();
         } catch (Exception e) {
-            if (!(e instanceof InvalidEventHandlerException))
-                Jvm.warn().on(getClass(), "Removing HIGH handler " + highHandler + " after Exception", e);
-            loopFinishedQuietly(highHandler);
-            Closeable.closeQuietly(highHandler);
-            highHandler = EventHandlers.NOOP;
+            if (exceptionThrownByHandler.handle(this, highHandler, e)) {
+                loopFinishedQuietly(highHandler);
+                Closeable.closeQuietly(highHandler);
+                highHandler = EventHandlers.NOOP;
+            }
         }
         return true;
     }
 
-    private void removeMediumHandler(EventHandler handler, Throwable t) {
-        if (!(t instanceof InvalidEventHandlerException)) {
-            Jvm.warn().on(getClass(), "Removing handler " + handler + " after Exception", t);
+    private void handleExceptionMediumHandler(EventHandler handler, Throwable t) {
+        if (exceptionThrownByHandler.handle(this, handler, t)) {
+            removeHandler(handler, mediumHandlers);
+            this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
         }
-        removeHandler(handler, mediumHandlers);
-        this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
     }
 
     @HotMethod

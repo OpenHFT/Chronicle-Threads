@@ -40,6 +40,7 @@ import java.util.concurrent.locks.LockSupport;
 import static org.junit.Assert.assertFalse;
 
 public class EventGroupTest extends ThreadsTestCommon {
+    private static final RuntimeException RUNTIME_EXCEPTION = new RuntimeException("some random text");
     private List<TestHandler> handlers;
 
     @Before
@@ -196,13 +197,32 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @Test(timeout = 5000)
     public void checkAllEventHandlerTypesStartInvalidEventHandlerException() throws InterruptedException {
+        checkException(ExceptionType.INVALID_EVENT_HANDLER);
+    }
+
+    @Test(timeout = 5000)
+    public void checkAllEventHandlerTypesStartRuntimeException() throws InterruptedException {
+        try {
+            System.setProperty("el.remove.on.exception", "true");
+            expectException(exceptionKey -> exceptionKey.throwable == RUNTIME_EXCEPTION, "message");
+            checkException(ExceptionType.RUNTIME);
+        } finally {
+            System.clearProperty("el.remove.on.exception");
+        }
+    }
+
+    private void checkException(ExceptionType exceptionType) throws InterruptedException {
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())
-                eventGroup.addHandler(new EventGroupTest.TestHandler(hp, true));
+                eventGroup.addHandler(new TestHandler(hp, exceptionType));
             eventGroup.start();
             for (TestHandler handler : this.handlers)
                 handler.started.await(100, TimeUnit.MILLISECONDS);
             Jvm.pause(100);
+        }
+        for (TestHandler handler : this.handlers) {
+            int expectedCalled = handler.priority() == HandlerPriority.MONITOR ? 0 : 1;
+            Assert.assertEquals("expected called once only " + handler, expectedCalled, handler.actionCalled.get());
         }
     }
 
@@ -237,16 +257,16 @@ public class EventGroupTest extends ThreadsTestCommon {
         final AtomicLong closedNS = new AtomicLong();
         final AtomicLong firstActionNs = new AtomicLong();
         final HandlerPriority priority;
-        final boolean throwInvalidEventHandlerException;
+        final ExceptionType exceptionType;
         final AtomicInteger actionCalled = new AtomicInteger();
 
         TestHandler(HandlerPriority priority) {
-            this(priority, false);
+            this(priority, ExceptionType.NONE);
         }
 
-        TestHandler(HandlerPriority priority, boolean throwInvalidEventHandlerException) {
+        TestHandler(HandlerPriority priority, ExceptionType exceptionType) {
             this.priority = priority;
-            this.throwInvalidEventHandlerException = throwInvalidEventHandlerException;
+            this.exceptionType = exceptionType;
             handlers.add(this);
         }
 
@@ -254,8 +274,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         public boolean action() throws InvalidEventHandlerException {
            // // System.out.println("action " + priority + " " + super.toString());
             actionCalled.incrementAndGet();
-            if (throwInvalidEventHandlerException)
-                throw new InvalidEventHandlerException();
+            exceptionType.throwIt();
             if (priority == HandlerPriority.BLOCKING)
                 LockSupport.park();
             this.firstActionNs.compareAndSet(0, System.nanoTime());
@@ -325,5 +344,27 @@ public class EventGroupTest extends ThreadsTestCommon {
         public HandlerPriority priority() {
             return HandlerPriority.BLOCKING;
         }
+    }
+
+    enum ExceptionType {
+        NONE {
+            @Override
+            void throwIt() {
+            }
+        },
+        INVALID_EVENT_HANDLER {
+            @Override
+            void throwIt() throws InvalidEventHandlerException {
+                throw new InvalidEventHandlerException();
+            }
+        },
+        RUNTIME {
+            @Override
+            void throwIt() {
+                throw RUNTIME_EXCEPTION;
+            }
+        };
+
+        abstract void throwIt() throws InvalidEventHandlerException;
     }
 }
