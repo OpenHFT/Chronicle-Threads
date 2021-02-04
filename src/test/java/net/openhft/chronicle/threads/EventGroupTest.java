@@ -203,11 +203,11 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Test(timeout = 5000)
     public void checkAllEventHandlerTypesStartRuntimeException() throws InterruptedException {
         try {
-            System.setProperty("el.remove.on.exception", "true");
+            System.setProperty(ExceptionHandlerStrategy.IMPL_PROPERTY, ExceptionHandlerStrategy.LogAndRemove.class.getName());
             expectException(exceptionKey -> exceptionKey.throwable == RUNTIME_EXCEPTION, "message");
             checkException(ExceptionType.RUNTIME);
         } finally {
-            System.clearProperty("el.remove.on.exception");
+            System.clearProperty(ExceptionHandlerStrategy.IMPL_PROPERTY);
         }
     }
 
@@ -225,6 +225,8 @@ public class EventGroupTest extends ThreadsTestCommon {
             Assert.assertEquals("expected called once only " + handler, expectedCalled, handler.actionCalled.get());
         }
     }
+
+    // TODO: checkAllEventHandlerTypesContinueRuntimeException()
 
     @Test(timeout = 5000)
     public void testCloseAddHandler() {
