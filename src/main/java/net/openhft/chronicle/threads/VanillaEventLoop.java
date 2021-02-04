@@ -168,9 +168,9 @@ public class VanillaEventLoop extends MediumEventLoop {
                 handler.action();
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, timerHandlers);
-
             } catch (Throwable e) {
-                Jvm.warn().on(getClass(), e);
+                if (exceptionThrownByHandler.handle(this, handler, e))
+                    removeHandler(handler, timerHandlers);
             }
         }
     }
@@ -183,9 +183,9 @@ public class VanillaEventLoop extends MediumEventLoop {
                 handler.action();
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, daemonHandlers);
-
             } catch (Throwable e) {
-                Jvm.warn().on(getClass(), e);
+                if (exceptionThrownByHandler.handle(this, handler, e))
+                    removeHandler(handler, daemonHandlers);
             }
         }
     }
