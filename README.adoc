@@ -35,6 +35,8 @@ disableLoopBlockMonitor=false
 
 Use any stack trace information to improve the design for efficiency.
 
+
+
 === Recommendations:
 
 - Impose an interval of 100ms for every event loop.
@@ -89,3 +91,6 @@ For the best performance, the default `busy` Pauser mode minimises jitter. Howev
 | `sleepy` | Minimal CPU, like balanced but less CPU | More millisecond jitter | &#9745; | &#9746;
 |===
 
+==== For example 
+
+In a simple example which is reading from and writing to a socket. The handler typically returns true if anything was read or written on the assumption it may need to read/write something very soon. However, if nothing is read or written, it may still be called soon however this is where the PauserMode determines how the event loop will start backing off when no work is being done.
