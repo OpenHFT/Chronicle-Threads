@@ -248,8 +248,6 @@ public class EventGroup
     @Override
     public void unpause() {
         pauser.unpause();
-        if (blocking != null)
-            blocking.unpause();
         if (replication != null)
             replication.unpause();
     }
