@@ -178,10 +178,10 @@ public interface Pauser {
         static {
             if (SLEEPY) {
                 int procs = Runtime.getRuntime().availableProcessors();
-                Jvm.warn().on(Pauser.class, "Using Pauser.sleepy() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS + "+");
+                Jvm.perf().on(Pauser.class, "Using Pauser.sleepy() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS + "+");
             } else if (BALANCED) {
                 int procs = Runtime.getRuntime().availableProcessors();
-                Jvm.warn().on(Pauser.class, "Using Pauser.balanced() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS * 2 + "+");
+                Jvm.perf().on(Pauser.class, "Using Pauser.balanced() as not enough processors, have " + procs + ", needs " + MIN_PROCESSORS * 2 + "+");
             }
         }
 
