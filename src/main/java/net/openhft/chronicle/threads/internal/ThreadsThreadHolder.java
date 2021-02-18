@@ -1,7 +1,6 @@
 package net.openhft.chronicle.threads.internal;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.OS;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.threads.ThreadHolder;
 
@@ -11,7 +10,6 @@ import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 public class ThreadsThreadHolder implements ThreadHolder {
-    private static final int TIMING_ERROR = Integer.getInteger("threads.timing.error", OS.isWindows() ? 20_000_000 : 12_000_000);
     private final String description;
     private final long timeLimit;
     private final LongSupplier timeSupplier;

@@ -25,6 +25,7 @@ public class ServicesThreadHolder extends ThreadsThreadHolder {
 
     @Override
     protected long timingError() {
-        return 50_000_000;
+        // services monitor thread is subject to greater variance
+        return super.timingError() * 4;
     }
 }

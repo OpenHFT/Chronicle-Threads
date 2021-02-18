@@ -1,12 +1,10 @@
 package net.openhft.chronicle.threads.internal;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.OS;
 import net.openhft.chronicle.threads.CoreEventLoop;
 import net.openhft.chronicle.threads.ThreadHolder;
 
 public class EventLoopThreadHolder implements ThreadHolder {
-    private static final int TIMING_ERROR = OS.isWindows() ? 20_000_000 : 12_000_000;
     private final CoreEventLoop eventLoop;
     private final long monitorIntervalNS;
     private long intervalToAddNS, printBlockTimeNS;
