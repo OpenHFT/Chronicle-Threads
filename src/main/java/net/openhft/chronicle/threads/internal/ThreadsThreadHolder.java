@@ -5,14 +5,13 @@ import net.openhft.chronicle.core.OS;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.threads.ThreadHolder;
 
-import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 public class ThreadsThreadHolder implements ThreadHolder {
-    private static final int TIMING_ERROR = OS.isWindows() ? 20_000_000 : 12_000_000;
+    private static final int TIMING_ERROR = Integer.getInteger("threads.timing.error", OS.isWindows() ? 20_000_000 : 12_000_000);
     private final String description;
     private final long timeLimit;
     private final LongSupplier timeSupplier;
