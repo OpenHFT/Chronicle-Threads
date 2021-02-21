@@ -42,6 +42,10 @@ public class ThreadsTestCommon {
         exceptions = Jvm.recordExceptions();
     }
 
+    public void expectException(String message) {
+        expectException(k -> k.message.contains(message) || (k.throwable != null && k.throwable.getMessage().contains(message)), message);
+    }
+
     public void expectException(Predicate<ExceptionKey> predicate, String description) {
         expectedExceptions.put(predicate, description);
     }

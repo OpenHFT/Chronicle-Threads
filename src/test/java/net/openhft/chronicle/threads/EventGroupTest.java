@@ -146,6 +146,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @Test(timeout = 5000)
     public void checkAllEventHandlerTypesStartAndStopAddAgain() throws InterruptedException {
+        expectException("Only one high handler supported was TestHandler");
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
