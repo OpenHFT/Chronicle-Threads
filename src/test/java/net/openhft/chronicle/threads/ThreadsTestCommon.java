@@ -1,6 +1,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.AbstractReferenceCounted;
 import net.openhft.chronicle.core.onoes.ExceptionKey;
 import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
@@ -66,6 +67,7 @@ public class ThreadsTestCommon {
     public void afterChecks() {
         CleaningThread.performCleanup(Thread.currentThread());
         System.gc();
+        AbstractCloseable.waitForCloseablesToClose(100);
         assertReferencesReleased();
         checkThreadDump();
         checkExceptions();
