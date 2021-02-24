@@ -135,6 +135,8 @@ public enum Threads {
 
                 if (service instanceof ThreadPoolExecutor)
                     warnRunningThreads(service);
+                else
+                    Jvm.warn().on(Threads.class, "*** FAILED TO TERMINATE " + service.toString());
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

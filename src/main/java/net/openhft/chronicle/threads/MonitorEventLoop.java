@@ -84,6 +84,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     @Override
     public void stop() {
         running = false;
+        unpause();
     }
 
     @Override
@@ -114,10 +115,11 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         throwExceptionIfClosed();
 
         try {
-            // don't do any monitoring for the first 10000 ms.
-            for (int i = 0; i < MONITOR_INITIAL_DELAY_MS; i += 50)
-                if (running)
-                    Jvm.pause(50);
+            // don't do any monitoring for the first MONITOR_INITIAL_DELAY_MS ms
+            final long waitUntilMs = System.currentTimeMillis() + MONITOR_INITIAL_DELAY_MS;
+            while (System.currentTimeMillis() < waitUntilMs && running)
+                pauser.pause();
+            pauser.reset();
             while (running && !Thread.currentThread().isInterrupted()) {
                 boolean busy;
                 synchronized (handlers) {

@@ -189,6 +189,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     @Override
     public void stop() {
         running.set(false);
+        unpause();
     }
 
     @Override

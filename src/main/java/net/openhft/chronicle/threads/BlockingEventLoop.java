@@ -129,6 +129,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     @Override
     public void stop() {
         service.shutdownNow();
+        unpause();
     }
 
     @Override
