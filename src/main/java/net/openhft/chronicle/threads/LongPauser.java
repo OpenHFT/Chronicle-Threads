@@ -40,6 +40,7 @@ public class LongPauser implements Pauser, TimingPauser {
     private volatile Thread thread = null;
     private long yieldStart = 0;
     private long timeOutStart = Long.MAX_VALUE;
+    private long pauseUntilNS = 0;
 
     /**
      * first it will busy wait, then it will yield, then sleep for a small amount of time, then
@@ -87,6 +88,29 @@ public class LongPauser implements Pauser, TimingPauser {
 
         doPause(pauseTimeNS);
         pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 6) + 20_000);
+    }
+
+    @Override
+    public void asyncPause() {
+        pauseUntilNS = 0;
+        ++count;
+        if (count < minBusy) {
+            return;
+        }
+
+        checkYieldTime();
+        if (count <= minBusy + minCount) {
+            return;
+        }
+
+        pauseUntilNS = System.nanoTime() + pauseTimeNS;
+        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 6) + 20_000);
+
+    }
+
+    @Override
+    public boolean asyncPausing() {
+        return pauseUntilNS > System.nanoTime();
     }
 
     private void showPauses() {

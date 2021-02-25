@@ -26,6 +26,7 @@ public class MilliPauser implements Pauser {
     private long pauseTimeMS;
     private long timePaused = 0;
     private long countPaused = 0;
+    private long pauseUntilMS = 0;
 
     /**
      * Pauses for a fixed time
@@ -54,6 +55,7 @@ public class MilliPauser implements Pauser {
 
     @Override
     public void reset() {
+        pauseUntilMS = 0;
     }
 
     @Override
@@ -69,6 +71,16 @@ public class MilliPauser implements Pauser {
         long time = System.nanoTime() - start;
         timePaused += time;
         countPaused++;
+    }
+
+    @Override
+    public void asyncPause() {
+        pauseUntilMS = System.currentTimeMillis() + pauseTimeMS;
+    }
+
+    @Override
+    public boolean asyncPausing() {
+        return pauseUntilMS > System.currentTimeMillis();
     }
 
     @Override

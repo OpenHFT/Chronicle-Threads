@@ -23,6 +23,9 @@ import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 public class LongPauserTest extends ThreadsTestCommon {
     @Test
     public void testLongPauser() throws InterruptedException {
@@ -44,9 +47,31 @@ public class LongPauserTest extends ThreadsTestCommon {
             for (int i = 0; i < runs; i++)
                 pauser.unpause();
             long time = System.nanoTime() - start;
-           // System.out.printf("Average time to unpark was %,d ns%n", time / runs);
+            // System.out.printf("Average time to unpark was %,d ns%n", time / runs);
             Jvm.pause(20);
         }
         thread.interrupt();
+    }
+
+    @Test
+    public void testLongAsyncPauser() {
+        final LongPauser pauser = new LongPauser(0, 0, 1, 1, TimeUnit.MILLISECONDS);
+        for (int i = 0; i < 5; i++) {
+            pauser.asyncPause();
+            testUntilUnpaused(pauser, 1, TimeUnit.MILLISECONDS);
+            pauser.reset();
+            testUntilUnpaused(pauser, 0, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    static void testUntilUnpaused(LongPauser pauser, int n, TimeUnit timeUnit) {
+        long timeNS = timeUnit.convert(n, TimeUnit.NANOSECONDS);
+        long start = System.nanoTime();
+        while (pauser.asyncPausing()) {
+            if (System.nanoTime() > start + timeNS + 100_000_000)
+                fail();
+        }
+        long time = System.nanoTime() - start;
+        assertEquals(timeNS, time, 10_000_000);
     }
 }

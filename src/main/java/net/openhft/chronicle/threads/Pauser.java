@@ -132,6 +132,19 @@ public interface Pauser {
     void pause();
 
     /**
+     * Start an asynchronous pause for busy loops
+     */
+    default void asyncPause() {
+    }
+
+    /**
+     * @return true is still async pausing.
+     */
+    default boolean asyncPausing() {
+        return false;
+    }
+
+    /**
      * Resets the pauser's internal state back (if any) to the most aggressive setting.
      * <p>
      * Pausers that progressively increases the pause time are reset back to its lowest

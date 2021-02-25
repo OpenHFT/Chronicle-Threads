@@ -78,6 +78,24 @@ public class LightPauser implements Pauser {
         pausing.set(false);
     }
 
+    @Override
+    public void asyncPause() {
+        long maxPauseNS = parkPeriodNS;
+        if (busyPeriodNS > 0) {
+            if (count++ < 1000) {
+                return;
+            }
+            if (pauseStart == 0) {
+                pauseStart = System.nanoTime();
+            }
+        }
+    }
+
+    @Override
+    public boolean asyncPausing() {
+        return pauseStart + parkPeriodNS > System.nanoTime();
+    }
+
     protected void doPause(long maxPauseNS) {
         Time.parkNanos(Math.max(maxPauseNS, parkPeriodNS));
     }
