@@ -132,13 +132,32 @@ public interface Pauser {
     void pause();
 
     /**
-     * Start an asynchronous pause for busy loops
+     * Pauses "asynchronously" whereby the issuing EventHandler can
+     * pause without blocking other handlers in the EventLoop.
+     * <p>
+     * The issuing EventHandler can check if it is still pausing
+     * asynchronously by invoking {@link #asyncPausing()}. Typically this is
+     * done as depicted below:
+     *
+     * <pre>{@code
+     *     @Override
+     *     public boolean action() throws InvalidEventHandlerException {
+     *       if (pauser.asyncPausing()) {
+     *           // Yield, so that other EventHandlers can run
+     *           return false;
+     *       }
+     *     }
+     * }</pre>
+     *
+     * @see #asyncPausing()
      */
     default void asyncPause() {
     }
 
     /**
-     * @return true is still async pausing.
+     * Returns if this Pauser is still asynchronously pausing.
+     *
+     * @return if this Pauser is still asynchronously pausing
      */
     default boolean asyncPausing() {
         return false;
