@@ -44,7 +44,7 @@ public class EventGroup
         implements EventLoop {
 
     public static final int CONC_THREADS = Integer.getInteger("eventGroup.conc.threads",
-            Integer.getInteger("CONC_THREADS", Runtime.getRuntime().availableProcessors() / 4));
+            Integer.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500);
     private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
