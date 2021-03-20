@@ -6,14 +6,12 @@ Peter Lawrey
 image:https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg[link="https://search.maven.org/artifact/net.openhft/chronicle-threads/2.20.104/jar"]
 image:https://javadoc.io/badge2/net.openhft/chronicle-threads/javadoc.svg[link="https://www.javadoc.io/doc/net.openhft/chronicle-threads/latest/index.html"]
 
-
 == Thread pool
 
 This library provides a high performance thread pool that shares blocking, monitoring, and busy waiting threads.
 Busy waiting tasks have `HIGH`, `MEDIUM`, or `DAEMON` (low) priority, or `TIMER` (fixed rate events) status. All tasks run on a single thread without creating garbage.
 
 See `net.openhft.chronicle.core.threads.EventLoop` and `net.openhft.chronicle.threads.EventGroup`.
-
 
 == Monitoring the event loop
 
@@ -35,13 +33,10 @@ disableLoopBlockMonitor=false
 
 Use any stack trace information to improve the design for efficiency.
 
-
-
 === Recommendations:
 
 - Impose an interval of 100ms for every event loop.
 - Consider adding `Jvm.safepoint` calls to help identify hotspots in the code.
-
 
 === Event loop Action Handlers
 
@@ -50,7 +45,6 @@ Each event loop services multiple event handlers. The aggressiveness with which 
 Returning true when there is no actual work to do may waste cycles servicing a handler which has nothing to do, at the expense of stealing cycles away from other handlers. Conversely, returning false when there is work to do will effectively increase latency as the event loop will take the "false" as a hint that several other handlers can be serviced ahead of this one.
 
 As a rule of thumb, an action handler should do a certain amount of work then yield/return. If it knows for sure that there is remaining work to be done at the point of yielding then return true. Otherwise return false and the event loop will revisit based on the handler's priority and other work load. As with a lot of scheduling approaches there's no single answer and some experimentation under typical loads would always be recommended. But the above rule of thumb is a good starting point.
-
 
 == Pauser
 
@@ -71,9 +65,6 @@ The recommended way to use `Pauser`:
 
 The various implementations of `Pauser` allow for varied pausing strategies - see the
 http://openhft.github.io/Chronicle-Threads/apidocs/index.html[javadoc].
-
-
-
 
 === Pauser modes
 

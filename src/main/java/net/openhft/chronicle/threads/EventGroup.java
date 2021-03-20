@@ -383,5 +383,4 @@ public class EventGroup
         closeQuietly(concThreads);
         awaitTermination();
     }
-
 }

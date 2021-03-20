@@ -72,5 +72,4 @@ public class ThreadsTestCommon {
         checkThreadDump();
         checkExceptions();
     }
-
 }
