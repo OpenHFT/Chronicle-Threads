@@ -202,7 +202,7 @@ public class EventGroup
         if (replication == null) {
             Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
             replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser,
-                    REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION));
+                    REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER));
 
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, replication);
             if (isAlive())
@@ -284,8 +284,12 @@ public class EventGroup
 
             // used only for replication, this is so replication can run in its own thread
             case REPLICATION:
-                if (!priorities.contains(HandlerPriority.REPLICATION))
+            case REPLICATION_TIMER:
+                if (t1 == HandlerPriority.REPLICATION && !priorities.contains(HandlerPriority.REPLICATION))
                     throw new IllegalStateException("Cannot add REPLICATION " + handler + " to " + name);
+
+                if (t1 == HandlerPriority.REPLICATION_TIMER && !priorities.contains(HandlerPriority.REPLICATION_TIMER))
+                    throw new IllegalStateException("Cannot add REPLICATION_TIMER " + handler + " to " + name);
 
                 getReplication().addHandler(handler);
                 break;
