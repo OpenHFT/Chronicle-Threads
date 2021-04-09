@@ -13,6 +13,109 @@ Busy waiting tasks have `HIGH`, `MEDIUM`, or `DAEMON` (low) priority, or `TIMER`
 
 See `net.openhft.chronicle.core.threads.EventLoop` and `net.openhft.chronicle.threads.EventGroup`.
 
+== Event loops and event handlers
+An event handler is a routine action that should be executed in response to an event. Therefore,
+event handlers should be invoked frequently to check whether a specific event has happened, and
+subsequently the event handler can execute the relevant action in response to the event. In order
+to trigger frequent invocation of event handlers, an event loop is instantiated and event handlers
+are added to the event loop. Each event loop can serve multiple event handlers. Figure 1
+illustrates a diagram of an event loop that serves several event handlers sequentially.
+
+[#img-eventloop]
+.Event loop and event handlers
+image::eventloop.jpg[eventloop,400,400]
+
+You can create and remove event loops and event handlers and add event handlers to event loops
+as described below:
+
+* *Creating event handler:* An event handler can be created by implementing the `EventHandler` interface and
+overriding its `action()` method so that it executes some actions in response to the event that
+this event handler is responding to. The `action()` method returns a boolean value. If the `action()`
+method returns true, the event loop is biased to serve the same handler again soon. How soon
+depends on a variety of factors, and the other work the event loop has to do across the other
+even handlers. Returning "true" when there is no actual work to do may waste cycles servicing a handler which has nothing to do, at the
+expense of stealing cycles away from other handlers. Conversely, returning "false" when there is work to do, will
+effectively increase latency as the event loop will take the "false" as a hint that several other handlers can be
+serviced ahead of this one.
+
+[source,java]
+----
+//Create an event handler class that is ran for 30 times then throws
+//InvalidEventHandlerException in order to remove the handler from event loop
+public final class TestMediumEventHandler implements EventHandler {
+
+        private int actionCnt;
+
+        @Override
+        public boolean action() throws InvalidEventHandlerException {
+            if (actionCnt >= 30)
+                throw InvalidEventHandlerException.reusable();
+            actionCnt++;
+            return true;
+        }
+}
+
+//Instantiate event handler eh0
+final TestMediumEventHandler eh0 = new TestMediumEventHandler();
+----
+* *Creating event loop:*  You can create an event loop by calling the constructor of the class
+`VanillaEventLoop`. Then by calling the `addHandler()` method of this event loop you can add event handlers to
+the event loop.
+
+[source,java]
+----
+//Create event loop el
+final VanillaEventLoop el = new VanillaEventLoop(null,
+                                                 "test-event-loop",
+                                                 PauserMode.busy.get(),
+                                                 20,
+                                                 false,
+                                                 "none",
+                                                 EnumSet.of(HandlerPriority.MEDIUM));
+----
+The arguments of `VanillaEventLoop` in the order of appearance are:
+
+- final EventLoop parent: The parent event loop if this event loop is in an event group, otherwise "null".
+- final String name: The name of this thread.
+- final Pauser pauser: The pause strategy.
+- final long timerIntervalMS: The pause duration.
+- final boolean daemon: "true" if this is a daemon thread.
+- final String binding: Set affinity description, "any", "none", "1", "last-1".
+- final Set<HandlerPriority> priorities): The set of priorities that this event loop accepts for event handlers that
+                                          are added to this event loop.
+
+Methods `start()` and `stop()`, starts and stops event loops respectively. Event handlers are
+not executed before starting the event loop even if they have already been added to an event loop.
+[source,java]
+----
+//Start event loop el.
+el.start();
+----
+
+* *Adding an event handler to an event loop:* By calling `addHandler()` method of an event loop you can add an event
+handler to an event loop.
+
+[source,java]
+----
+//Add event handler eh0 to event loop el
+el.addHandler(eh0);
+----
+
+* *Removing an event handler from an eventLoop:* When an event handler is not required anymore and should be removed
+from the event loop, its `action()` method should throw `InvalidEventHandlerException`. The
+`InvalidEventHandlerException.reusable()` method returns a reusable, pre-created, `InvalidEventHandlerException` that is
+unmodifiable and contains no stack trace.
+
+* *Closing event loop:* Calling the method `close()` shuts down an event loop. The method `close()` first
+calls the method `stop()`. The method`stop()` notifies event loop to stop executing handlers however, this might not happen
+immediately. It is not expected that event loops can then be restarted.
+
+[source,java]
+----
+//Remove event loop el
+el.close();
+----
+
 == Monitoring the event loop
 
 The `MonitorEventLoop` thread monitors application threads to make sure event loop latency remains within acceptable bounds. The thread monitors latency by measuring the time the `action` method of the application event handlers takes to run. Whenever the method runs beyond an acceptable latency limit, `MonitorEventLoop` prints a stack trace.
@@ -84,4 +187,8 @@ For the best performance, the default `busy` Pauser mode minimises jitter. Howev
 
 ==== For example 
 
-In a simple example which is reading from and writing to a socket. The handler typically returns true if anything was read or written on the assumption it may need to read/write something very soon. However, if nothing is read or written, it may still be called soon however this is where the PauserMode determines how the event loop will start backing off when no work is being done.
+In a simple example which is reading from and writing to a socket. The handler typically
+returns true if anything was read or written on the assumption it may need to read/write
+something very soon. However, if nothing is read or written, it may still be called soon
+however this is where the PauserMode determines how the event loop will start backing off
+when no work is being done.
