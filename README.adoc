@@ -33,7 +33,7 @@ overriding its `action()` method so that it executes some actions in response to
 this event handler is responding to. The `action()` method returns a boolean value. If the `action()`
 method returns true, the event loop is biased to serve the same handler again soon. How soon
 depends on a variety of factors, and the other work the event loop has to do across the other
-even handlers. Returning "true" when there is no actual work to do may waste cycles servicing a handler which has nothing to do, at the
+event handlers. Returning "true" when there is no actual work to do may waste cycles servicing a handler which has nothing to do, at the
 expense of stealing cycles away from other handlers. Conversely, returning "false" when there is work to do, will
 effectively increase latency as the event loop will take the "false" as a hint that several other handlers can be
 serviced ahead of this one.
