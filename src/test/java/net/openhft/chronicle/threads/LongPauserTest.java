@@ -72,6 +72,7 @@ public class LongPauserTest extends ThreadsTestCommon {
                 fail();
         }
         long time = System.nanoTime() - start;
-        assertEquals(timeNS, time, 10_000_000);
+        final int delta = 11_000_000;
+        assertEquals(timeNS + delta, time, delta);
     }
 }
