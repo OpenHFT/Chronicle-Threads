@@ -29,7 +29,10 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -37,6 +40,7 @@ import java.util.function.Consumer;
 public enum Threads {
     ;
 
+    private static final int MAX_DEPTH_TO_FOLLOW_DELEGATIONS = 20;
     static final Field GROUP = Jvm.getField(Thread.class, "group");
     static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 500);
     static final ThreadLocal<List> listTL = ThreadLocal.withInitial(ArrayList::new);
@@ -104,10 +108,9 @@ public enum Threads {
             if (!terminated) {
                 terminated = service.awaitTermination(1, TimeUnit.SECONDS);
                 if (!terminated) {
-                    if (service instanceof ThreadPoolExecutor)
-                        warnRunningThreads(service);
-                    else
-                        Jvm.warn().on(Threads.class, "*** FAILED TO TERMINATE " + service.toString());
+                    if (!(service instanceof ThreadPoolExecutor))
+                        Jvm.warn().on(Threads.class, "*** FAILED TO TERMINATE " + service);
+                    warnRunningThreads(service);
                 }
             }
         } catch (InterruptedException e) {
@@ -133,10 +136,10 @@ public enum Threads {
             if (!service.awaitTermination(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS)) {
                 service.shutdownNow();
 
-                if (service instanceof ThreadPoolExecutor)
-                    warnRunningThreads(service);
-                else
-                    Jvm.warn().on(Threads.class, "*** FAILED TO TERMINATE " + service.toString());
+                if (!(service instanceof ThreadPoolExecutor)) {
+                    Jvm.warn().on(Threads.class, "*** FAILED TO TERMINATE " + service);
+                }
+                warnRunningThreads(service);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -167,8 +170,8 @@ public enum Threads {
     static void forEachThread(ExecutorService service, Consumer<Thread> consumer) {
         try {
             final Set workers;
-            if (Jvm.isJava9Plus() && !(service instanceof ThreadPoolExecutor)) {
-                workers = Jvm.getValue(service, "e/workers");
+            if (!(service instanceof ThreadPoolExecutor)) {
+                workers = Jvm.getValue(resolveDelegatedExecutorServices(service), "workers");
             } else {
                 workers = Jvm.getValue(service, "workers");
             }
@@ -201,6 +204,37 @@ public enum Threads {
         } catch (Exception e) {
             Jvm.debug().on(Threads.class, e);
         }
+    }
+
+    /**
+     * Recursively resolve DelegatedExecutorServices
+     *
+     * @param executorService An ExecutorService
+     * @return The first ExecutorService in the delegation chain that is not a DelegatedExecutorService
+     */
+    @NotNull
+    private static ExecutorService resolveDelegatedExecutorServices(@NotNull ExecutorService executorService) {
+        return resolveDelegatedExecutorServices(executorService, 0);
+    }
+
+    @NotNull
+    private static ExecutorService resolveDelegatedExecutorServices(@NotNull ExecutorService executorService, int depth) {
+        if (depth > MAX_DEPTH_TO_FOLLOW_DELEGATIONS) {
+            Jvm.warn().on(Threads.class, "Recursion limit hit, there may be a loop");
+            return executorService;
+        }
+        try {
+            Field eField = Jvm.getFieldOrNull(executorService.getClass(), "e");
+            if (eField != null) {
+                Object eFieldValue = eField.get(executorService);
+                if (eFieldValue instanceof ExecutorService) {
+                    return resolveDelegatedExecutorServices((ExecutorService) eFieldValue, depth + 1);
+                }
+            }
+        } catch (IllegalAccessException | IllegalArgumentException error) {
+            // We can't access the field, move on
+        }
+        return executorService;
     }
 
     static void loopFinishedQuietly(EventHandler eventHandler) {
