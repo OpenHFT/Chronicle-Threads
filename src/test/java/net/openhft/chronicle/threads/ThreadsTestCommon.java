@@ -8,12 +8,14 @@ import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
 import net.openhft.chronicle.core.threads.CleaningThread;
 import net.openhft.chronicle.core.threads.ThreadDump;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
+
+import static java.lang.String.format;
+import static org.junit.Assert.fail;
 
 public class ThreadsTestCommon {
     private ThreadDump threadDump;
@@ -59,8 +61,22 @@ public class ThreadsTestCommon {
         if (Jvm.hasException(exceptions)) {
             Jvm.dumpException(exceptions);
             Jvm.resetExceptionHandlers();
-            Assert.fail();
+            fail();
         }
+    }
+
+    public void assertExceptionThrown(String message) {
+        String description = format("No exception found containing string `%s`", message);
+        assertExceptionThrown(k -> k.message.contains(message) || (k.throwable != null && k.throwable.getMessage().contains(message)), description);
+    }
+
+    public void assertExceptionThrown(Predicate<ExceptionKey> predicate, String description) {
+        for (ExceptionKey key : exceptions.keySet()) {
+            if (predicate.test(key)) {
+                return;
+            }
+        }
+        fail(description);
     }
 
     @After
