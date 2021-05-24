@@ -30,11 +30,13 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
@@ -62,7 +64,7 @@ public class EventGroup
     private final String name;
     private final Set<HandlerPriority> priorities;
     @NotNull
-    private final VanillaEventLoop[] concThreads;
+    private final List<VanillaEventLoop> concThreads = new CopyOnWriteArrayList<>();
     private final MilliPauser milliPauser = Pauser.millis(50);
     private final boolean daemon;
 
@@ -159,7 +161,8 @@ public class EventGroup
                 monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 30));
             blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop") : null;
             closeable.add(blocking);
-            concThreads = new VanillaEventLoop[priorities.contains(HandlerPriority.CONCURRENT) ? concThreadsNum : 0];
+            if (priorities.contains(HandlerPriority.CONCURRENT))
+                IntStream.range(0, concThreadsNum).forEach(i -> concThreads.add(null));
             closeable.clear();
         } finally {
             closeQuietly(closeable);
@@ -219,15 +222,17 @@ public class EventGroup
     }
 
     private synchronized VanillaEventLoop getConcThread(int n) {
-        if (concThreads[n] == null) {
-            concThreads[n] = new VanillaEventLoop(this, name + "conc-event-loop-" + n, concPauser,
+        VanillaEventLoop loop = concThreads.get(n);
+        if (loop == null) {
+            loop = new VanillaEventLoop(this, name + "conc-event-loop-" + n, concPauser,
                     REPLICATION_EVENT_PAUSE_TIME, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT));
-            addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, concThreads[n]);
+            concThreads.set(n, loop);
+            addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, loop);
             if (isAlive())
-                concThreads[n].start();
+                loop.start();
             monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 60));
         }
-        return concThreads[n];
+        return loop;
     }
 
     @Override
@@ -295,9 +300,9 @@ public class EventGroup
                 break;
 
             case CONCURRENT: {
-                if (concThreads.length == 0)
+                if (concThreads.isEmpty())
                     throw new IllegalStateException("Cannot add CONCURRENT " + handler + " to " + name);
-                getConcThread(counter.getAndIncrement() % concThreads.length).addHandler(handler);
+                getConcThread(counter.getAndIncrement() % concThreads.size()).addHandler(handler);
                 break;
             }
 
