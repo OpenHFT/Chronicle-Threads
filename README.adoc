@@ -23,7 +23,7 @@ illustrates a diagram of an event loop that serves several event handlers sequen
 
 [#img-eventloop]
 .Event loop and event handlers
-image::eventloop.jpg[eventloop,400,400]
+image::docs/images/eventloop.jpg[eventloop,400,400]
 
 You can create and remove event loops and event handlers and add event handlers to event loops
 as described below:
@@ -107,7 +107,7 @@ from the event loop, its `action()` method should throw `InvalidEventHandlerExce
 unmodifiable and contains no stack trace.
 
 * *Closing event loop:* Calling the method `close()` shuts down an event loop. The method `close()` first
-calls the method `stop()`. The method`stop()` notifies event loop to stop executing handlers however, this might not happen
+calls the method `stop()`. The method `stop()` notifies event loop to stop executing handlers however, this might not happen
 immediately. It is not expected that event loops can then be restarted.
 
 [source,java]
