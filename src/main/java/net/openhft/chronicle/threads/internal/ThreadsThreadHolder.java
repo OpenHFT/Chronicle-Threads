@@ -1,5 +1,6 @@
 package net.openhft.chronicle.threads.internal;
 
+import net.openhft.affinity.Affinity;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.threads.ThreadHolder;
@@ -49,7 +50,7 @@ public class ThreadsThreadHolder implements ThreadHolder {
 
     @Override
     public void monitorThreadDelayed(long actionCallDelayNS) {
-        logConsumer.accept("Monitor thread for " + getName() + " was delayed by " + actionCallDelayNS / 100000 / 10.0 + " ms");
+        logConsumer.accept("Monitor thread for " + getName() + " cpuId: " + Affinity.getCpu() + " was delayed by " + actionCallDelayNS / 100000 / 10.0 + " ms");
     }
 
     @Override
