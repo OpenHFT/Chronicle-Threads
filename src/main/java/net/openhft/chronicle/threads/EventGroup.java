@@ -263,7 +263,7 @@ public class EventGroup
     }
 
     @Override
-    public void addHandler(@NotNull final EventHandler handler) {
+    public synchronized void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
 
         HandlerPriority t1 = handler.priority();
@@ -353,9 +353,6 @@ public class EventGroup
             // this checks that the core threads have stalled
             if (core != null)
                 addThreadMonitoring(MONITOR_INTERVAL_MS, core);
-
-            while (!isAlive())
-                Jvm.pause(1);
         }
     }
 
