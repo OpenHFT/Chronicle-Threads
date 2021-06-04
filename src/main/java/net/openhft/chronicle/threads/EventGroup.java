@@ -52,7 +52,7 @@ public class EventGroup
     private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
     private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
-    private static final long WAIT_TO_START_MS = Integer.getInteger("eventGroup.wait.to.start.ms", 100);
+    private static final long WAIT_TO_START_MS = Integer.getInteger("eventGroup.wait.to.start.ms", 500);
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
     private final EventLoop monitor;
@@ -333,6 +333,10 @@ public class EventGroup
         addHandler(ThreadMonitors.forThread(description, timeLimitNS, timeSupplier, threadSupplier));
     }
 
+    /**
+     * Starts the event loop and waits for the core (or monitor) event loop thread to start before returning
+     * (or timing out)
+     */
     @Override
     public synchronized void start() {
         throwExceptionIfClosed();
