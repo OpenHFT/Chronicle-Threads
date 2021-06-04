@@ -23,6 +23,9 @@ import org.jetbrains.annotations.NotNull;
 import java.util.function.BooleanSupplier;
 
 public interface CoreEventLoop extends EventLoop {
+    /**
+     * @return thread that the event loop is running on. Will be null if the event loop has not started
+     */
     Thread thread();
 
     @Deprecated(/* To be removed in x.23 */)

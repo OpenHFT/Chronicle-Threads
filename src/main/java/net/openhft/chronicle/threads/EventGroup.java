@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -51,6 +52,7 @@ public class EventGroup
     private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
     private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
     private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
+    private static final long WAIT_TO_START_MS = Integer.getInteger("eventGroup.wait.to.start.ms", 100);
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
     private final EventLoop monitor;
@@ -353,6 +355,16 @@ public class EventGroup
             // this checks that the core threads have stalled
             if (core != null)
                 addThreadMonitoring(MONITOR_INTERVAL_MS, core);
+
+            // wait for core to start, We use a TimingPauser, previously we waited for ever
+            TimingPauser timeoutPauser = Pauser.sleepy();
+            while (!isAlive()) {
+                try {
+                    timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
+                } catch (TimeoutException e) {
+                    throw Jvm.rethrow(e);
+                }
+            }
         }
     }
 
