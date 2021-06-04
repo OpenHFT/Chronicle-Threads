@@ -265,7 +265,7 @@ public class EventGroup
     }
 
     @Override
-    public synchronized void addHandler(@NotNull final EventHandler handler) {
+    public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
 
         HandlerPriority t1 = handler.priority();
