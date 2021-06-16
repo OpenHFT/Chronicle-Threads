@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runnable {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
-    private static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
+    static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
     private final ExecutorService service;
     private final EventLoop parent;
@@ -52,7 +52,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         this.pauser = pauser;
         this.name = name + (parent == null ? "" : parent.name()) + "/event~loop~monitor";
         service = Executors.newSingleThreadExecutor(
-                new NamedThreadFactory(name, true));
+                new NamedThreadFactory(name, true, null, true));
     }
 
     public String name() {

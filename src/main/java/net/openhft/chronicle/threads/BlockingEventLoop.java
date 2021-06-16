@@ -60,14 +60,14 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
                              @NotNull final String name) {
         this.name = name;
         this.parent = parent;
-        this.threadFactory = new NamedThreadFactory(name);
+        this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
     }
 
     public BlockingEventLoop(@NotNull final String name) {
         this.name = name;
         this.parent = this;
-        this.threadFactory = new NamedThreadFactory(name);
+        this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
     }
 

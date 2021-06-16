@@ -32,6 +32,7 @@ public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
     private final Boolean daemon;
     private final Integer priority;
     private final StackTrace createdHere;
+    private final boolean inEventLoop;
 
     public NamedThreadFactory(String name) {
         this(name, null, null);
@@ -42,10 +43,15 @@ public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
     }
 
     public NamedThreadFactory(String name, Boolean daemon, Integer priority) {
+        this(name, daemon, priority, false);
+    }
+
+    public NamedThreadFactory(String name, Boolean daemon, Integer priority, boolean inEventLoop) {
         super(name);
         this.name = name;
         this.daemon = daemon;
         this.priority = priority;
+        this.inEventLoop = inEventLoop;
         createdHere = Jvm.isResourceTracing() ? new StackTrace("NamedThreadFactory created here") : null;
     }
 
@@ -54,7 +60,7 @@ public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
     public Thread newThread(@NotNull Runnable r) {
         int id = this.id.getAndIncrement();
         String nameN = Threads.threadGroupPrefix() + (id == 0 ? this.name : (this.name + '-' + id));
-        Thread t = new CleaningThread(r, nameN);
+        Thread t = new CleaningThread(r, nameN, inEventLoop);
         ThreadDump.add(t, createdHere);
         if (daemon != null)
             t.setDaemon(daemon);

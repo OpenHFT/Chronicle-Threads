@@ -27,17 +27,15 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.*;
 
 public class EventGroupTest extends ThreadsTestCommon {
     private static final RuntimeException RUNTIME_EXCEPTION = new RuntimeException("some random text");
@@ -50,6 +48,8 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @After
     public void checkHandlersClosed() throws InterruptedException {
+        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
+
         for (TestHandler handler : this.handlers)
             handler.closed.await(100, TimeUnit.MILLISECONDS);
         handlers.forEach(TestHandler::checkCloseOrder);
@@ -237,7 +237,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                 try {
                     TestHandler handler = new TestHandler(hp);
                     eventGroup.addHandler(handler);
-                    Assert.fail("Should have failed " + handler);
+                    fail("Should have failed " + handler);
                 } catch (IllegalStateException e) {
                     // this is what we want
                 }
@@ -275,7 +275,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
         @Override
         public boolean action() throws InvalidEventHandlerException {
-           // // System.out.println("action " + priority + " " + super.toString());
+            // // System.out.println("action " + priority + " " + super.toString());
             actionCalled.incrementAndGet();
             exceptionType.throwIt();
             if (priority == HandlerPriority.BLOCKING)
@@ -313,7 +313,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         protected void performClose() {
             super.performClose();
 
-           // // System.out.println("closed " + this);
+            // // System.out.println("closed " + this);
             closed.countDown();
             Assert.assertTrue("close should be called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
         }
@@ -369,5 +369,45 @@ public class EventGroupTest extends ThreadsTestCommon {
         };
 
         abstract void throwIt() throws InvalidEventHandlerException;
+    }
+
+    @Test
+    public void inEventLoop() {
+        expectException("Monitoring a task which has finished VanillaEventLoop");
+        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
+        EventGroup eg = new EventGroup(true);
+        eg.start();
+        assertFalse(EventLoop.inEventLoop());
+        Set<HandlerPriority> priorities = new ConcurrentSkipListSet<>();
+        for (HandlerPriority priority : HandlerPriority.values()) {
+            eg.addHandler(new EventHandler() {
+                @Override
+                public boolean action() throws InvalidEventHandlerException {
+                    try {
+                        assertTrue(priority.name(), EventLoop.inEventLoop());
+                        priorities.add(priority);
+                    } catch (Throwable t) {
+                        t.printStackTrace();
+                    }
+                    throw new InvalidEventHandlerException("done");
+                }
+
+                @Override
+                public @NotNull HandlerPriority priority() {
+                    return priority;
+                }
+            });
+        }
+
+        EnumSet<HandlerPriority> allPriorities = EnumSet.allOf(HandlerPriority.class);
+        for (int i = 1; i < 30; i++) {
+            Jvm.pause(i);
+            if (priorities.equals(allPriorities))
+                break;
+        }
+        eg.close();
+        allPriorities.removeAll(priorities);
+        if (!allPriorities.isEmpty())
+            fail("Priorities failed " + allPriorities);
     }
 }
