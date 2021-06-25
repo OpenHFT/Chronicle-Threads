@@ -51,7 +51,7 @@ public enum Threads {
         try {
             String property = System.getProperty("threads.executor.factory");
             if (property != null)
-                instance = (ExecutorFactory) ObjectUtils.newInstance(Class.forName(property));
+                instance = ObjectUtils.newInstance(property);
         } catch (Exception e) {
             Jvm.warn().on(Threads.class, e);
         }

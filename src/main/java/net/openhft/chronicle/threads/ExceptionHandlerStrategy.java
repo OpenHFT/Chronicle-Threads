@@ -17,7 +17,7 @@ public interface ExceptionHandlerStrategy {
     static ExceptionHandlerStrategy strategy() {
         String className = System.getProperty(IMPL_PROPERTY, LogDontRemove.class.getName());
         try {
-            return (ExceptionHandlerStrategy) ObjectUtils.newInstance(Class.forName(className));
+            return ObjectUtils.newInstance(className);
         } catch (Exception e) {
             throw Jvm.rethrow(e);
         }
