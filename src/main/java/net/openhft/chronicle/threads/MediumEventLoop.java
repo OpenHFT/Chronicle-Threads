@@ -52,7 +52,6 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     protected static final EventHandler[] NO_EVENT_HANDLERS = {};
     protected static final long FINISHED = Long.MAX_VALUE - 1;
 
-
     @Nullable
     protected final EventLoop parent;
     @NotNull

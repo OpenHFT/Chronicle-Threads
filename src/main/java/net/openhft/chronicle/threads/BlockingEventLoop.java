@@ -41,7 +41,6 @@ import static net.openhft.chronicle.threads.Threads.unpark;
  */
 public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
-
     @NotNull
     private final EventLoop parent;
     @NotNull
