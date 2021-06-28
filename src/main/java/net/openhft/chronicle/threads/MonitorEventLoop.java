@@ -97,7 +97,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         throwExceptionIfClosed();
 
         if (DEBUG_ADDING_HANDLERS)
-            System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
+            Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         synchronized (handlers) {

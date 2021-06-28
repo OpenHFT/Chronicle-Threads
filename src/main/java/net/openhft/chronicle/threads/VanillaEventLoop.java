@@ -26,8 +26,6 @@ import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -41,7 +39,6 @@ public class VanillaEventLoop extends MediumEventLoop {
                             HandlerPriority.MEDIUM,
                             HandlerPriority.TIMER,
                             HandlerPriority.DAEMON));
-    private static final Logger LOG = LoggerFactory.getLogger(VanillaEventLoop.class);
     private final List<EventHandler> timerHandlers = new CopyOnWriteArrayList<>();
     private final List<EventHandler> daemonHandlers = new CopyOnWriteArrayList<>();
     private final long timerIntervalMS;
@@ -122,7 +119,7 @@ public class VanillaEventLoop extends MediumEventLoop {
 
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
-            System.out.println("Adding " + priority + " " + handler + " to " + this.name);
+            Jvm.startup().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
         if (!priorities.contains(priority))
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler + " allows " + priorities);
 
@@ -264,8 +261,8 @@ public class VanillaEventLoop extends MediumEventLoop {
                 .collect(Collectors.toList());
         if (collect.isEmpty())
             return;
-        LOG.info("Handlers still running after being closed, handlerCount=" + handlerCount);
-        collect.forEach(h -> LOG.info("\t" + h));
+        Jvm.debug().on(getClass(), "Handlers still running after being closed, handlerCount=" + handlerCount);
+        collect.forEach(h -> Jvm.debug().on(getClass(), "\t" + h));
     }
 
     @Override

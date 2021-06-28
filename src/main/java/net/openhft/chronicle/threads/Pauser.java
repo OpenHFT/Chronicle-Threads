@@ -204,8 +204,7 @@ public interface Pauser {
      */
     long countPaused();
 
-    enum SleepyWarning {
-        ;
+    enum SleepyWarning {;
 
         static {
             if (SLEEPY) {

@@ -18,7 +18,6 @@
 
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.util.Time;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -42,8 +41,7 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
                 } catch (TimeoutException e) {
                     Assert.fail(p + " timed out");
                 }
-            while (System.nanoTime() < start + timeoutNS * 2)
-                ;
+            while (System.nanoTime() < start + timeoutNS * 2);
             try {
                // System.out.println(start + " timeoutNS " + (start + timeoutNS) + " now " + Time.uniqueId() + " past " + (System.nanoTime() > (start + timeoutNS)));
                 p.pause(timeoutNS, TimeUnit.NANOSECONDS);

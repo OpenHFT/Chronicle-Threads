@@ -37,8 +37,7 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
-public enum Threads {
-    ;
+public enum Threads {;
 
     private static final int MAX_DEPTH_TO_FOLLOW_DELEGATIONS = 20;
     static final Field GROUP = Jvm.getField(Thread.class, "group");

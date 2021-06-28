@@ -18,8 +18,6 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -28,11 +26,10 @@ import java.util.function.Supplier;
 
 @Deprecated(/* To be removed in x.23 */)
 class ThreadMonitorEventHandler extends DelegateEventHandler {
-    private static final Logger LOG = LoggerFactory.getLogger(ThreadMonitorEventHandler.class);
 
     ThreadMonitorEventHandler(String description, long timeLimit, LongSupplier timeSupplier,
                               Supplier<Thread> threadSupplier) {
-        super(ThreadMonitors.forThread(description, timeLimit, timeSupplier, threadSupplier, LOG::isInfoEnabled,
+        super(ThreadMonitors.forThread(description, timeLimit, timeSupplier, threadSupplier, () -> Jvm.isPerfEnabled(ThreadMonitor.class),
                 msg -> Jvm.perf().on(ThreadMonitor.class, msg)));
     }
 

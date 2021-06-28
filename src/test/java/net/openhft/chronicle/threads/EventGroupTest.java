@@ -21,7 +21,6 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,8 +45,8 @@ public class EventGroupTest extends ThreadsTestCommon {
         handlers = new ArrayList<>();
     }
 
-    @After
-    public void checkHandlersClosed() throws InterruptedException {
+    @Override
+    public void preAfter() throws InterruptedException {
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
 
         for (TestHandler handler : this.handlers)

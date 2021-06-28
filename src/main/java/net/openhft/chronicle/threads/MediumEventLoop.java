@@ -30,8 +30,6 @@ import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.threads.internal.EventLoopUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -54,7 +52,6 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     protected static final EventHandler[] NO_EVENT_HANDLERS = {};
     protected static final long FINISHED = Long.MAX_VALUE - 1;
 
-    private static final Logger LOG = LoggerFactory.getLogger(MediumEventLoop.class);
 
     @Nullable
     protected final EventLoop parent;
@@ -200,7 +197,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
         final HandlerPriority priority = handler.priority().alias();
         if (DEBUG_ADDING_HANDLERS)
-            System.out.println("Adding " + priority + " " + handler + " to " + this.name);
+            Jvm.startup().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
         if (!ALLOWED_PRIORITIES.contains(priority)) {
             if (handler.priority() == HandlerPriority.MONITOR) {
                 Jvm.warn().on(getClass(), "Ignoring " + handler.getClass());
@@ -328,7 +325,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
     private void closeAll() {
         closeAllHandlers();
-        LOG.trace("Remaining handlers");
+        Jvm.debug().on(getClass(), "Remaining handlers");
         dumpRunningHandlers();
     }
 
@@ -530,8 +527,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         final StringBuilder out = new StringBuilder(message);
         Jvm.trimStackTrace(out, thread.getStackTrace());
 
-        if (finalCheck.getAsBoolean() && LOG.isInfoEnabled())
-            LOG.info(out.toString());
+        if (finalCheck.getAsBoolean() && Jvm.isDebugEnabled(getClass()))
+            Jvm.debug().on(getClass(), out.toString());
     }
 
     public int nonDaemonHandlerCount() {
@@ -564,8 +561,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 .collect(Collectors.toList());
         if (collect.isEmpty())
             return;
-        LOG.info("Handlers still running after being closed, handlerCount=" + handlerCount);
-        collect.forEach(h -> LOG.info("\t" + h));
+        Jvm.debug().on(getClass(), "Handlers still running after being closed, handlerCount=" + handlerCount);
+        collect.forEach(h -> Jvm.debug().on(getClass(), "\t" + h));
     }
 
     @Override

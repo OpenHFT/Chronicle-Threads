@@ -17,18 +17,17 @@
  */
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
 
 public class PauserMonitor implements EventHandler {
-    private static final Logger LOG = LoggerFactory.getLogger(PauserMonitor.class);
 
+    public static final boolean PERF_ENABLED = Jvm.isDebugEnabled(PauserMonitor.class);
     @NotNull
     private final WeakReference<Pauser> pauser;
     private final String description;
@@ -61,16 +60,16 @@ public class PauserMonitor implements EventHandler {
             long timePausedDelta = timePaused - lastTimePaused;
             long countPausedDelta = countPaused - lastCountPaused;
             if (countPausedDelta > 0) {
-                double averageTime = timePausedDelta * 1000 / countPausedDelta / 1e3;
+                double averageTime = timePausedDelta * 1000L / countPausedDelta / 1e3;
                 // sometimes slightly negative due to rounding error
-                double busy = Math.abs((timeDelta - timePausedDelta) * 1000 / timeDelta / 10.0);
-                if (LOG.isDebugEnabled())
-                    LOG.debug(description + ": avg pause: " + averageTime + " ms, "
+                double busy = Math.abs((timeDelta - timePausedDelta) * 1000L / timeDelta / 10.0);
+                if (PERF_ENABLED)
+                    Jvm.perf().on(getClass(), description + ": avg pause: " + averageTime + " ms, "
                             + "count=" + countPausedDelta
                             + (lastTime > 0 ? ", busy=" + busy + "%" : ""));
             } else {
-                if (LOG.isDebugEnabled())
-                    LOG.debug(description + ": count=" + countPausedDelta + ", busy=100%");
+                if (PERF_ENABLED)
+                    Jvm.perf().on(getClass(), description + ": count=" + countPausedDelta + ", busy=100%");
             }
         }
         lastTimePaused = timePaused;

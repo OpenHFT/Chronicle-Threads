@@ -23,8 +23,6 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +41,6 @@ import static net.openhft.chronicle.threads.Threads.unpark;
  */
 public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
-    private static final Logger LOG = LoggerFactory.getLogger(BlockingEventLoop.class);
 
     @NotNull
     private final EventLoop parent;
@@ -93,7 +90,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     @Override
     public synchronized void addHandler(@NotNull final EventHandler handler) {
         if (DEBUG_ADDING_HANDLERS)
-            System.out.println("Adding " + handler.priority() + " " + handler + " to " + this.name);
+            Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         this.handlers.add(handler);
@@ -185,7 +182,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw ", t);
 
             } finally {
-                if (LOG.isDebugEnabled())
+                if (Jvm.isDebugEnabled(handler.getClass()))
                     Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
                 loopFinishedQuietly(handler);
                 // remove handler for clarity when debugging

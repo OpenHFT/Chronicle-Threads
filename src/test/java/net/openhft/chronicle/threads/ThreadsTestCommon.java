@@ -80,12 +80,17 @@ public class ThreadsTestCommon {
     }
 
     @After
-    public void afterChecks() {
+    public void afterChecks() throws InterruptedException {
+        preAfter();
         CleaningThread.performCleanup(Thread.currentThread());
         System.gc();
         AbstractCloseable.waitForCloseablesToClose(100);
         assertReferencesReleased();
         checkThreadDump();
         checkExceptions();
+    }
+
+    protected void preAfter() throws InterruptedException {
+
     }
 }
