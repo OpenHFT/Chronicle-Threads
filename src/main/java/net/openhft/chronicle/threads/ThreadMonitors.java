@@ -11,7 +11,8 @@ import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
-public enum ThreadMonitors {;
+public enum ThreadMonitors {
+    ; // none
 
     public static ThreadMonitor forThread(String description, long timeLimit, LongSupplier timeSupplier, Supplier<Thread> threadSupplier) {
         return new ThreadMonitorHarness(new ThreadsThreadHolder(description, timeLimit, timeSupplier, threadSupplier, () -> true, perfOn()));
