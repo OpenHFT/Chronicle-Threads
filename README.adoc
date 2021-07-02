@@ -131,7 +131,7 @@ Disable the monitor by setting the system property:
 
 [source,java]
 ----
-disableLoopBlockMonitor=false
+disableLoopBlockMonitor=true
 ----
 
 Use any stack trace information to improve the design for efficiency.
