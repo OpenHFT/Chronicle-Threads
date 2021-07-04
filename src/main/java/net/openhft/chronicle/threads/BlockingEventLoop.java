@@ -30,8 +30,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static java.lang.String.format;
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 import static net.openhft.chronicle.threads.Threads.unpark;
@@ -41,13 +42,19 @@ import static net.openhft.chronicle.threads.Threads.unpark;
  */
 public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
+    private enum Lifecycle {
+        NEW,
+        STARTED,
+        STOPPED
+    }
+
     @NotNull
     private final EventLoop parent;
     @NotNull
     private final ExecutorService service;
     @NotNull
     private final String name;
-    private final AtomicBoolean started = new AtomicBoolean();
+    private final AtomicReference<Lifecycle> lifecycle = new AtomicReference<>(Lifecycle.NEW);
     private final List<EventHandler> handlers = new ArrayList<>();
     private final NamedThreadFactory threadFactory;
     private final Pauser pauser = Pauser.balanced();
@@ -69,6 +76,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
     @Override
     public void awaitTermination() {
+        assert lifecycle.get() == Lifecycle.STOPPED;
         try {
             service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
         } catch (InterruptedException e) {
@@ -90,10 +98,10 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     public synchronized void addHandler(@NotNull final EventHandler handler) {
         if (DEBUG_ADDING_HANDLERS)
             Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
-        if (isClosed())
+        if (lifecycle.get() == Lifecycle.STOPPED)
             throw new IllegalStateException("Event Group has been closed");
         this.handlers.add(handler);
-        if (started.get())
+        if (lifecycle.get() == Lifecycle.STARTED)
             this.startHandler(handler);
     }
 
@@ -103,14 +111,15 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
     @Override
     public synchronized void start() {
-        started.set(true);
+        if (!lifecycle.compareAndSet(Lifecycle.NEW, Lifecycle.STARTED)) {
+            throw new IllegalStateException(format("Attempted to start event loop in state %s", lifecycle.get()));
+        }
         handlers.forEach(this::startHandler);
     }
 
     private void startHandler(final EventHandler handler) {
         try {
             service.submit(new Runner(handler));
-
         } catch (RejectedExecutionException e) {
             if (!service.isShutdown())
                 Jvm.warn().on(getClass(), e);
@@ -124,6 +133,16 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
     @Override
     public void stop() {
+        if (lifecycle.compareAndSet(Lifecycle.NEW, Lifecycle.STOPPED)) {
+            // We never started, we should call loopFinished
+            handlers.forEach(EventHandler::loopFinished);
+        } else if (lifecycle.compareAndSet(Lifecycle.STARTED, Lifecycle.STOPPED)) {
+            // Do nothing
+        } else {
+            if (Jvm.isDebugEnabled(BlockingEventLoop.class))
+                Jvm.debug().on(BlockingEventLoop.class, format("Attempted to stop event loop in state %s, ignoring", lifecycle.get()));
+            return;
+        }
         service.shutdownNow();
         unpause();
     }
@@ -136,12 +155,8 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     @Override
     protected void performClose() {
         super.performClose();
-
-        threadFactory.interruptAll();
-
+        stop();
         Threads.shutdown(service);
-        if (!started.get())
-            handlers.forEach(Threads::loopFinishedQuietly);
         closeQuietly(handlers);
     }
 
@@ -167,7 +182,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
                 handler.eventLoop(parent);
                 handler.loopStarted();
 
-                while (!isClosed()) {
+                while (lifecycle.get() == Lifecycle.STARTED) {
                     if (handler.action())
                         pauser.reset();
                     else
@@ -177,7 +192,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.
             } catch (Throwable t) {
-                if (!isClosed())
+                if (lifecycle.get() == Lifecycle.STARTED)
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw ", t);
 
             } finally {
