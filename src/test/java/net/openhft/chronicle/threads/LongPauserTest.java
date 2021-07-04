@@ -19,8 +19,10 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -28,7 +30,7 @@ import static org.junit.Assert.fail;
 
 public class LongPauserTest extends ThreadsTestCommon {
     @Test
-    public void testLongPauser() throws InterruptedException {
+    public void testLongPauser() {
         final LongPauser pauser = new LongPauser(1, 1, 100, 1000, TimeUnit.MICROSECONDS);
         Thread thread = new Thread() {
             @Override
@@ -51,6 +53,25 @@ public class LongPauserTest extends ThreadsTestCommon {
             Jvm.pause(20);
         }
         thread.interrupt();
+    }
+
+    @Test
+    public void unpauseStopsPausing() throws InterruptedException {
+        final int pauseMillis = 1_000;
+        final LongPauser pauser = new LongPauser(0, 0, pauseMillis, pauseMillis, TimeUnit.MILLISECONDS);
+        final CountDownLatch started = new CountDownLatch(1);
+        Thread thread = new Thread(() -> {
+            started.countDown();
+            pauser.pause();
+        });
+        thread.start();
+        started.await(50, TimeUnit.MILLISECONDS);
+        
+        pauser.unpause();
+        final long startNs = System.nanoTime();
+        thread.join();
+        final long timeTakenMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs);
+        Assert.assertTrue(timeTakenMs < 5);
     }
 
     @Test
