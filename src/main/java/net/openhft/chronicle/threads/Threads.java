@@ -128,9 +128,8 @@ public enum Threads {
     public static void shutdown(@NotNull ExecutorService service) {
 
         service.shutdown();
-        // without these 2 here, some threads that were in a LockSupport.parkNanos were taking a long time to shut down
+        // without this here, some threads that were in a LockSupport.parkNanos were taking a long time to shut down
         Threads.unpark(service);
-        Threads.interrupt(service);
         try {
 
             if (!service.awaitTermination(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS)) {
