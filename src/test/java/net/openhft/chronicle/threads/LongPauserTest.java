@@ -71,7 +71,7 @@ public class LongPauserTest extends ThreadsTestCommon {
         final long startNs = System.nanoTime();
         thread.join();
         final long timeTakenMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs);
-        Assert.assertTrue(timeTakenMs < 5);
+        Assert.assertTrue("Took " + timeTakenMs + " to stop", timeTakenMs < pauseMillis / 10);
     }
 
     @Test
