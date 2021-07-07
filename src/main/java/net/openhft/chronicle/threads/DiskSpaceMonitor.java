@@ -89,7 +89,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
 
         final long tookUs = (System.nanoTime() - start) / 1_000;
         if (tookUs > 250)
-            Jvm.perf().on(getClass(), "Took " + tookUs / 1000.0 + " ms to pollDiskSpace for " + file.getPath());
+            Jvm.perf().on(getClass(), "Took " + tookUs / 1000.0 + " ms to pollDiskSpace for " + file.getAbsolutePath());
     }
 
     @Override
