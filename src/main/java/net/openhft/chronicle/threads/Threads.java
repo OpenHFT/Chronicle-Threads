@@ -101,8 +101,28 @@ public enum Threads {
         return threadGroupName;
     }
 
+    /**
+     * Shutdown a daemon {@link ExecutorService}. We stop the service immediately as we want to
+     * stop whatever is executing quickly
+     * @param service service
+     */
     public static void shutdownDaemon(@NotNull ExecutorService service) {
-        shutdown(service);
+        // don't change this to shutdown() as it will cause test failures - allowing daemon services
+        // to stop politely gives us more races e.g. you may see things that are shutting down re-connecting
+        service.shutdownNow();
+        try {
+            boolean terminated = service.awaitTermination(10, TimeUnit.MILLISECONDS);
+            if (!terminated) {
+                terminated = service.awaitTermination(1, TimeUnit.SECONDS);
+                if (!terminated) {
+                    if (!(service instanceof ThreadPoolExecutor))
+                        Jvm.warn().on(Threads.class, "*** FAILED TO TERMINATE " + service);
+                    warnRunningThreads(service);
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public static void shutdown(@NotNull ExecutorService service, boolean daemon) {
@@ -115,7 +135,7 @@ public enum Threads {
     /**
      * Shutdown a {@link ExecutorService}. We assume that the service's tasks have already been told to
      * stop (e.g. {@code running.set(false)}) and that we can initially just wait (for {@link #SHUTDOWN_WAIT_MILLIS})
-     * for the service to complete. If it does not stop by itself then we terminate and wait again.
+     * for the service to complete. If it does not stop by itself then we terminate it.
      * @param service service
      */
     public static void shutdown(@NotNull ExecutorService service) {
@@ -128,7 +148,7 @@ public enum Threads {
             if (!service.awaitTermination(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS)) {
                 service.shutdownNow();
 
-                if (!service.awaitTermination(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS)) {
+                if (!service.awaitTermination(10, TimeUnit.MILLISECONDS)) {
                     if (!(service instanceof ThreadPoolExecutor)) {
                         Jvm.warn().on(Threads.class, "*** FAILED TO TERMINATE " + service);
                     }
