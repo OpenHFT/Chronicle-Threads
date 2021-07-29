@@ -48,6 +48,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     @NotNull
     private final String name;
     private final AtomicBoolean started = new AtomicBoolean();
+    private final AtomicBoolean running = new AtomicBoolean();
     private final List<EventHandler> handlers = new ArrayList<>();
     private final NamedThreadFactory threadFactory;
     private final Pauser pauser = Pauser.balanced();
@@ -103,7 +104,9 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
     @Override
     public synchronized void start() {
-        started.set(true);
+        if (started.getAndSet(true))
+            return;
+        running.set(true);
         handlers.forEach(this::startHandler);
     }
 
@@ -119,12 +122,13 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
 
     @Override
     public void unpause() {
+        pauser.unpause();
         unpark(service);
     }
 
     @Override
     public void stop() {
-        service.shutdownNow();
+        running.set(false);
         unpause();
     }
 
@@ -137,7 +141,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     protected void performClose() {
         super.performClose();
 
-        threadFactory.interruptAll();
+        stop();
 
         Threads.shutdown(service);
         if (!started.get())
@@ -167,7 +171,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
                 handler.eventLoop(parent);
                 handler.loopStarted();
 
-                while (!isClosed()) {
+                while (running.get()) {
                     if (handler.action())
                         pauser.reset();
                     else

@@ -80,7 +80,7 @@ public interface Pauser {
     }
 
     /**
-     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
+     * A pauser which does not busy spin or yield, it just pauses with a backoff
      *
      * @param minMillis starting millis
      * @param maxMillis maximum millis
