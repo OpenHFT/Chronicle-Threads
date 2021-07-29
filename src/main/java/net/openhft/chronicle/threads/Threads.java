@@ -163,12 +163,11 @@ public enum Threads {
 
     static void forEachThread(ExecutorService service, Consumer<Thread> consumer) {
         try {
-            final Set workers;
-            if (!(service instanceof ThreadPoolExecutor)) {
-                workers = Jvm.getValue(resolveDelegatedExecutorServices(service), "workers");
-            } else {
-                workers = Jvm.getValue(service, "workers");
-            }
+            if (!(service instanceof ThreadPoolExecutor))
+                service = resolveDelegatedExecutorServices(service);
+            if (!(service instanceof ThreadPoolExecutor))
+                return;
+            final Set workers = Jvm.getValue(service, "workers");
             if (workers == null) {
                 Jvm.warn().on(Threads.class, "Couldn't find workers for " + service.getClass());
                 return;
