@@ -58,14 +58,15 @@ public class TimeoutPauser implements Pauser, TimingPauser {
 
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
+        if (timeOutStart == Long.MAX_VALUE)
+            timeOutStart = System.nanoTime();
+
         ++count;
         if (count < minBusy)
             return;
         yield();
 
-        if (timeOutStart == Long.MAX_VALUE)
-            timeOutStart = System.nanoTime();
-        else if (timeOutStart + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
+        if (timeOutStart + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
             throw new TimeoutException();
         checkYieldTime();
     }
