@@ -1,5 +1,6 @@
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.FlakyTestRunner;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -12,6 +13,10 @@ public class TimeoutPauserTest {
 
     @Test
     public void pause() {
+        FlakyTestRunner.run(this::pause0);
+    }
+
+    private void pause0() {
         TimeoutPauser tp = new TimeoutPauser(100);
         for (int i = 0; i < 10; i++) {
             long start = System.currentTimeMillis();
