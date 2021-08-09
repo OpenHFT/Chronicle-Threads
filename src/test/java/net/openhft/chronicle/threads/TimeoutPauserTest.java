@@ -1,6 +1,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.FlakyTestRunner;
+import net.openhft.chronicle.core.OS;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -26,7 +27,8 @@ public class TimeoutPauserTest {
                     if (System.currentTimeMillis() - start > 110)
                         fail();
                 } catch (TimeoutException e) {
-                    assertEquals(105, System.currentTimeMillis() - start, 5);
+                    int delta = OS.isWindows() ? 20 : 5;
+                    assertEquals(105, System.currentTimeMillis() - start, delta);
                     tp.reset();
                     break;
                 }
