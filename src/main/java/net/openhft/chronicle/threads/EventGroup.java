@@ -366,7 +366,7 @@ public class EventGroup
                 Jvm.pause(1);
             }
             if (!isAlive())
-                Jvm.debug().on(getClass(), "EventGroup faild to start after " + (System.currentTimeMillis() - start) + " ms.");
+                Jvm.debug().on(getClass(), "EventGroup failed to start after " + (System.currentTimeMillis() - start) + " ms.");
         }
     }
 
