@@ -13,7 +13,6 @@ import org.junit.Test;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 
 public class EventGroupBadAffinityTest {
@@ -47,7 +46,7 @@ public class EventGroupBadAffinityTest {
         }
     }
 
-    @Test(timeout = 5000, expected = TimeoutException.class)
+    @Test(timeout = 5000)
     public void testInvalidAffinity() {
         expectException("Cannot parse 'xxx'");
         try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "xxx", "none", this.getClass().getSimpleName(),
