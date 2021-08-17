@@ -160,7 +160,7 @@ public class EventGroup
                     Pauser.millis(Integer.getInteger("monitor.interval", 10)));
             closeable.add(monitor);
             if (core != null)
-                monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 30));
+                monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 300));
             blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop") : null;
             closeable.add(blocking);
             if (priorities.contains(HandlerPriority.CONCURRENT))
@@ -212,7 +212,7 @@ public class EventGroup
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, replication);
             if (isAlive())
                 replication.start();
-            monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 60));
+            monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 300));
         }
         return replication;
     }
@@ -232,7 +232,7 @@ public class EventGroup
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, loop);
             if (isAlive())
                 loop.start();
-            monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 60));
+            monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 300));
         }
         return loop;
     }
