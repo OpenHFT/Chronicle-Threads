@@ -27,7 +27,7 @@
     </parent>
 
     <artifactId>chronicle-threads</artifactId>
-    <version>2.21ea84-SNAPSHOT</version>
+    <version>2.21.84-SNAPSHOT</version>
     <name>OpenHFT/Chronicle-Threads</name>
     <description>Chronicle-Threads</description>
     <packaging>bundle</packaging>
@@ -45,7 +45,7 @@
             <dependency>
                 <groupId>net.openhft</groupId>
                 <artifactId>chronicle-bom</artifactId>
-                <version>2.21ea-SNAPSHOT</version>
+                <version>2.21-SNAPSHOT</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
