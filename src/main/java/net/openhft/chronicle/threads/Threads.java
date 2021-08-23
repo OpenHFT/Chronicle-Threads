@@ -43,7 +43,7 @@ public enum Threads {
     private static final int MAX_DEPTH_TO_FOLLOW_DELEGATIONS = 20;
     static final Field GROUP = Jvm.getField(Thread.class, "group");
     static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 500);
-    static final ThreadLocal<List> listTL = ThreadLocal.withInitial(ArrayList::new);
+    static final ThreadLocal<List<Object>> listTL = ThreadLocal.withInitial(ArrayList::new);
     static ExecutorFactory executorFactory;
 
     static {
@@ -187,7 +187,7 @@ public enum Threads {
                 service = resolveDelegatedExecutorServices(service);
             if (!(service instanceof ThreadPoolExecutor))
                 return;
-            final Set workers = Jvm.getValue(service, "workers");
+            final Set<Object> workers = Jvm.getValue(service, "workers");
             if (workers == null) {
                 Jvm.warn().on(Threads.class, "Couldn't find workers for " + service.getClass());
                 return;
@@ -199,7 +199,7 @@ public enum Threads {
                 Jvm.debug().on(Threads.class, e);
             }
 
-            List objects = listTL.get();
+            List<Object> objects = listTL.get();
             objects.clear();
             if (mainLock != null) mainLock.lock();
             try {
