@@ -243,10 +243,4 @@ public class VanillaEventLoop extends MediumEventLoop {
         Jvm.debug().on(getClass(), "Handlers still running after being closed, handlerCount=" + handlerCount);
         collect.forEach(h -> Jvm.debug().on(getClass(), "\t" + h));
     }
-
-    @Override
-    protected boolean threadSafetyCheck(boolean isUsed) {
-        // Thread safe component.
-        return true;
-    }
 }
