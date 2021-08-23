@@ -137,6 +137,9 @@ public class EventGroup
             closeable.add(blocking);
             if (priorities.contains(HandlerPriority.CONCURRENT))
                 IntStream.range(0, concThreadsNum).forEach(i -> concThreads.add(null));
+
+            disableThreadSafetyCheck(true);
+
             closeable.clear();
         } finally {
             closeQuietly(closeable);
@@ -167,10 +170,6 @@ public class EventGroup
                 name,
                 CONC_THREADS,
                 EnumSet.allOf(HandlerPriority.class));
-    }
-
-    @Override
-    protected void threadSafetyCheck(boolean isUsed) {
     }
 
     private synchronized VanillaEventLoop getReplication() {

@@ -97,6 +97,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         loopStartMS = Long.MAX_VALUE;
         loopStartNS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon, null, true));
+
+        disableThreadSafetyCheck(true);
     }
 
     public static void closeAll(@NotNull final List<EventHandler> handlers) {
@@ -614,9 +616,5 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
             mediumHandlersArray = NO_EVENT_HANDLERS;
             newHandler.set(null);
         }
-    }
-
-    @Override
-    protected void threadSafetyCheck(boolean isUsed) {
     }
 }
