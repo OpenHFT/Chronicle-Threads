@@ -75,34 +75,6 @@ public class EventGroup
     /**
      * Create an EventGroup
      *
-     * @param daemon                whether to create threads as daemon
-     * @param pauser                pauser to use
-     * @param binding               whether to bind core event loop to current core
-     * @param bindingCpuCore        CPU to bind core event loop to. Supersedes binding above
-     * @param bindingCpuReplication CPU to bind replication event loop to. -1 means no binding
-     * @param name                  name of event group. Any created threads are named after this
-     * @param concThreads           number of concurrent threads to support
-     */
-    @Deprecated(/* to be removed in x.22 */)
-    public EventGroup(final boolean daemon,
-                      @NotNull final Pauser pauser,
-                      final boolean binding,
-                      final int bindingCpuCore,
-                      final int bindingCpuReplication,
-                      final String name,
-                      final int concThreads) {
-        this(daemon,
-                pauser,
-                bindingCpuCore != -1 ? Integer.toString(bindingCpuCore) : binding ? "any" : "none",
-                bindingCpuReplication != -1 ? Integer.toString(bindingCpuReplication) : "none",
-                name,
-                concThreads,
-                EnumSet.noneOf(HandlerPriority.class));
-    }
-
-    /**
-     * Create an EventGroup
-     *
      * @param daemon             whether to create threads as daemon
      * @param pauser             pauser to use
      * @param binding            CPU to bind core event loop to.
@@ -198,9 +170,7 @@ public class EventGroup
     }
 
     @Override
-    protected boolean threadSafetyCheck(boolean isUsed) {
-        // thread safe
-        return true;
+    protected void threadSafetyCheck(boolean isUsed) {
     }
 
     private synchronized VanillaEventLoop getReplication() {

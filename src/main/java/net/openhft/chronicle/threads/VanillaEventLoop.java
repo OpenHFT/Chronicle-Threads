@@ -64,27 +64,6 @@ public class VanillaEventLoop extends MediumEventLoop {
         this.priorities = EnumSet.copyOf(priorities);
     }
 
-    @Deprecated(/* to be removed in x.22 */)
-    public VanillaEventLoop(final EventLoop parent,
-                            final String name,
-                            final Pauser pauser,
-                            final long timerIntervalMS,
-                            final boolean daemon,
-                            final boolean binding,
-                            final int bindingCpu) {
-        this(parent, name, pauser, timerIntervalMS, daemon, bindingCpu != NO_CPU ? Integer.toString(bindingCpu) : binding ? "any" : "none", ALLOWED_PRIORITIES);
-    }
-
-    @Deprecated(/* to be removed in x.22 */)
-    public VanillaEventLoop(@Nullable final EventLoop parent,
-                            final String name,
-                            final Pauser pauser,
-                            final long timerIntervalMS,
-                            final boolean daemon,
-                            final boolean binding) {
-        this(parent, name, pauser, timerIntervalMS, daemon, binding ? "any" : "none", ALLOWED_PRIORITIES);
-    }
-
     public static void closeAll(@NotNull final List<EventHandler> handlers) {
         // do not remove the handler here, remove all at end instead
         Closeable.closeQuietly(handlers);
