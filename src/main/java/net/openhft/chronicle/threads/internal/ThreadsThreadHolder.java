@@ -69,7 +69,7 @@ public class ThreadsThreadHolder implements ThreadHolder {
                 .append("THIS IS NOT AN ERROR, but a profile of the thread, ").append(description)
                 .append(" thread ").append(thread.getName())
                 .append(" interrupted ").append(thread.isInterrupted())
-                .append(" blocked for ").append(latency / 100000 / 10.0)
+                .append(" blocked for ").append(latency / 100_000.0 / 10.0)
                 .append(" ms. ").append(type);
         Jvm.trimStackTrace(out, thread.getStackTrace());
         logConsumer.accept(out.toString());
