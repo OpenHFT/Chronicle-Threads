@@ -55,7 +55,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     @Nullable
     protected final EventLoop parent;
     @NotNull
-    protected final ExecutorService service;
+    protected transient final ExecutorService service;
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     protected final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     @NotNull
