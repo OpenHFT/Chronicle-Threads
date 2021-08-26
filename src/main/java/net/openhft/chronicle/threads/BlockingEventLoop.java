@@ -44,7 +44,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     @NotNull
     private final EventLoop parent;
     @NotNull
-    private final ExecutorService service;
+    private transient final ExecutorService service;
     @NotNull
     private final String name;
     private final AtomicBoolean started = new AtomicBoolean();

@@ -35,7 +35,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
-    private final ExecutorService service;
+    private transient final ExecutorService service;
     private final EventLoop parent;
     private final List<EventHandler> handlers = new ArrayList<>();
     private final Pauser pauser;
