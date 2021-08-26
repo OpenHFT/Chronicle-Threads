@@ -73,7 +73,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
     protected volatile long loopStartNS;
     @Nullable
-    protected volatile Thread thread = null;
+    protected transient volatile Thread thread = null;
     @NotNull
     protected final ExceptionHandlerStrategy exceptionThrownByHandler = ExceptionHandlerStrategy.strategy();
 
