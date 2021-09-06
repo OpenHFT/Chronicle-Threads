@@ -135,6 +135,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
          */
         service.shutdownNow();
         unpause();
+        Threads.shutdown(service);
     }
 
     @Override
@@ -146,11 +147,12 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     protected void performClose() {
         super.performClose();
 
-        stop();
-
-        Threads.shutdown(service);
+        // this is in here because it is guaranteed to be executed exactly once TODO: should be in stop
         if (!started.get())
             handlers.forEach(Threads::loopFinishedQuietly);
+
+        stop();
+
         closeQuietly(handlers);
     }
 

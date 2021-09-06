@@ -135,7 +135,6 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     @Override
     public void awaitTermination() {
         try {
-            service.shutdownNow();
             service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
         } catch (InterruptedException e) {
             if (thread != null && thread != Thread.currentThread() && thread.isAlive())
@@ -188,6 +187,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     public void stop() {
         running.set(false);
         unpause();
+        shutdownService();
     }
 
     @Override
@@ -575,46 +575,47 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     @Override
     protected void performClose() {
         try {
-            stop();
-            pauser.reset(); // reset the timer.
-            pauser.unpause();
-            LockSupport.unpark(thread);
-            Threads.shutdown(service, daemon);
-            if (thread == null) {
+            // this is in here because it is guaranteed to be executed exactly once TODO: should be in stop
+            if (!running.get() && thread == null) {
                 loopFinishedAllHandlers();
-                return;
             }
-            if (thread != Thread.currentThread()) {
-                long startTimeMillis = System.currentTimeMillis();
-                long waitUntilMs = startTimeMillis;
-                thread.interrupt();
-
-                for (int i = 1; i <= 50; i++) {
-                    if (loopStartNS == FINISHED)
-                        break;
-                    // we do this loop below to protect from Jvm.pause not pausing for as long as it should
-                    waitUntilMs += i;
-                    while (System.currentTimeMillis() < waitUntilMs)
-                        Jvm.pause(i);
-
-                    if (i == 35 || i == 50) {
-                        final StringBuilder sb = new StringBuilder();
-                        long ms = System.currentTimeMillis() - startTimeMillis;
-                        sb.append(name).append(": Shutting down thread is executing after ").
-                                append(ms).append("ms ").append(thread)
-                                .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
-                        Jvm.trimStackTrace(sb, thread.getStackTrace());
-                        Jvm.warn().on(getClass(), sb.toString());
-                        dumpRunningHandlers();
-                    }
-                }
-            }
+            stop();
         } finally {
             closeAllHandlers();
             highHandler = EventHandlers.NOOP;
             mediumHandlers.clear();
             mediumHandlersArray = NO_EVENT_HANDLERS;
             newHandler.set(null);
+        }
+    }
+
+    private void shutdownService() {
+        LockSupport.unpark(thread);
+        Threads.shutdown(service, daemon);
+        if (thread != null && thread != Thread.currentThread()) {
+            long startTimeMillis = System.currentTimeMillis();
+            long waitUntilMs = startTimeMillis;
+            thread.interrupt();
+
+            for (int i = 1; i <= 50; i++) {
+                if (loopStartNS == FINISHED)
+                    break;
+                // we do this loop below to protect from Jvm.pause not pausing for as long as it should
+                waitUntilMs += i;
+                while (System.currentTimeMillis() < waitUntilMs)
+                    Jvm.pause(i);
+
+                if (i == 35 || i == 50) {
+                    final StringBuilder sb = new StringBuilder();
+                    long ms = System.currentTimeMillis() - startTimeMillis;
+                    sb.append(name).append(": Shutting down thread is executing after ").
+                            append(ms).append("ms ").append(thread)
+                            .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
+                    Jvm.trimStackTrace(sb, thread.getStackTrace());
+                    Jvm.warn().on(getClass(), sb.toString());
+                    dumpRunningHandlers();
+                }
+            }
         }
     }
 }

@@ -116,6 +116,16 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @Test(timeout = 5000)
+    public void testCloseStopIdempotent() {
+        final EventLoop eventGroup = new EventGroup(true);
+        eventGroup.start();
+        eventGroup.stop();
+        eventGroup.stop();
+        eventGroup.close();
+        eventGroup.awaitTermination();
+    }
+
+    @Test(timeout = 5000)
     public void testCloseAwaitTerminationWithoutStarting() {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.close();
@@ -140,6 +150,21 @@ public class EventGroupTest extends ThreadsTestCommon {
             eventGroup.start();
             for (TestHandler handler : this.handlers)
                 handler.started.await(100, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    @Test(timeout = 5000)
+    public void checkNoThreadsAfterStopCalled() throws InterruptedException {
+        final ThreadDump threadDump = new ThreadDump();
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
+            eventGroup.start();
+            for (TestHandler handler : this.handlers)
+                handler.started.await(100, TimeUnit.MILLISECONDS);
+            eventGroup.stop();
+            threadDump.assertNoNewThreads();
+            handlers.forEach(testHandler -> Assert.assertTrue(testHandler.loopFinishedNS.get() != 0));
         }
     }
 

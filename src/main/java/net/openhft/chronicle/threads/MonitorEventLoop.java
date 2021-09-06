@@ -83,8 +83,12 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
 
     @Override
     public void stop() {
+        if (!running)
+            return;
         running = false;
         unpause();
+        Threads.shutdownDaemon(service);
+        handlers.forEach(Threads::loopFinishedQuietly);
     }
 
     @Override
@@ -160,8 +164,6 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         super.performClose();
 
         stop();
-        Threads.shutdownDaemon(service);
-        handlers.forEach(Threads::loopFinishedQuietly);
         net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
     }
 }
