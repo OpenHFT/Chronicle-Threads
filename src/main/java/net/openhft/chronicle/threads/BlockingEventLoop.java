@@ -129,6 +129,11 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     @Override
     public void stop() {
         running.set(false);
+        /*
+         * It's necessary for blocking handlers to be interrupted, so they abort what they're
+         * doing and run to completion immediately.
+         */
+        service.shutdownNow();
         unpause();
     }
 
