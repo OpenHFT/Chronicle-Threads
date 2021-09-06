@@ -30,6 +30,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
@@ -408,5 +409,41 @@ public class EventGroupTest extends ThreadsTestCommon {
         allPriorities.removeAll(priorities);
         if (!allPriorities.isEmpty())
             fail("Priorities failed " + allPriorities);
+    }
+
+    /**
+     * This behaviour was implemented so that in a network context the AcceptorHandler
+     * gets closed before the TcpEventHandlers
+     *
+     * Probably not required once https://github.com/OpenHFT/Chronicle-Threads/issues/93 is fixed
+     */
+    @Test
+    public void testBlockingEventLoopGetsClosedBeforeMediumAndConcurrentEventLoop() {
+        final EventGroup eventGroup = new EventGroup(false);
+
+        final AtomicBoolean mediumHandlerWasClosed = new AtomicBoolean(false);
+        final AtomicBoolean concurrentHandlerWasClosed = new AtomicBoolean(false);
+
+        final TestHandler mediumHandler = new TestHandler(HandlerPriority.MEDIUM);
+        final TestHandler concurrentHandler = new TestHandler(HandlerPriority.CONCURRENT);
+        final TestHandler blockingHandler = new TestHandler(HandlerPriority.BLOCKING) {
+
+            @Override
+            protected void performClose() {
+                super.performClose();
+                mediumHandlerWasClosed.set(mediumHandler.isClosing());
+                concurrentHandlerWasClosed.set(concurrentHandler.isClosing());
+            }
+        };
+
+        eventGroup.addHandler(blockingHandler);
+        eventGroup.addHandler(mediumHandler);
+        eventGroup.addHandler(concurrentHandler);
+
+        eventGroup.close();
+
+        assertTrue(blockingHandler.isClosed());
+        assertFalse(mediumHandlerWasClosed.get());
+        assertFalse(concurrentHandlerWasClosed.get());
     }
 }

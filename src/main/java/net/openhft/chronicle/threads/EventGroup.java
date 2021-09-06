@@ -344,6 +344,8 @@ public class EventGroup
     @Override
     public void stop() {
         monitor.stop();
+        if (blocking != null)
+            blocking.stop();
         if (replication != null)
             replication.stop();
         for (VanillaEventLoop concThread : concThreads) {
@@ -352,8 +354,6 @@ public class EventGroup
         }
         if (core != null)
             core.stop();
-        if (blocking != null)
-            blocking.stop();
     }
 
     @Override
@@ -365,10 +365,10 @@ public class EventGroup
     protected void performClose() {
         stop();
         closeQuietly(
+                blocking,
                 core,
                 monitor,
-                replication,
-                blocking
+                replication
         );
 
         closeQuietly(concThreads);
