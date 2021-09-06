@@ -67,14 +67,12 @@ public class LongPauserTest extends ThreadsTestCommon {
         });
         thread.start();
         started.await(50, TimeUnit.MILLISECONDS);
-        
+        Jvm.pause(10);  // give the thread some time to park
         pauser.unpause();
         final long startNs = System.nanoTime();
         thread.join();
         final long timeTakenMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs);
-        // todo investigate why this fails on arm
-        Assume.assumeTrue("unpark does not seem to work - this take 1K ms to stop", !Jvm.isArm());
-        Assert.assertTrue("Took " + timeTakenMs + " to stop", timeTakenMs < pauseMillis / 10);
+        Assert.assertTrue("Took " + timeTakenMs + " to stop", timeTakenMs < pauseMillis / 5);
     }
 
     @Test
