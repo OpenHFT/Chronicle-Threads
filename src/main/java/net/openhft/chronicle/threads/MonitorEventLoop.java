@@ -19,6 +19,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
@@ -29,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runnable {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
@@ -41,7 +42,7 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     private final Pauser pauser;
     private final String name;
 
-    private volatile boolean running = true;
+    private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
 
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
@@ -61,10 +62,11 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
 
     @Override
     public void awaitTermination() {
-        try {
-            service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        while (!Thread.currentThread().isInterrupted()) {
+            if (lifecycle.get() == EventLoopLifecycle.STOPPED) {
+                return;
+            }
+            Jvm.pause(1);
         }
     }
 
@@ -72,8 +74,9 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     public void start() {
         throwExceptionIfClosed();
 
-        running = true;
-        service.submit(this);
+        if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STARTED)) {
+            service.submit(this);
+        }
     }
 
     @Override
@@ -83,17 +86,19 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
 
     @Override
     public void stop() {
-        if (!running)
-            return;
-        running = false;
-        unpause();
-        Threads.shutdownDaemon(service);
-        handlers.forEach(Threads::loopFinishedQuietly);
+        if (lifecycle.compareAndSet(EventLoopLifecycle.STARTED, EventLoopLifecycle.STOPPING)
+                || lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STOPPING)) {
+            unpause();
+            Threads.shutdownDaemon(service);
+            handlers.forEach(Threads::loopFinishedQuietly);
+            lifecycle.set(EventLoopLifecycle.STOPPED);
+        }
+        awaitTermination();
     }
 
     @Override
     public boolean isAlive() {
-        return running;
+        return lifecycle.get() == EventLoopLifecycle.STARTED;
     }
 
     @Override
@@ -106,10 +111,8 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
             throw new IllegalStateException("Event Group has been closed");
         synchronized (handlers) {
             if (!handlers.contains(handler))
-                handlers.add(handler);
+                handlers.add(new IdempotentLoopStartedEventHandler(handler));
             handler.eventLoop(parent);
-            if (!running)
-                handler.loopStarted();
         }
     }
 
@@ -121,10 +124,10 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         try {
             // don't do any monitoring for the first MONITOR_INITIAL_DELAY_MS ms
             final long waitUntilMs = System.currentTimeMillis() + MONITOR_INITIAL_DELAY_MS;
-            while (System.currentTimeMillis() < waitUntilMs && running)
+            while (System.currentTimeMillis() < waitUntilMs && lifecycle.get() == EventLoopLifecycle.STARTED)
                 pauser.pause();
             pauser.reset();
-            while (running && !Thread.currentThread().isInterrupted()) {
+            while (lifecycle.get() == EventLoopLifecycle.STARTED && !Thread.currentThread().isInterrupted()) {
                 boolean busy;
                 synchronized (handlers) {
                     busy = runHandlers();
@@ -144,19 +147,30 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         // assumed to be synchronized in run()
         for (int i = 0; i < handlers.size(); i++) {
             final EventHandler handler = handlers.get(i);
-            // TODO shouldn't need this.
-            if (handler == null) continue;
+            handler.loopStarted();
             try {
                 busy |= handler.action();
 
             } catch (InvalidEventHandlerException e) {
-                handlers.remove(i--);
-
+                removeHandler(i--);
             } catch (Exception e) {
                 Jvm.warn().on(getClass(), "Loop terminated due to exception", e);
+                removeHandler(i--);
             }
         }
         return busy;
+    }
+
+    private void removeHandler(int handlerIndex) {
+        try {
+            EventHandler removedHandler = handlers.remove(handlerIndex);
+            removedHandler.loopFinished();
+            Closeable.closeQuietly(removedHandler);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            if (!handlers.isEmpty()) {
+                Jvm.warn().on(MonitorEventLoop.class, "Error removing handler!");
+            }
+        }
     }
 
     @Override

@@ -23,7 +23,6 @@ import net.openhft.chronicle.core.StackTrace;
 import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
-import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -32,8 +31,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
@@ -59,7 +60,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     protected final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     @NotNull
-    private final AtomicBoolean running = new AtomicBoolean();
+    private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference(EventLoopLifecycle.NEW);
     protected final Pauser pauser;
     protected final boolean daemon;
     protected final String name;
@@ -134,13 +135,13 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
     @Override
     public void awaitTermination() {
-        try {
-            service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            if (thread != null && thread != Thread.currentThread() && thread.isAlive())
-                Jvm.warn().on(getClass(), "Thread still running", StackTrace.forThread(thread));
-            Thread.currentThread().interrupt();
+        while (!Thread.currentThread().isInterrupted()) {
+            if (lifecycle.get() == EventLoopLifecycle.STOPPED)
+                return;
+            Jvm.pause(1);
         }
+        if (thread != null && thread != Thread.currentThread() && thread.isAlive())
+            Jvm.warn().on(getClass(), "Thread still running", StackTrace.forThread(thread));
     }
 
     @NotNull
@@ -161,19 +162,14 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     public void start() {
         throwExceptionIfClosed();
 
-        if (running.getAndSet(true)) {
-            return;
-        }
-        try {
-            service.submit(this);
-        } catch (IllegalStateException ise) {
-            // TODO FIX, don't cause tests for fail.
-            Slf4jExceptionHandler.WARN.on(getClass(), "Not started as already closed", ise);
-
-        } catch (RejectedExecutionException e) {
-            if (!isClosed()) {
-                closeAll();
-                throw e;
+        if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STARTED)) {
+            try {
+                service.submit(this);
+            } catch (RejectedExecutionException e) {
+                if (!isClosed()) {
+                    closeAll();
+                    throw e;
+                }
             }
         }
     }
@@ -185,7 +181,18 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
 
     @Override
     public void stop() {
-        running.set(false);
+        if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STOPPING)) {
+            stopEventLoopThread();
+            loopFinishedAllHandlers();
+            lifecycle.set(EventLoopLifecycle.STOPPED);
+        } else if (lifecycle.compareAndSet(EventLoopLifecycle.STARTED, EventLoopLifecycle.STOPPING)) {
+            stopEventLoopThread();
+            lifecycle.set(EventLoopLifecycle.STOPPED);
+        }
+        awaitTermination();
+    }
+
+    private void stopEventLoopThread() {
         unpause();
         shutdownService();
     }
@@ -276,7 +283,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     private void runLoop() {
         int acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT;
         long lastTimerNS = 0;
-        while (running.get()) {
+        while (EventLoopLifecycle.STARTED.equals(lifecycle.get())) {
             throwExceptionIfClosed();
 
             loopStartMS = System.currentTimeMillis();
@@ -446,7 +453,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         return busy;
     }
 
-    private boolean callHighHandler() throws InterruptedException {
+    private boolean callHighHandler() {
         try {
             return highHandler.action();
         } catch (Exception e) {
@@ -575,10 +582,6 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     @Override
     protected void performClose() {
         try {
-            // this is in here because it is guaranteed to be executed exactly once TODO: should be in stop
-            if (!running.get() && thread == null) {
-                loopFinishedAllHandlers();
-            }
             stop();
         } finally {
             closeAllHandlers();
