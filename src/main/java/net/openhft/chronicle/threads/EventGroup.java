@@ -18,7 +18,6 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -26,10 +25,7 @@ import net.openhft.chronicle.threads.internal.EventLoopThreadHolder;
 import net.openhft.chronicle.threads.internal.ThreadMonitorHarness;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -38,12 +34,13 @@ import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
 public class EventGroup
-        extends AbstractCloseable
+        extends AbstractLifecycleEventLoop
         implements EventLoop {
 
     public static final int CONC_THREADS = Integer.getInteger("eventGroup.conc.threads",
@@ -63,7 +60,6 @@ public class EventGroup
     private final Pauser concPauser;
     private final String concBinding;
     private final String bindingReplication;
-    private final String name;
     private final Set<HandlerPriority> priorities;
     @NotNull
     private final List<VanillaEventLoop> concThreads = new CopyOnWriteArrayList<>();
@@ -110,12 +106,12 @@ public class EventGroup
                       final String concBinding,
                       @NotNull final Pauser concPauser,
                       final Set<HandlerPriority> priorities) {
+        super(name);
         this.daemon = daemon;
         this.pauser = pauser;
         this.concBinding = concBinding;
         this.concPauser = concPauser;
         this.bindingReplication = bindingReplication;
-        this.name = name;
         this.priorities = EnumSet.copyOf(priorities);
         List<Object> closeable = new ArrayList<>();
         try {
@@ -207,30 +203,10 @@ public class EventGroup
     }
 
     @Override
-    public void awaitTermination() {
-        monitor.awaitTermination();
-        if (core != null)
-            core.awaitTermination();
-        if (blocking != null)
-            blocking.awaitTermination();
-        if (replication != null)
-            replication.awaitTermination();
-        for (VanillaEventLoop concThread : concThreads) {
-            if (concThread != null)
-                concThread.awaitTermination();
-        }
-    }
-
-    @Override
     public void unpause() {
         pauser.unpause();
         if (replication != null)
             replication.unpause();
-    }
-
-    @Override
-    public String name() {
-        return name;
     }
 
     @Override
@@ -307,53 +283,52 @@ public class EventGroup
      * (or timing out)
      */
     @Override
-    public synchronized void start() {
-        throwExceptionIfClosed();
+    protected void performStart() {
+        if (core != null)
+            core.start();
+        if (blocking != null)
+            blocking.start();
 
-        if (!isAlive()) {
-            if (core != null)
-                core.start();
-            if (blocking != null)
-                blocking.start();
+        if (replication != null)
+            replication.start();
 
-            if (replication != null)
-                replication.start();
+        for (VanillaEventLoop concThread : concThreads) {
+            if (concThread != null)
+                concThread.start();
+        }
 
-            for (VanillaEventLoop concThread : concThreads) {
-                if (concThread != null)
-                    concThread.start();
-            }
+        monitor.start();
+        // this checks that the core threads have stalled
+        if (core != null)
+            addThreadMonitoring(MONITOR_INTERVAL_MS, core);
 
-            monitor.start();
-            // this checks that the core threads have stalled
-            if (core != null)
-                addThreadMonitoring(MONITOR_INTERVAL_MS, core);
-
-            // wait for core to start, We use a TimingPauser, previously we waited for ever
-            TimingPauser timeoutPauser = Pauser.sleepy();
-            while (!isAlive()) {
-                try {
-                    timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
-                } catch (TimeoutException e) {
-                    throw Jvm.rethrow(e);
-                }
+        // wait for core to start, We use a TimingPauser, previously we waited for ever
+        TimingPauser timeoutPauser = Pauser.sleepy();
+        while (!isAlive()) {
+            try {
+                timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException e) {
+                throw Jvm.rethrow(e);
             }
         }
     }
 
     @Override
-    public void stop() {
+    protected void performStopFromNew() {
+        performStop();
+    }
+
+    @Override
+    protected void performStopFromStarted() {
+        performStop();
+    }
+
+    private void performStop() {
         monitor.stop();
-        if (replication != null)
-            replication.stop();
-        for (VanillaEventLoop concThread : concThreads) {
-            if (concThread != null)
-                concThread.stop();
-        }
-        if (core != null)
-            core.stop();
-        if (blocking != null)
-            blocking.stop();
+        Stream.concat(concThreads.stream(), Stream.of(replication, core, blocking))
+                .filter(Objects::nonNull)
+                .parallel()
+                .forEach(EventLoop::stop);
     }
 
     @Override
@@ -363,7 +338,7 @@ public class EventGroup
 
     @Override
     protected void performClose() {
-        stop();
+        super.performClose();
         closeQuietly(
                 core,
                 monitor,
