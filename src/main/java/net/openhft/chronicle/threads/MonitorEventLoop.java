@@ -19,10 +19,11 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
+import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
-import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
+import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
@@ -30,9 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
 
-public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runnable {
+public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runnable, EventLoop {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
@@ -40,43 +40,22 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     private final EventLoop parent;
     private final List<EventHandler> handlers = new ArrayList<>();
     private final Pauser pauser;
-    private final String name;
-
-    private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
 
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
     }
 
     public MonitorEventLoop(final EventLoop parent, final String name, final Pauser pauser) {
+        super(name + (parent == null ? "" : parent.name()) + "/event~loop~monitor");
         this.parent = parent;
         this.pauser = pauser;
-        this.name = name + (parent == null ? "" : parent.name()) + "/event~loop~monitor";
         service = Executors.newSingleThreadExecutor(
                 new NamedThreadFactory(name, true, null, true));
     }
 
-    public String name() {
-        return name;
-    }
-
     @Override
-    public void awaitTermination() {
-        while (!Thread.currentThread().isInterrupted()) {
-            if (lifecycle.get() == EventLoopLifecycle.STOPPED) {
-                return;
-            }
-            Jvm.pause(1);
-        }
-    }
-
-    @Override
-    public void start() {
-        throwExceptionIfClosed();
-
-        if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STARTED)) {
-            service.submit(this);
-        }
+    protected void performStart() {
+        service.submit(this);
     }
 
     @Override
@@ -85,20 +64,24 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     }
 
     @Override
-    public void stop() {
-        if (lifecycle.compareAndSet(EventLoopLifecycle.STARTED, EventLoopLifecycle.STOPPING)
-                || lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STOPPING)) {
-            unpause();
-            Threads.shutdownDaemon(service);
-            handlers.forEach(Threads::loopFinishedQuietly);
-            lifecycle.set(EventLoopLifecycle.STOPPED);
-        }
-        awaitTermination();
+    protected void performStopFromNew() {
+        performStop();
+    }
+
+    @Override
+    protected void performStopFromStarted() {
+        performStop();
+    }
+
+    private void performStop() {
+        unpause();
+        Threads.shutdownDaemon(service);
+        handlers.forEach(Threads::loopFinishedQuietly);
     }
 
     @Override
     public boolean isAlive() {
-        return lifecycle.get() == EventLoopLifecycle.STARTED;
+        return isStarted();
     }
 
     @Override
@@ -124,10 +107,10 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         try {
             // don't do any monitoring for the first MONITOR_INITIAL_DELAY_MS ms
             final long waitUntilMs = System.currentTimeMillis() + MONITOR_INITIAL_DELAY_MS;
-            while (System.currentTimeMillis() < waitUntilMs && lifecycle.get() == EventLoopLifecycle.STARTED)
+            while (System.currentTimeMillis() < waitUntilMs && isStarted())
                 pauser.pause();
             pauser.reset();
-            while (lifecycle.get() == EventLoopLifecycle.STARTED && !Thread.currentThread().isInterrupted()) {
+            while (isStarted() && !Thread.currentThread().isInterrupted()) {
                 boolean busy;
                 synchronized (handlers) {
                     busy = runHandlers();
@@ -176,8 +159,65 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     @Override
     protected void performClose() {
         super.performClose();
-
-        stop();
         net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
+    }
+
+    /**
+     * {@link EventHandler#loopStarted()} needs to be called once before the first call to
+     * {@link EventHandler#action()} and it must be called on the event loop thread. An
+     * easy way to achieve that is to wrap the handler in this idempotent decorator and
+     * call it at the start of every iteration.
+     */
+    private static final class IdempotentLoopStartedEventHandler extends AbstractCloseable implements EventHandler {
+
+        private final EventHandler eventHandler;
+        private boolean loopStarted = false;
+
+        public IdempotentLoopStartedEventHandler(@NotNull EventHandler eventHandler) {
+            this.eventHandler = eventHandler;
+        }
+
+        @Override
+        public boolean action() throws InvalidEventHandlerException {
+            return eventHandler.action();
+        }
+
+        @Override
+        public void eventLoop(EventLoop eventLoop) {
+            eventHandler.eventLoop(eventLoop);
+        }
+
+        @Override
+        public void loopStarted() {
+            if (!loopStarted) {
+                loopStarted = true;
+                eventHandler.loopStarted();
+            }
+        }
+
+        @Override
+        public void loopFinished() {
+            eventHandler.loopFinished();
+        }
+
+        @Override
+        public @NotNull HandlerPriority priority() {
+            return eventHandler.priority();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return eventHandler.equals(o);
+        }
+
+        @Override
+        public int hashCode() {
+            return eventHandler.hashCode();
+        }
+
+        @Override
+        protected void performClose() throws IllegalStateException {
+            Closeable.closeQuietly(eventHandler);
+        }
     }
 }
