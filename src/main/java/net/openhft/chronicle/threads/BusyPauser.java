@@ -18,7 +18,6 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.threads.ThreadHints;
 
 public enum BusyPauser implements Pauser {
     INSTANCE;
@@ -29,9 +28,8 @@ public enum BusyPauser implements Pauser {
 
     @Override
     public void pause() {
-        // TODO replace with Jvm.nanoPause();
         Jvm.safepoint();
-        ThreadHints.onSpinWait();
+        Jvm.nanoPause();
     }
 
     @Override

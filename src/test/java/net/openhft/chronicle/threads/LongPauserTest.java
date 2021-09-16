@@ -20,7 +20,6 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import java.util.concurrent.CountDownLatch;
