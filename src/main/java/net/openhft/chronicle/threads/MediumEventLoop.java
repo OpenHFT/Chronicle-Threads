@@ -19,11 +19,9 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.StackTrace;
 import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
-import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -32,8 +30,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
@@ -42,7 +42,7 @@ import java.util.stream.Stream;
 
 import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 
-public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop, Runnable, Closeable {
+public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
                     EnumSet.of(HandlerPriority.HIGH,
@@ -58,11 +58,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     protected transient final ExecutorService service;
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     protected final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
-    @NotNull
-    private final AtomicBoolean running = new AtomicBoolean();
     protected final Pauser pauser;
     protected final boolean daemon;
-    protected final String name;
     private final String binding;
 
     @NotNull
@@ -89,8 +86,8 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                            final Pauser pauser,
                            final boolean daemon,
                            final String binding) {
+        super(name);
         this.parent = parent;
-        this.name = name;
         this.pauser = pauser;
         this.daemon = daemon;
         this.binding = binding;
@@ -132,18 +129,6 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         return thread;
     }
 
-    @Override
-    public void awaitTermination() {
-        try {
-            service.shutdownNow();
-            service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            if (thread != null && thread != Thread.currentThread() && thread.isAlive())
-                Jvm.warn().on(getClass(), "Thread still running", StackTrace.forThread(thread));
-            Thread.currentThread().interrupt();
-        }
-    }
-
     @NotNull
     @Override
     public String toString() {
@@ -159,18 +144,9 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     }
 
     @Override
-    public void start() {
-        throwExceptionIfClosed();
-
-        if (running.getAndSet(true)) {
-            return;
-        }
+    protected void performStart() {
         try {
             service.submit(this);
-        } catch (IllegalStateException ise) {
-            // TODO FIX, don't cause tests for fail.
-            Slf4jExceptionHandler.WARN.on(getClass(), "Not started as already closed", ise);
-
         } catch (RejectedExecutionException e) {
             if (!isClosed()) {
                 closeAll();
@@ -185,9 +161,19 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     }
 
     @Override
-    public void stop() {
-        running.set(false);
+    protected void performStopFromNew() {
+        stopEventLoopThread();
+        loopFinishedAllHandlers();
+    }
+
+    @Override
+    protected void performStopFromStarted() {
+        stopEventLoopThread();
+    }
+
+    private void stopEventLoopThread() {
         unpause();
+        shutdownService();
     }
 
     @Override
@@ -276,7 +262,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     private void runLoop() {
         int acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT;
         long lastTimerNS = 0;
-        while (running.get()) {
+        while (isStarted()) {
             throwExceptionIfClosed();
 
             loopStartMS = System.currentTimeMillis();
@@ -446,7 +432,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
         return busy;
     }
 
-    private boolean callHighHandler() throws InterruptedException {
+    private boolean callHighHandler() {
         try {
             return highHandler.action();
         } catch (Exception e) {
@@ -517,10 +503,6 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
             handler.loopStarted();
     }
 
-    public String name() {
-        return name;
-    }
-
     @Override
     public void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck) {
         final Thread thread = this.thread;
@@ -575,46 +557,43 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     @Override
     protected void performClose() {
         try {
-            stop();
-            pauser.reset(); // reset the timer.
-            pauser.unpause();
-            LockSupport.unpark(thread);
-            Threads.shutdown(service, daemon);
-            if (thread == null) {
-                loopFinishedAllHandlers();
-                return;
-            }
-            if (thread != Thread.currentThread()) {
-                long startTimeMillis = System.currentTimeMillis();
-                long waitUntilMs = startTimeMillis;
-                thread.interrupt();
-
-                for (int i = 1; i <= 50; i++) {
-                    if (loopStartNS == FINISHED)
-                        break;
-                    // we do this loop below to protect from Jvm.pause not pausing for as long as it should
-                    waitUntilMs += i;
-                    while (System.currentTimeMillis() < waitUntilMs)
-                        Jvm.pause(i);
-
-                    if (i == 35 || i == 50) {
-                        final StringBuilder sb = new StringBuilder();
-                        long ms = System.currentTimeMillis() - startTimeMillis;
-                        sb.append(name).append(": Shutting down thread is executing after ").
-                                append(ms).append("ms ").append(thread)
-                                .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
-                        Jvm.trimStackTrace(sb, thread.getStackTrace());
-                        Jvm.warn().on(getClass(), sb.toString());
-                        dumpRunningHandlers();
-                    }
-                }
-            }
+            super.performClose();
         } finally {
             closeAllHandlers();
             highHandler = EventHandlers.NOOP;
             mediumHandlers.clear();
             mediumHandlersArray = NO_EVENT_HANDLERS;
             newHandler.set(null);
+        }
+    }
+
+    private void shutdownService() {
+        LockSupport.unpark(thread);
+        Threads.shutdown(service, daemon);
+        if (thread != null && thread != Thread.currentThread()) {
+            long startTimeMillis = System.currentTimeMillis();
+            long waitUntilMs = startTimeMillis;
+            thread.interrupt();
+
+            for (int i = 1; i <= 50; i++) {
+                if (loopStartNS == FINISHED)
+                    break;
+                // we do this loop below to protect from Jvm.pause not pausing for as long as it should
+                waitUntilMs += i;
+                while (System.currentTimeMillis() < waitUntilMs)
+                    Jvm.pause(i);
+
+                if (i == 35 || i == 50) {
+                    final StringBuilder sb = new StringBuilder();
+                    long ms = System.currentTimeMillis() - startTimeMillis;
+                    sb.append(name).append(": Shutting down thread is executing after ").
+                            append(ms).append("ms ").append(thread)
+                            .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
+                    Jvm.trimStackTrace(sb, thread.getStackTrace());
+                    Jvm.warn().on(getClass(), sb.toString());
+                    dumpRunningHandlers();
+                }
+            }
         }
     }
 }

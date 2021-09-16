@@ -43,6 +43,8 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Before
     public void handlersInit() {
         handlers = new ArrayList<>();
+        expectException("Monitoring a task which has finished VanillaEventLoop");
+        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
     }
 
     @Override
@@ -50,7 +52,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
 
         for (TestHandler handler : this.handlers)
-            handler.closed.await(100, TimeUnit.MILLISECONDS);
+            handler.assertClosed();
         handlers.forEach(TestHandler::checkCloseOrder);
     }
 
@@ -116,6 +118,16 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     @Test(timeout = 5000)
+    public void testCloseStopIdempotent() {
+        final EventLoop eventGroup = new EventGroup(true);
+        eventGroup.start();
+        eventGroup.stop();
+        eventGroup.stop();
+        eventGroup.close();
+        eventGroup.awaitTermination();
+    }
+
+    @Test(timeout = 5000)
     public void testCloseAwaitTerminationWithoutStarting() {
         final EventLoop eventGroup = new EventGroup(true);
         eventGroup.close();
@@ -139,7 +151,22 @@ public class EventGroupTest extends ThreadsTestCommon {
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             eventGroup.start();
             for (TestHandler handler : this.handlers)
-                handler.started.await(100, TimeUnit.MILLISECONDS);
+                handler.assertStarted();
+        }
+    }
+
+    @Test(timeout = 5000)
+    public void checkNoThreadsAfterStopCalled() throws InterruptedException {
+        final ThreadDump threadDump = new ThreadDump();
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
+            eventGroup.start();
+            for (TestHandler handler : this.handlers)
+                handler.assertStarted();
+            eventGroup.stop();
+            threadDump.assertNoNewThreads();
+            handlers.forEach(testHandler -> Assert.assertTrue(testHandler.loopFinishedNS.get() != 0));
         }
     }
 
@@ -150,17 +177,17 @@ public class EventGroupTest extends ThreadsTestCommon {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             for (TestHandler handler : this.handlers) {
-                handler.installed.await(100, TimeUnit.MILLISECONDS);
+                handler.assertInstalled();
                 Assert.assertEquals(1, handler.started.getCount());
             }
             eventGroup.start();
             for (TestHandler handler : this.handlers)
-                handler.started.await(100, TimeUnit.MILLISECONDS);
+                handler.assertStarted();
             // add more after start
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             for (TestHandler handler : this.handlers)
-                handler.started.await(100, TimeUnit.MILLISECONDS);
+                handler.assertStarted();
         }
     }
 
@@ -180,7 +207,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                 eventGroup.addHandler(new TestHandler(priority));
             eventGroup.start();
             for (TestHandler handler : this.handlers)
-                handler.started.await(100, TimeUnit.MILLISECONDS);
+                handler.assertStarted();
             this.handlers.sort(Comparator.comparing(TestHandler::priority));
             long l0;
             long l1;
@@ -217,12 +244,11 @@ public class EventGroupTest extends ThreadsTestCommon {
                 eventGroup.addHandler(new TestHandler(hp, exceptionType));
             eventGroup.start();
             for (TestHandler handler : this.handlers)
-                handler.started.await(100, TimeUnit.MILLISECONDS);
+                handler.assertStarted();
             Jvm.pause(100);
         }
         for (TestHandler handler : this.handlers) {
-            int expectedCalled = handler.priority() == HandlerPriority.MONITOR ? 0 : 1;
-            Assert.assertEquals("expected called once only " + handler, expectedCalled, handler.actionCalled.get());
+            Assert.assertEquals("expected called once only " + handler, 1, handler.actionCalled.get());
         }
     }
 
@@ -287,8 +313,9 @@ public class EventGroupTest extends ThreadsTestCommon {
         @Override
         public void loopStarted() {
             started.countDown();
-            String name = Thread.currentThread().getName();
-            Assert.assertTrue("loopStarted should be called on EL thread " + name, name.contains("event"));
+            Assert.assertTrue("loopStarted should be called on EL thread (called on `"
+                    + Thread.currentThread().getName()
+                    + "`, priority=" + priority + " )", EventLoop.inEventLoop());
         }
 
         @NotNull
@@ -315,6 +342,18 @@ public class EventGroupTest extends ThreadsTestCommon {
             // // System.out.println("closed " + this);
             closed.countDown();
             Assert.assertTrue("close should be called once only " + this, closedNS.compareAndSet(0, System.nanoTime()));
+        }
+
+        public void assertStarted() throws InterruptedException {
+            assertTrue(String.format("Handler with priority %s was never started", priority), started.await(1000, TimeUnit.MILLISECONDS));
+        }
+
+        public void assertInstalled() throws InterruptedException {
+            assertTrue(String.format("Handler with priority %s was never installed", priority), installed.await(100, TimeUnit.MILLISECONDS));
+        }
+
+        public void assertClosed() throws InterruptedException {
+            assertTrue(String.format("Handler with priority %s was never closed", priority), closed.await(100, TimeUnit.MILLISECONDS));
         }
 
         void checkCloseOrder() {
@@ -372,8 +411,6 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @Test
     public void inEventLoop() {
-        expectException("Monitoring a task which has finished VanillaEventLoop");
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
         EventGroup eg = new EventGroup(true);
         eg.start();
         assertFalse(EventLoop.inEventLoop());

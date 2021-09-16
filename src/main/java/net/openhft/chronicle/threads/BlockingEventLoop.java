@@ -18,7 +18,6 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -29,8 +28,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
@@ -39,47 +36,29 @@ import static net.openhft.chronicle.threads.Threads.unpark;
 /**
  * Event Loop for blocking tasks.
  */
-public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
+public class BlockingEventLoop extends AbstractLifecycleEventLoop implements EventLoop {
 
     @NotNull
     private final EventLoop parent;
     @NotNull
     private transient final ExecutorService service;
-    @NotNull
-    private final String name;
-    private final AtomicBoolean started = new AtomicBoolean();
-    private final AtomicBoolean running = new AtomicBoolean();
     private final List<EventHandler> handlers = new ArrayList<>();
     private final NamedThreadFactory threadFactory;
     private final Pauser pauser = Pauser.balanced();
 
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name) {
-        this.name = name;
+        super(name);
         this.parent = parent;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
     }
 
     public BlockingEventLoop(@NotNull final String name) {
-        this.name = name;
+        super(name);
         this.parent = this;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
-    }
-
-    @Override
-    public void awaitTermination() {
-        try {
-            service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    @Override
-    public String name() {
-        return name;
     }
 
     /**
@@ -94,7 +73,8 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         this.handlers.add(handler);
-        if (started.get())
+        handler.eventLoop(parent);
+        if (isStarted())
             this.startHandler(handler);
     }
 
@@ -103,10 +83,7 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     }
 
     @Override
-    public synchronized void start() {
-        if (started.getAndSet(true))
-            return;
-        running.set(true);
+    protected synchronized void performStart() {
         handlers.forEach(this::startHandler);
     }
 
@@ -127,14 +104,24 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     }
 
     @Override
-    public void stop() {
-        running.set(false);
+    protected void performStopFromNew() {
+        shutdownExecutorService();
+        handlers.forEach(Threads::loopFinishedQuietly);
+    }
+
+    @Override
+    protected void performStopFromStarted() {
+        shutdownExecutorService();
+    }
+
+    private void shutdownExecutorService() {
         /*
          * It's necessary for blocking handlers to be interrupted, so they abort what they're
          * doing and run to completion immediately.
          */
         service.shutdownNow();
         unpause();
+        Threads.shutdown(service);
     }
 
     @Override
@@ -145,12 +132,6 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
     @Override
     protected void performClose() {
         super.performClose();
-
-        stop();
-
-        Threads.shutdown(service);
-        if (!started.get())
-            handlers.forEach(Threads::loopFinishedQuietly);
         closeQuietly(handlers);
     }
 
@@ -173,10 +154,9 @@ public class BlockingEventLoop extends SimpleCloseable implements EventLoop {
             try {
                 throwExceptionIfClosed();
 
-                handler.eventLoop(parent);
                 handler.loopStarted();
 
-                while (running.get()) {
+                while (isStarted()) {
                     if (handler.action())
                         pauser.reset();
                     else

@@ -19,9 +19,11 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
-import net.openhft.chronicle.core.io.SimpleCloseable;
+import net.openhft.chronicle.core.io.AbstractCloseable;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
+import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,9 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
-public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runnable {
+public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runnable, EventLoop {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
@@ -39,40 +40,21 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     private final EventLoop parent;
     private final List<EventHandler> handlers = new ArrayList<>();
     private final Pauser pauser;
-    private final String name;
-
-    private volatile boolean running = true;
 
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
     }
 
     public MonitorEventLoop(final EventLoop parent, final String name, final Pauser pauser) {
+        super(name + (parent == null ? "" : parent.name()) + "/event~loop~monitor");
         this.parent = parent;
         this.pauser = pauser;
-        this.name = name + (parent == null ? "" : parent.name()) + "/event~loop~monitor";
         service = Executors.newSingleThreadExecutor(
                 new NamedThreadFactory(name, true, null, true));
     }
 
-    public String name() {
-        return name;
-    }
-
     @Override
-    public void awaitTermination() {
-        try {
-            service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    @Override
-    public void start() {
-        throwExceptionIfClosed();
-
-        running = true;
+    protected void performStart() {
         service.submit(this);
     }
 
@@ -82,14 +64,24 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
     }
 
     @Override
-    public void stop() {
-        running = false;
+    protected void performStopFromNew() {
+        performStop();
+    }
+
+    @Override
+    protected void performStopFromStarted() {
+        performStop();
+    }
+
+    private void performStop() {
         unpause();
+        Threads.shutdownDaemon(service);
+        handlers.forEach(Threads::loopFinishedQuietly);
     }
 
     @Override
     public boolean isAlive() {
-        return running;
+        return isStarted();
     }
 
     @Override
@@ -102,10 +94,8 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
             throw new IllegalStateException("Event Group has been closed");
         synchronized (handlers) {
             if (!handlers.contains(handler))
-                handlers.add(handler);
+                handlers.add(new IdempotentLoopStartedEventHandler(handler));
             handler.eventLoop(parent);
-            if (!running)
-                handler.loopStarted();
         }
     }
 
@@ -117,10 +107,10 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         try {
             // don't do any monitoring for the first MONITOR_INITIAL_DELAY_MS ms
             final long waitUntilMs = System.currentTimeMillis() + MONITOR_INITIAL_DELAY_MS;
-            while (System.currentTimeMillis() < waitUntilMs && running)
+            while (System.currentTimeMillis() < waitUntilMs && isStarted())
                 pauser.pause();
             pauser.reset();
-            while (running && !Thread.currentThread().isInterrupted()) {
+            while (isStarted() && !Thread.currentThread().isInterrupted()) {
                 boolean busy;
                 synchronized (handlers) {
                     busy = runHandlers();
@@ -140,28 +130,94 @@ public class MonitorEventLoop extends SimpleCloseable implements EventLoop, Runn
         // assumed to be synchronized in run()
         for (int i = 0; i < handlers.size(); i++) {
             final EventHandler handler = handlers.get(i);
-            // TODO shouldn't need this.
-            if (handler == null) continue;
+            handler.loopStarted();
             try {
                 busy |= handler.action();
 
             } catch (InvalidEventHandlerException e) {
-                handlers.remove(i--);
-
+                removeHandler(i--);
             } catch (Exception e) {
                 Jvm.warn().on(getClass(), "Loop terminated due to exception", e);
+                removeHandler(i--);
             }
         }
         return busy;
     }
 
+    private void removeHandler(int handlerIndex) {
+        try {
+            EventHandler removedHandler = handlers.remove(handlerIndex);
+            removedHandler.loopFinished();
+            Closeable.closeQuietly(removedHandler);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            if (!handlers.isEmpty()) {
+                Jvm.warn().on(MonitorEventLoop.class, "Error removing handler!");
+            }
+        }
+    }
+
     @Override
     protected void performClose() {
         super.performClose();
-
-        stop();
-        Threads.shutdownDaemon(service);
-        handlers.forEach(Threads::loopFinishedQuietly);
         net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
+    }
+
+    /**
+     * {@link EventHandler#loopStarted()} needs to be called once before the first call to
+     * {@link EventHandler#action()} and it must be called on the event loop thread. An
+     * easy way to achieve that is to wrap the handler in this idempotent decorator and
+     * call it at the start of every iteration.
+     */
+    private static final class IdempotentLoopStartedEventHandler extends AbstractCloseable implements EventHandler {
+
+        private final EventHandler eventHandler;
+        private boolean loopStarted = false;
+
+        public IdempotentLoopStartedEventHandler(@NotNull EventHandler eventHandler) {
+            this.eventHandler = eventHandler;
+        }
+
+        @Override
+        public boolean action() throws InvalidEventHandlerException {
+            return eventHandler.action();
+        }
+
+        @Override
+        public void eventLoop(EventLoop eventLoop) {
+            eventHandler.eventLoop(eventLoop);
+        }
+
+        @Override
+        public void loopStarted() {
+            if (!loopStarted) {
+                loopStarted = true;
+                eventHandler.loopStarted();
+            }
+        }
+
+        @Override
+        public void loopFinished() {
+            eventHandler.loopFinished();
+        }
+
+        @Override
+        public @NotNull HandlerPriority priority() {
+            return eventHandler.priority();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return eventHandler.equals(o);
+        }
+
+        @Override
+        public int hashCode() {
+            return eventHandler.hashCode();
+        }
+
+        @Override
+        protected void performClose() throws IllegalStateException {
+            Closeable.closeQuietly(eventHandler);
+        }
     }
 }
