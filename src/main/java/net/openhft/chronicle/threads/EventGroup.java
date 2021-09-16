@@ -25,7 +25,10 @@ import net.openhft.chronicle.threads.internal.EventLoopThreadHolder;
 import net.openhft.chronicle.threads.internal.ThreadMonitorHarness;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -34,7 +37,6 @@ import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
@@ -325,10 +327,7 @@ public class EventGroup
 
     private void performStop() {
         monitor.stop();
-        Stream.concat(concThreads.stream(), Stream.of(replication, core, blocking))
-                .filter(Objects::nonNull)
-                .parallel()
-                .forEach(EventLoop::stop);
+        EventLoops.stopAll(concThreads, replication, core, blocking);
     }
 
     @Override
