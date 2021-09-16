@@ -97,7 +97,6 @@
                             <goal>enforcer</goal>
                         </goals>
                         <configuration>
-                            <!-- This went off because the name field got moved from MediumEventLoop to AbstractLifecycleEventLoop -->
                             <referenceVersion>2.22ea2</referenceVersion>
                             <artifactsURI>https://teamcity.chronicle.software/repository/download</artifactsURI>
                             <binaryCompatibilityPercentageRequired>89.4</binaryCompatibilityPercentageRequired>
