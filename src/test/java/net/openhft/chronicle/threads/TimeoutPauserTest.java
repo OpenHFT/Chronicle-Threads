@@ -24,11 +24,12 @@ public class TimeoutPauserTest {
             while (true) {
                 try {
                     tp.pause(100, TimeUnit.MILLISECONDS);
-                    if (System.currentTimeMillis() - start > 110)
+                    if (System.currentTimeMillis() - start > 200)
                         fail();
                 } catch (TimeoutException e) {
+                    final long time = System.currentTimeMillis() - start;
                     int delta = OS.isWindows() ? 20 : 5;
-                    assertEquals(105, System.currentTimeMillis() - start, delta);
+                    assertEquals(100 + delta, time, delta);
                     tp.reset();
                     break;
                 }
