@@ -43,7 +43,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Before
     public void handlersInit() {
         handlers = new ArrayList<>();
-        expectException("Monitoring a task which has finished VanillaEventLoop");
+        ignoreException("Monitoring a task which has finished ");
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
     }
 
@@ -445,9 +445,9 @@ public class EventGroupTest extends ThreadsTestCommon {
             if (priorities.equals(allPriorities))
                 break;
         }
-        eg.close();
         allPriorities.removeAll(priorities);
         if (!allPriorities.isEmpty())
             fail("Priorities failed " + allPriorities);
+        eg.stop();
     }
 }

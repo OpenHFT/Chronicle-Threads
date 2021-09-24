@@ -19,8 +19,8 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
-import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
+import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -121,6 +121,10 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
+        } finally {
+            setAsStopped();
+            if (parent instanceof EventGroup)
+                ((EventGroup) parent).checkStopped();
         }
     }
 
@@ -168,7 +172,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
      * easy way to achieve that is to wrap the handler in this idempotent decorator and
      * call it at the start of every iteration.
      */
-    private static final class IdempotentLoopStartedEventHandler extends AbstractCloseable implements EventHandler {
+    private static final class IdempotentLoopStartedEventHandler extends SimpleCloseable implements EventHandler {
 
         private final EventHandler eventHandler;
         private boolean loopStarted = false;
