@@ -88,7 +88,11 @@ public class EventGroupTest extends ThreadsTestCommon {
             }
         }
         t.join(100);
-        assertFalse(t.isAlive());
+        try {
+            assertFalse(t.isAlive());
+        } finally {
+            t.interrupt();
+        }
     }
 
     @Test(timeout = 5000)
