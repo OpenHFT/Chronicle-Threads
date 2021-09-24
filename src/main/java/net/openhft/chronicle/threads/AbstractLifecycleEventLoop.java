@@ -19,8 +19,8 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
 
-    private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
     protected final String name;
+    private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
 
     protected AbstractLifecycleEventLoop(@NotNull String name) {
         this.name = name;
@@ -74,9 +74,23 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     @Override
     public final void awaitTermination() {
+        long start = System.currentTimeMillis();
         while (!Thread.currentThread().isInterrupted()) {
-            if (lifecycle.get() == EventLoopLifecycle.STOPPED)
-                return;
+            final EventLoopLifecycle lifecycle = this.lifecycle.get();
+            switch (lifecycle) {
+                case NEW:
+                case STARTED:
+                default:
+                    if (this.lifecycle.compareAndSet(lifecycle, EventLoopLifecycle.STOPPING))
+                        Jvm.warn().on(getClass(), "Lifecycle was reset to " + lifecycle + ", stopping");
+                    break;
+                case STOPPING:
+                    break;
+                case STOPPED:
+                    return;
+            }
+            if (System.currentTimeMillis() > start + 120_000)
+                throw new IllegalStateException(this + " still running after 120 seconds");
             Jvm.pause(1);
         }
         if (lifecycle.get() != EventLoopLifecycle.STOPPED) {
