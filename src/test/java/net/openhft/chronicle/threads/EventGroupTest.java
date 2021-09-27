@@ -18,6 +18,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
@@ -29,10 +30,12 @@ import java.io.Closeable;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
@@ -170,6 +173,51 @@ public class EventGroupTest extends ThreadsTestCommon {
             eventGroup.stop();
             threadDump.assertNoNewThreads();
             handlers.forEach(testHandler -> Assert.assertTrue(testHandler.loopFinishedNS.get() != 0));
+        }
+    }
+
+    @Test(timeout = 5000)
+    public void checkHandlersNotClosedAfterStop() throws InterruptedException {
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
+            eventGroup.start();
+            for (TestHandler handler : this.handlers)
+                handler.assertStarted();
+            eventGroup.stop();
+            handlers.forEach(testHandler -> Assert.assertFalse(testHandler.isClosing()));
+        }
+    }
+
+    @Test(timeout = 5000)
+    public void checkHandlersClosedImmediatelyOnInvalidHandlerException() throws InterruptedException {
+        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp, ExceptionType.INVALID_EVENT_HANDLER));
+            eventGroup.start();
+            for (TestHandler handler : this.handlers)
+                handler.assertStarted();
+            for (TestHandler handler : this.handlers)
+                handler.assertClosed();
+        }
+    }
+
+    @Test(timeout = 5000)
+    public void checkHandlersClosedImmediatelyOnRuntimeException() throws InterruptedException {
+        System.setProperty(ExceptionHandlerStrategy.IMPL_PROPERTY, ExceptionHandlerStrategy.LogAndRemove.class.getName());
+        try {
+            expectException(exceptionKey -> exceptionKey.throwable == RUNTIME_EXCEPTION, "message");
+            try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", EventGroup.CONC_THREADS, EnumSet.allOf(HandlerPriority.class))) {
+                for (HandlerPriority hp : HandlerPriority.values())
+                    eventGroup.addHandler(new EventGroupTest.TestHandler(hp, ExceptionType.RUNTIME));
+                eventGroup.start();
+                for (TestHandler handler : this.handlers)
+                    handler.assertStarted();
+                for (TestHandler handler : this.handlers)
+                    handler.assertClosed();
+            }
+        } finally {
+            System.clearProperty(ExceptionHandlerStrategy.IMPL_PROPERTY);
         }
     }
 
@@ -324,6 +372,66 @@ public class EventGroupTest extends ThreadsTestCommon {
         if (!allPriorities.isEmpty())
             fail("Priorities failed " + allPriorities);
         eg.stop();
+    }
+
+    @Test
+    public void handlersWithASharedResourceShutdownGracefully() {
+        EventGroup eventGroup = new EventGroup(false);
+        CloseableResource resource = new CloseableResource();
+        for (HandlerPriority handlerPriority : HandlerPriority.values()) {
+            IntStream.of(4).forEach(i -> eventGroup.addHandler(new SharedResourceUsingHandler(resource, handlerPriority)));
+        }
+        eventGroup.start();
+        Jvm.pause(1000);
+        eventGroup.close();
+        assertTrue(resource.isClosed());
+    }
+
+    static class CloseableResource extends AbstractCloseable {
+
+        public CloseableResource() {
+            disableThreadSafetyCheck(true);
+        }
+
+        @Override
+        protected void performClose() throws IllegalStateException {
+            Jvm.startup().on(CloseableResource.class, "Being closed!");
+        }
+
+        public void use() {
+            throwExceptionIfClosed();
+        }
+    }
+
+    static class SharedResourceUsingHandler extends AbstractCloseable implements EventHandler {
+
+        private final CloseableResource closeableResource;
+        private final HandlerPriority priority;
+
+        SharedResourceUsingHandler(CloseableResource closeableResource, HandlerPriority priority) {
+            this.closeableResource = closeableResource;
+            this.priority = priority;
+        }
+
+        @Override
+        public @NotNull HandlerPriority priority() {
+            return priority;
+        }
+
+        @Override
+        public boolean action() {
+            Jvm.pause(ThreadLocalRandom.current().nextInt(10));
+            if (closeableResource.isClosing()) {
+                Jvm.error().on(SharedResourceUsingHandler.class, "Handler with priority " + priority + " interacting with closed resource");
+            }
+            closeableResource.use();
+            return true;
+        }
+
+        @Override
+        protected void performClose() {
+            closeableResource.close();
+        }
     }
 
     enum ExceptionType {

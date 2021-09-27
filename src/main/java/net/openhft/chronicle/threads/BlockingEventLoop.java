@@ -144,6 +144,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     private final class Runner implements Runnable {
         private final EventHandler handler;
+        private boolean endedGracefully = false;
 
         public Runner(final EventHandler handler) {
             this.handler = handler;
@@ -162,7 +163,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                     else
                         pauser.pause();
                 }
-
+                endedGracefully = true;
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.
             } catch (Throwable t) {
@@ -173,9 +174,11 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 if (Jvm.isDebugEnabled(handler.getClass()))
                     Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
                 loopFinishedQuietly(handler);
-                // remove handler for clarity when debugging
-                handlers.remove(handler);
-                closeQuietly(handler);
+                if (!endedGracefully) {
+                    // remove handler for clarity when debugging
+                    handlers.remove(handler);
+                    closeQuietly(handler);
+                }
             }
         }
     }

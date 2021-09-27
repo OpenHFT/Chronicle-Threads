@@ -233,7 +233,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 // ignore, already closed
             } finally {
                 loopFinishedAllHandlers();
-                closeAllHandlers();
                 loopStartMS = FINISHED;
                 loopStartNS = FINISHED;
             }
