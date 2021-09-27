@@ -105,11 +105,13 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     @Override
     protected void performStopFromNew() {
+        shutdownExecutorService();
         handlers.forEach(Threads::loopFinishedQuietly);
     }
 
     @Override
     protected void performStopFromStarted() {
+        shutdownExecutorService();
     }
 
     private void shutdownExecutorService() {
@@ -129,9 +131,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     @Override
     protected void performClose() {
-        setAsStopping();
-        shutdownExecutorService();
-        awaitTermination(true);
+        super.performClose();
         closeQuietly(handlers);
     }
 
@@ -176,9 +176,6 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 // remove handler for clarity when debugging
                 handlers.remove(handler);
                 closeQuietly(handler);
-                setAsStopped();
-                if (parent instanceof EventGroup)
-                    ((EventGroup) parent).checkStopped();
             }
         }
     }

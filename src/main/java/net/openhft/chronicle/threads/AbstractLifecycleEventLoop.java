@@ -19,8 +19,8 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
 
-    protected final String name;
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
+    protected final String name;
 
     protected AbstractLifecycleEventLoop(@NotNull String name) {
         this.name = name;
@@ -49,32 +49,14 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     @Override
     public final void stop() {
-        close();
-    }
-
-    protected void performClose() {
-        setAsStopping();
-        awaitTermination(true);
-    }
-
-    protected void setAsStopping() {
         if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STOPPING)) {
             performStopFromNew();
             lifecycle.set(EventLoopLifecycle.STOPPED);
         } else if (lifecycle.compareAndSet(EventLoopLifecycle.STARTED, EventLoopLifecycle.STOPPING)) {
             performStopFromStarted();
+            lifecycle.set(EventLoopLifecycle.STOPPED);
         }
-    }
-
-    protected void postClose() {
-        awaitTermination(true);
-    }
-
-    /**
-     * Called when the event loop run() finishes.
-     */
-    protected void setAsStopped() {
-        lifecycle.set(EventLoopLifecycle.STOPPED);
+        awaitTermination();
     }
 
     /**
@@ -92,37 +74,19 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     @Override
     public final void awaitTermination() {
-        awaitTermination(false);
-    }
-
-    protected final void awaitTermination(boolean expectStopping) {
-        if (Thread.currentThread().getName().equals("Finalizer"))
-            return;
-
-        long start = System.currentTimeMillis();
         while (!Thread.currentThread().isInterrupted()) {
-            final EventLoopLifecycle lifecycle = this.lifecycle.get();
-            switch (lifecycle) {
-                case NEW:
-                case STARTED:
-                default:
-                    if (expectStopping && this.lifecycle.compareAndSet(lifecycle, EventLoopLifecycle.STOPPING))
-                        Jvm.warn().on(getClass(), "Lifecycle was reset to " + lifecycle + ", stopping");
-                    break;
-                case STOPPING:
-                    break;
-                case STOPPED:
-                    return;
-            }
-            if (System.currentTimeMillis() > start + 120_000)
-                throw new IllegalStateException(this + " still running after 120 seconds");
+            if (lifecycle.get() == EventLoopLifecycle.STOPPED)
+                return;
             Jvm.pause(1);
-            if (!isAlive())
-                setAsStopped();
         }
         if (lifecycle.get() != EventLoopLifecycle.STOPPED) {
             Jvm.warn().on(getClass(), "awaitTermination() interrupted, returning in state " + lifecycle.get());
         }
+    }
+
+    @Override
+    protected void performClose() {
+        stop();
     }
 
     protected boolean isStarted() {

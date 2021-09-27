@@ -38,11 +38,10 @@ import static org.junit.Assert.*;
 
 public class EventGroupTest extends ThreadsTestCommon {
     private static final RuntimeException RUNTIME_EXCEPTION = new RuntimeException("some random text");
-    private List<TestHandler> handlers;
+    private List<TestHandler> handlers = new ArrayList<>();
 
     @Before
     public void handlersInit() {
-        handlers = new ArrayList<>();
         ignoreException("Monitoring a task which has finished ");
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
     }
@@ -281,6 +280,88 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
+    TestHandler create(HandlerPriority priority) {
+        return new TestHandler(priority);
+    }
+
+    public List<TestHandler> handlers() {
+        return handlers;
+    }
+
+    @Test
+    public void inEventLoop() {
+        EventGroup eg = new EventGroup(true);
+        eg.start();
+        assertFalse(EventLoop.inEventLoop());
+        Set<HandlerPriority> priorities = new ConcurrentSkipListSet<>();
+        for (HandlerPriority priority : HandlerPriority.values()) {
+            eg.addHandler(new EventHandler() {
+                @Override
+                public boolean action() throws InvalidEventHandlerException {
+                    try {
+                        assertTrue(priority.name(), EventLoop.inEventLoop());
+                        priorities.add(priority);
+                    } catch (Throwable t) {
+                        t.printStackTrace();
+                    }
+                    throw new InvalidEventHandlerException("done");
+                }
+
+                @Override
+                public @NotNull HandlerPriority priority() {
+                    return priority;
+                }
+            });
+        }
+
+        EnumSet<HandlerPriority> allPriorities = EnumSet.allOf(HandlerPriority.class);
+        for (int i = 1; i < 30; i++) {
+            Jvm.pause(i);
+            if (priorities.equals(allPriorities))
+                break;
+        }
+        allPriorities.removeAll(priorities);
+        if (!allPriorities.isEmpty())
+            fail("Priorities failed " + allPriorities);
+        eg.stop();
+    }
+
+    enum ExceptionType {
+        NONE {
+            @Override
+            void throwIt() {
+            }
+        },
+        INVALID_EVENT_HANDLER {
+            @Override
+            void throwIt() throws InvalidEventHandlerException {
+                throw new InvalidEventHandlerException();
+            }
+        },
+        RUNTIME {
+            @Override
+            void throwIt() {
+                throw RUNTIME_EXCEPTION;
+            }
+        };
+
+        abstract void throwIt() throws InvalidEventHandlerException;
+    }
+
+    private static class PausingBlockingEventHandler implements EventHandler {
+        @Override
+        public boolean action() {
+            LockSupport.parkNanos(Long.MAX_VALUE);
+            return false;
+        }
+
+        @NotNull
+        @Override
+        public HandlerPriority priority() {
+            return HandlerPriority.BLOCKING;
+        }
+    }
+
     class TestHandler extends SimpleCloseable implements EventHandler, Closeable {
         final CountDownLatch installed = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
@@ -375,79 +456,5 @@ public class EventGroupTest extends ThreadsTestCommon {
                     ", started=" + started.getCount() +
                     '}';
         }
-    }
-
-    private static class PausingBlockingEventHandler implements EventHandler {
-        @Override
-        public boolean action() {
-            LockSupport.parkNanos(Long.MAX_VALUE);
-            return false;
-        }
-
-        @NotNull
-        @Override
-        public HandlerPriority priority() {
-            return HandlerPriority.BLOCKING;
-        }
-    }
-
-    enum ExceptionType {
-        NONE {
-            @Override
-            void throwIt() {
-            }
-        },
-        INVALID_EVENT_HANDLER {
-            @Override
-            void throwIt() throws InvalidEventHandlerException {
-                throw new InvalidEventHandlerException();
-            }
-        },
-        RUNTIME {
-            @Override
-            void throwIt() {
-                throw RUNTIME_EXCEPTION;
-            }
-        };
-
-        abstract void throwIt() throws InvalidEventHandlerException;
-    }
-
-    @Test
-    public void inEventLoop() {
-        EventGroup eg = new EventGroup(true);
-        eg.start();
-        assertFalse(EventLoop.inEventLoop());
-        Set<HandlerPriority> priorities = new ConcurrentSkipListSet<>();
-        for (HandlerPriority priority : HandlerPriority.values()) {
-            eg.addHandler(new EventHandler() {
-                @Override
-                public boolean action() throws InvalidEventHandlerException {
-                    try {
-                        assertTrue(priority.name(), EventLoop.inEventLoop());
-                        priorities.add(priority);
-                    } catch (Throwable t) {
-                        t.printStackTrace();
-                    }
-                    throw new InvalidEventHandlerException("done");
-                }
-
-                @Override
-                public @NotNull HandlerPriority priority() {
-                    return priority;
-                }
-            });
-        }
-
-        EnumSet<HandlerPriority> allPriorities = EnumSet.allOf(HandlerPriority.class);
-        for (int i = 1; i < 30; i++) {
-            Jvm.pause(i);
-            if (priorities.equals(allPriorities))
-                break;
-        }
-        allPriorities.removeAll(priorities);
-        if (!allPriorities.isEmpty())
-            fail("Priorities failed " + allPriorities);
-        eg.stop();
     }
 }

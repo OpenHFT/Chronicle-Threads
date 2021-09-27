@@ -326,13 +326,8 @@ public class EventGroup
     }
 
     private void performStop() {
-        closeQuietly(
-                monitor,
-                replication,
-                core
-        );
-        closeQuietly(blocking);
-        closeQuietly(concThreads);
+        monitor.stop();
+        EventLoops.stopAll(concThreads, replication, core, blocking);
     }
 
     @Override
@@ -342,16 +337,15 @@ public class EventGroup
 
     @Override
     protected void performClose() {
-        setAsStopping();
-        awaitTermination(true);
-    }
+        super.performClose();
+        closeQuietly(
+                core,
+                monitor,
+                replication,
+                blocking
+        );
 
-    private boolean isStopped(EventLoop el) {
-        return el == null || el.isStopped();
-    }
-
-    public void checkStopped() {
-        if (isStopped(core) && isStopped(monitor) && isStopped(blocking) && isStopped(replication))
-            setAsStopped();
+        closeQuietly(concThreads);
+        awaitTermination();
     }
 }
