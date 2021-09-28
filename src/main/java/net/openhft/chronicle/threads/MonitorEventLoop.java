@@ -76,7 +76,10 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     private void performStop() {
         unpause();
         Threads.shutdownDaemon(service);
-        handlers.forEach(Threads::loopFinishedQuietly);
+
+        synchronized (handlers) {
+            handlers.forEach(Threads::loopFinishedQuietly);
+        }
     }
 
     @Override
@@ -159,7 +162,10 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     @Override
     protected void performClose() {
         super.performClose();
-        net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
+
+        synchronized (handlers) {
+            net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
+        }
     }
 
     /**
