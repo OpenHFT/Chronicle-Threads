@@ -6,6 +6,7 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -19,6 +20,11 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
 
+    /**
+     * After this time, awaitTermination will log an error and return, this is really only so
+     * tests don't block forever. This time should be kept as "effectively forever".
+     */
+    private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
     protected final String name;
 
@@ -55,8 +61,9 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         } else if (lifecycle.compareAndSet(EventLoopLifecycle.STARTED, EventLoopLifecycle.STOPPING)) {
             performStopFromStarted();
             lifecycle.set(EventLoopLifecycle.STOPPED);
+        } else {
+            awaitTermination();
         }
-        awaitTermination();
     }
 
     /**
@@ -74,9 +81,13 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     @Override
     public final void awaitTermination() {
+        long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
         while (!Thread.currentThread().isInterrupted()) {
             if (lifecycle.get() == EventLoopLifecycle.STOPPED)
                 return;
+            if (System.currentTimeMillis() > endTime) {
+                Jvm.error().on(getClass(), "awaitTermination() timed out, continuing. This probably represents a bug.");
+            }
             Jvm.pause(1);
         }
         if (lifecycle.get() != EventLoopLifecycle.STOPPED) {
