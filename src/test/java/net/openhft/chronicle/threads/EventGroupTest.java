@@ -41,7 +41,7 @@ import static org.junit.Assert.*;
 
 public class EventGroupTest extends ThreadsTestCommon {
     private static final RuntimeException RUNTIME_EXCEPTION = new RuntimeException("some random text");
-    private List<TestHandler> handlers = new ArrayList<>();
+    private final List<TestHandler> handlers = new ArrayList<>();
 
     @Before
     public void handlersInit() {
@@ -326,14 +326,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         try (EventLoop eg = new EventGroup(true, Pauser.balanced(), "none", "none", "", 0, EnumSet.of(HandlerPriority.REPLICATION))) {
             eg.unpause();
         }
-    }
-
-    TestHandler create(HandlerPriority priority) {
-        return new TestHandler(priority);
-    }
-
-    public List<TestHandler> handlers() {
-        return handlers;
     }
 
     @Test
