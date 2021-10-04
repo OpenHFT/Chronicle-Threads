@@ -180,8 +180,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
 
-        checkInterrupted();
-
         final HandlerPriority priority = handler.priority().alias();
         if (DEBUG_ADDING_HANDLERS)
             Jvm.startup().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
@@ -200,13 +198,13 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             pauser.unpause();
             throwExceptionIfClosed();
 
-            checkInterrupted();
+            checkInterruptedAddingNewHandler();
         } while (!newHandler.compareAndSet(null, handler));
     }
 
-    void checkInterrupted() {
+    void checkInterruptedAddingNewHandler() {
         if (Thread.currentThread().isInterrupted())
-            throw new IllegalStateException(hasBeen("interrupted"));
+            throw new IllegalStateException(hasBeen("interrupted. Handler in newHandler was not accepted before."));
     }
 
     @Override

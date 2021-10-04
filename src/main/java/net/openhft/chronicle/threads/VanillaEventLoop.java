@@ -94,8 +94,6 @@ public class VanillaEventLoop extends MediumEventLoop {
     public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
 
-        checkInterrupted();
-
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             Jvm.startup().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
@@ -110,7 +108,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             pauser.unpause();
             throwExceptionIfClosed();
 
-            checkInterrupted();
+            checkInterruptedAddingNewHandler();
         } while (!newHandler.compareAndSet(null, handler));
     }
 
