@@ -1,6 +1,5 @@
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.FlakyTestRunner;
 import net.openhft.chronicle.core.OS;
 import org.junit.Test;
 
@@ -14,22 +13,20 @@ public class TimeoutPauserTest {
 
     @Test
     public void pause() {
-        FlakyTestRunner.run(this::pause0);
-    }
-
-    private void pause0() {
-        TimeoutPauser tp = new TimeoutPauser(100);
+        final int pauseTimeMillis = 100;
+        final TimeoutPauser tp = new TimeoutPauser(pauseTimeMillis);
         for (int i = 0; i < 10; i++) {
-            long start = System.currentTimeMillis();
+            final long start = System.currentTimeMillis();
             while (true) {
                 try {
-                    tp.pause(100, TimeUnit.MILLISECONDS);
+                    tp.pause(pauseTimeMillis, TimeUnit.MILLISECONDS);
                     if (System.currentTimeMillis() - start > 200)
                         fail();
                 } catch (TimeoutException e) {
                     final long time = System.currentTimeMillis() - start;
                     int delta = OS.isWindows() ? 20 : 5;
-                    assertEquals(100 + delta, time, delta);
+                    // please don't add delta to pauseTimeMillis below - it makes this test flakier on Windows
+                    assertEquals(pauseTimeMillis, time, delta);
                     tp.reset();
                     break;
                 }
