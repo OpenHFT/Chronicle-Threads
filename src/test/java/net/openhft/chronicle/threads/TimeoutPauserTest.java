@@ -1,5 +1,6 @@
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.OS;
 import org.junit.Test;
 
@@ -24,7 +25,7 @@ public class TimeoutPauserTest {
                         fail();
                 } catch (TimeoutException e) {
                     final long time = System.currentTimeMillis() - start;
-                    int delta = (OS.isWindows() || OS.isMacOSX()) ? 20 : 5;
+                    int delta = (OS.isWindows() || OS.isMacOSX() || Jvm.isArm()) ? 20 : 5;
                     // please don't add delta to pauseTimeMillis below - it makes this test flakier on Windows
                     assertEquals(pauseTimeMillis, time, delta);
                     tp.reset();
