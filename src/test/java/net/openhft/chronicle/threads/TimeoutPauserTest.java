@@ -25,7 +25,8 @@ public class TimeoutPauserTest {
                         fail();
                 } catch (TimeoutException e) {
                     final long time = System.currentTimeMillis() - start;
-                    int delta = (OS.isWindows() || OS.isMacOSX() || Jvm.isArm()) ? 20 : 5;
+                    // delta used to be 5 for Linux but occasionally we see it blow in Continuous Integration
+                    int delta = 20;
                     // please don't add delta to pauseTimeMillis below - it makes this test flakier on Windows
                     assertEquals(pauseTimeMillis, time, delta);
                     tp.reset();
