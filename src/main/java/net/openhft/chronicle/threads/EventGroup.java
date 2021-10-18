@@ -49,7 +49,7 @@ public class EventGroup
             Integer.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500);
     private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
-    private static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
+    static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
     private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
     private static final long WAIT_TO_START_MS = Integer.getInteger("eventGroup.wait.to.start.ms", 1_000);
     private final AtomicInteger counter = new AtomicInteger();
@@ -68,6 +68,7 @@ public class EventGroup
     private final MilliPauser milliPauser = Pauser.millis(50);
     private final boolean daemon;
 
+    private final Pauser replicationPauser;
     private VanillaEventLoop replication;
 
     /**
@@ -80,7 +81,9 @@ public class EventGroup
      * @param name               name of event group. Any created threads are named after this
      * @param concThreadsNum     number of concurrent threads to support
      * @param priorities         priorities that we expect to support
+     * @deprecated Use {@link #builder()}
      */
+    @Deprecated(/* Remove in .24 */)
     public EventGroup(final boolean daemon,
                       final @NotNull Pauser pauser,
                       final String binding,
@@ -90,6 +93,7 @@ public class EventGroup
                       final Set<HandlerPriority> priorities) {
         this(daemon,
                 pauser,
+                null,
                 binding,
                 bindingReplication,
                 name,
@@ -99,8 +103,25 @@ public class EventGroup
                 priorities);
     }
 
+    /**
+     * @deprecated Use {@link #builder()}
+     */
+    @Deprecated(/* Remove in .24 */)
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
+                      final String binding,
+                      final String bindingReplication,
+                      final String name,
+                      final int concThreadsNum,
+                      final String concBinding,
+                      @NotNull final Pauser concPauser,
+                      final Set<HandlerPriority> priorities) {
+        this(daemon, pauser, null, binding, bindingReplication, name, concThreadsNum, concBinding, concPauser, priorities);
+    }
+
+    public EventGroup(final boolean daemon,
+                      @NotNull final Pauser pauser,
+                      final Pauser replicationPauser,
                       final String binding,
                       final String bindingReplication,
                       final String name,
@@ -111,6 +132,7 @@ public class EventGroup
         super(name);
         this.daemon = daemon;
         this.pauser = pauser;
+        this.replicationPauser = replicationPauser;
         this.concBinding = concBinding;
         this.concPauser = concPauser;
         this.bindingReplication = bindingReplication;
@@ -144,22 +166,42 @@ public class EventGroup
         }
     }
 
+    /**
+     * @deprecated Use {@link #builder()}
+     */
+    @Deprecated(/* Remove in .24 */)
     public EventGroup(final boolean daemon) {
         this(daemon, false);
     }
 
+    /**
+     * @deprecated Use {@link #builder()}
+     */
+    @Deprecated(/* Remove in .24 */)
     public EventGroup(final boolean daemon, boolean binding) {
         this(daemon, Pauser.balanced(), binding);
     }
 
+    /**
+     * @deprecated Use {@link #builder()}
+     */
+    @Deprecated(/* Remove in .24 */)
     public EventGroup(final boolean daemon, @NotNull final Pauser pauser, final boolean binding) {
         this(daemon, pauser, binding, NO_CPU, NO_CPU, "");
     }
 
+    /**
+     * @deprecated Use {@link #builder()}
+     */
+    @Deprecated(/* Remove in .24 */)
     public EventGroup(final boolean daemon, @NotNull final Pauser pauser, final boolean binding, final String name) {
         this(daemon, pauser, binding, NO_CPU, NO_CPU, name);
     }
 
+    /**
+     * @deprecated Use {@link #builder()}
+     */
+    @Deprecated(/* Remove in .24 */)
     public EventGroup(final boolean daemon, @NotNull final Pauser pauser, final boolean binding, final int bindingCpuCore, final int bindingCpuReplication, final String name) {
         this(daemon,
                 pauser,
@@ -170,9 +212,18 @@ public class EventGroup
                 EnumSet.allOf(HandlerPriority.class));
     }
 
+    /**
+     * Create an EventGroup builder
+     *
+     * @return A new {@link EventGroupBuilder}
+     */
+    public static EventGroupBuilder builder() {
+        return EventGroupBuilder.builder();
+    }
+
     private synchronized VanillaEventLoop getReplication() {
         if (replication == null) {
-            Pauser pauser = Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
+            Pauser pauser = replicationPauser != null ? replicationPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
             replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser,
                     REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER));
 

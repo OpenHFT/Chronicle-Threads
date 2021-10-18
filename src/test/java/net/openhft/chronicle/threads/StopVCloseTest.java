@@ -38,7 +38,10 @@ public class StopVCloseTest extends ThreadsTestCommon {
     @Test
     public void eventGroupStop() {
         final EnumSet<HandlerPriority> allPriorities = EnumSet.allOf(HandlerPriority.class);
-        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "none", "none", "", 1, allPriorities)) {
+        try (final EventLoop eventGroup = EventGroup.builder()
+                .withConcurrentThreadsNum(1)
+                .withPriorities(allPriorities)
+                .build()) {
             eventGroup.start();
 
             Set<HandlerPriority> started = Collections.synchronizedSet(EnumSet.noneOf(HandlerPriority.class));
