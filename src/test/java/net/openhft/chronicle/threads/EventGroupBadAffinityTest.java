@@ -4,13 +4,11 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.onoes.ExceptionKey;
 import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
-import net.openhft.chronicle.core.threads.HandlerPriority;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
@@ -50,8 +48,7 @@ public class EventGroupBadAffinityTest {
     @Test(timeout = 5000, expected = TimeoutException.class)
     public void testInvalidAffinity() {
         expectException("Cannot parse 'xxx'");
-        try (final EventLoop eventGroup = new EventGroup(true, Pauser.balanced(), "xxx", "none", this.getClass().getSimpleName(),
-                EventGroup.CONC_THREADS, EnumSet.of(HandlerPriority.MEDIUM))) {
+        try (final EventLoop eventGroup = EventGroup.builder().withBinding("xxx").build()) {
             eventGroup.start();
         }
     }
