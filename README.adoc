@@ -1,12 +1,22 @@
 = Chronicle Threads
-Peter Lawrey
+Chronicle Software
+:css-signature: demo
+:toc: macro
+:toclevels: 2
+:icons: font
 
-[#image-maven]
-[caption="",link=https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads]
-image:https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg[link="https://search.maven.org/artifact/net.openhft/chronicle-threads/2.20.104/jar"]
+image:https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg[caption="",link=https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads]
 image:https://javadoc.io/badge2/net.openhft/chronicle-threads/javadoc.svg[link="https://www.javadoc.io/doc/net.openhft/chronicle-threads/latest/index.html"]
+//image:https://javadoc-badge.appspot.com/net.openhft/chronicle-wire.svg?label=javadoc[JavaDoc, link=https://www.javadoc.io/doc/net.openhft/chronicle-threads]
+image:https://img.shields.io/github/license/OpenHFT/Chronicle-Threads[GitHub]
+image:https://img.shields.io/badge/release%20notes-subscribe-brightgreen[link="https://chronicle.software/release-notes/"]
+image:https://sonarcloud.io/api/project_badges/measure?project=OpenHFT_Chronicle-Threads&metric=alert_status[link="https://sonarcloud.io/dashboard?id=OpenHFT_Chronicle-Threads"]
 
-== Thread pool
+image::images/Threads_line.png[]
+
+toc::[]
+
+== About
 
 This library provides a high performance thread pool that shares blocking, monitoring, and busy waiting threads.
 Busy waiting tasks have `HIGH`, `MEDIUM`, or `DAEMON` (low) priority, or `TIMER` (fixed rate events) status. All tasks run on a single thread without creating garbage.
