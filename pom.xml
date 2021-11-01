@@ -31,7 +31,10 @@
     <name>OpenHFT/Chronicle-Threads</name>
     <description>Chronicle-Threads</description>
     <packaging>bundle</packaging>
-
+    <properties>
+      <sonar.organization>openhft</sonar.organization>
+      <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+    <properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
