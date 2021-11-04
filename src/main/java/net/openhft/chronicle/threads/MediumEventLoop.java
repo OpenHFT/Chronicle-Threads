@@ -460,8 +460,17 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
     private void handleExceptionMediumHandler(EventHandler handler, Throwable t) {
         if (exceptionThrownByHandler.handle(this, handler, t)) {
             removeHandler(handler, mediumHandlers);
-            this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
+            updateMediumHandlersArray();
         }
+    }
+
+    /**
+     * This copy needs to be atomic
+     *
+     * {@see https://github.com/OpenHFT/Chronicle-Threads/issues/106}
+     */
+    protected synchronized void updateMediumHandlersArray() {
+        this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
     }
 
     @HotMethod
@@ -493,7 +502,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
                 if (!mediumHandlers.contains(handler)) {
                     clearUsedByThread(handler);
                     mediumHandlers.add(handler);
-                    mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
+                    updateMediumHandlersArray();
                     handler.eventLoop(parent != null ? parent : this);
                     handler.loopStarted();
                 }
@@ -611,7 +620,7 @@ public class MediumEventLoop extends AbstractCloseable implements CoreEventLoop,
             closeAllHandlers();
             highHandler = EventHandlers.NOOP;
             mediumHandlers.clear();
-            mediumHandlersArray = NO_EVENT_HANDLERS;
+            updateMediumHandlersArray();
             newHandler.set(null);
         }
     }

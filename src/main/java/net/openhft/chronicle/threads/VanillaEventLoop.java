@@ -204,7 +204,7 @@ public class VanillaEventLoop extends MediumEventLoop {
                     clearUsedByThread(handler);
                     mediumHandlers.add(handler);
                     mediumHandlers.sort(Comparator.comparing(EventHandler::priority).reversed());
-                    mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
+                    updateMediumHandlersArray();
                 }
                 break;
 
