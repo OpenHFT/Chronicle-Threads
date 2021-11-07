@@ -10,6 +10,8 @@ import net.openhft.chronicle.core.threads.ThreadDump;
 import net.openhft.chronicle.core.time.SystemTimeProvider;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,6 +26,7 @@ public class ThreadsTestCommon {
     private ThreadDump threadDump;
     private Map<ExceptionKey, Integer> exceptions;
 
+    @BeforeEach
     @Before
     public void enableReferenceTracing() {
         AbstractReferenceCounted.enableReferenceTracing();
@@ -33,6 +36,7 @@ public class ThreadsTestCommon {
         AbstractReferenceCounted.assertReferencesReleased();
     }
 
+    @BeforeEach
     @Before
     public void threadDump() {
         threadDump = new ThreadDump();
@@ -42,6 +46,7 @@ public class ThreadsTestCommon {
         threadDump.assertNoNewThreads();
     }
 
+    @BeforeEach
     @Before
     public void recordExceptions() {
         exceptions = Jvm.recordExceptions();
@@ -102,6 +107,7 @@ public class ThreadsTestCommon {
         fail(description);
     }
 
+    @AfterEach
     @After
     public void afterChecks() throws InterruptedException {
         preAfter();
