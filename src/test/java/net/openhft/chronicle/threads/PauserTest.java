@@ -1,6 +1,6 @@
 package net.openhft.chronicle.threads;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class PauserTest extends ThreadsTestCommon {
 

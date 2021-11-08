@@ -7,11 +7,12 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.EnumSet;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class VanillaEventLoopTest extends ThreadsTestCommon {
 
@@ -32,7 +33,8 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
         assertEquals(LOOPS, eh0.actionCnt);
     }
 
-    @Test(timeout = 10_000L)
+    @Timeout(10_000L)
+    @Test
     public void testEnsureRemoveInvokesLoopFinishedJustOnce() throws InterruptedException {
         FlakyTestRunner.run(this::testEnsureRemoveInvokesLoopFinishedJustOnce0);
     }
@@ -52,11 +54,11 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
             if (el.thread() != null)
                 break;
             Jvm.pause(50);
-            assertFalse("thread failed to start", i == 0);
+            assertFalse(i == 0, "thread failed to start");
         }
 
-       // System.out.println(eh0);
-       // System.out.println(eh1);
+        // System.out.println(eh0);
+        // System.out.println(eh1);
 
         Thread thread = el.thread();
         if (thread == null)
