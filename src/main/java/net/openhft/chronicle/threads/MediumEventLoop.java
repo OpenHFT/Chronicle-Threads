@@ -195,8 +195,10 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             return;
         }
         do {
+            if (isStopped()) {
+                return;
+            }
             pauser.unpause();
-            throwExceptionIfClosed();
 
             checkInterruptedAddingNewHandler();
         } while (!newHandler.compareAndSet(null, handler));
@@ -451,7 +453,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     /**
      * This copy needs to be atomic
-     *
+     * <p>
      * {@see https://github.com/OpenHFT/Chronicle-Threads/issues/106}
      */
     protected synchronized void updateMediumHandlersArray() {

@@ -105,8 +105,10 @@ public class VanillaEventLoop extends MediumEventLoop {
             return;
         }
         do {
+            if (isStopped()) {
+                return;
+            }
             pauser.unpause();
-            throwExceptionIfClosed();
 
             checkInterruptedAddingNewHandler();
         } while (!newHandler.compareAndSet(null, handler));
