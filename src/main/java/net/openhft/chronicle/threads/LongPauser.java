@@ -122,8 +122,10 @@ public class LongPauser implements Pauser, TimingPauser {
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
         ++count;
-        if (count < minBusy)
+        if (count < minBusy) {
+            Jvm.nanoPause();
             return;
+        }
         if (count <= minBusy + minCount) {
             this.yield();
             return;

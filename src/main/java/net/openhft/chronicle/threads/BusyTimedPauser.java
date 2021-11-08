@@ -34,7 +34,6 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
     @Override
     public void pause() {
         // busy wait.
-        Jvm.safepoint();
         Jvm.nanoPause();
     }
 
@@ -44,6 +43,7 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
             time = System.nanoTime();
         if (time + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
             throw new TimeoutException();
+        pause();
     }
 
     @Override

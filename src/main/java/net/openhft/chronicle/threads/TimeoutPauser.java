@@ -17,6 +17,7 @@
  */
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
@@ -49,8 +50,10 @@ public class TimeoutPauser implements Pauser, TimingPauser {
     @Override
     public void pause() {
         ++count;
-        if (count < minBusy)
+        if (count < minBusy) {
+            Jvm.nanoPause();
             return;
+        }
 
         yield();
         checkYieldTime();

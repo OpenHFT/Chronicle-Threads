@@ -28,7 +28,6 @@ public enum BusyPauser implements Pauser {
 
     @Override
     public void pause() {
-        Jvm.safepoint();
         Jvm.nanoPause();
     }
 
