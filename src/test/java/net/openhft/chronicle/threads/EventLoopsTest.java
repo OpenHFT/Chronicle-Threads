@@ -1,14 +1,15 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class EventLoopsTest {
 
@@ -17,7 +18,8 @@ public class EventLoopsTest {
         EventLoops.stopAll(null, Arrays.asList(null, null, null), null);
     }
 
-    @Test(timeout = 5_000)
+    @Timeout(5_000)
+    @Test
     public void stopAllWillBlockUntilTheLastEventLoopStops() {
         final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
         final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker");

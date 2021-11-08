@@ -19,14 +19,13 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.*;
+
 
 public class LongPauserTest extends ThreadsTestCommon {
     @Test
@@ -71,7 +70,7 @@ public class LongPauserTest extends ThreadsTestCommon {
         final long startNs = System.nanoTime();
         thread.join();
         final long timeTakenMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs);
-        Assert.assertTrue("Took " + timeTakenMs + " to stop", timeTakenMs < pauseMillis / 5);
+        assertTrue(timeTakenMs < pauseMillis / 5, "Took " + timeTakenMs + " to stop");
     }
 
     @Test

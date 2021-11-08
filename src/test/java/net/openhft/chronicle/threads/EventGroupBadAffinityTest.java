@@ -4,21 +4,24 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.onoes.ExceptionKey;
 import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
+
 public class EventGroupBadAffinityTest {
     private Map<ExceptionKey, Integer> exceptions;
     private final Map<Predicate<ExceptionKey>, String> expectedExceptions = new LinkedHashMap<>();
 
-    @Before
+    @BeforeEach
     public void recordExceptions() {
         exceptions = Jvm.recordExceptions();
     }
@@ -31,7 +34,7 @@ public class EventGroupBadAffinityTest {
         expectedExceptions.put(predicate, description);
     }
 
-    @After
+    @AfterEach
     public void checkExceptions() {
         for (Map.Entry<Predicate<ExceptionKey>, String> expectedException : expectedExceptions.entrySet()) {
             if (!exceptions.keySet().removeIf(expectedException.getKey()))
@@ -41,15 +44,16 @@ public class EventGroupBadAffinityTest {
         if (Jvm.hasException(exceptions)) {
             Jvm.dumpException(exceptions);
             Jvm.resetExceptionHandlers();
-            Assert.fail();
+            fail();
         }
     }
 
-    @Test(timeout = 5000, expected = TimeoutException.class)
+    @Timeout(5_000)
+    @Test
     public void testInvalidAffinity() {
         expectException("Cannot parse 'xxx'");
         try (final EventLoop eventGroup = EventGroup.builder().withBinding("xxx").build()) {
-            eventGroup.start();
+            assertThrows(TimeoutException.class, eventGroup::start);
         }
     }
 }

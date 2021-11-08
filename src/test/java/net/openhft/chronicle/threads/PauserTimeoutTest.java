@@ -18,11 +18,12 @@
 
 package net.openhft.chronicle.threads;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class PauserTimeoutTest extends ThreadsTestCommon {
     TimingPauser[] pausersSupportTimeout = new TimingPauser[]{new BusyTimedPauser(), new TimeoutPauser(0),
@@ -39,16 +40,16 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
                 try {
                     p.pause(timeoutNS, TimeUnit.NANOSECONDS);
                 } catch (TimeoutException e) {
-                    Assert.fail(p + " timed out");
+                    fail(p + " timed out");
                 }
-            while (System.nanoTime() < start + timeoutNS * 2);
+            while (System.nanoTime() < start + timeoutNS * 2) ;
             try {
-               // System.out.println(start + " timeoutNS " + (start + timeoutNS) + " now " + Time.uniqueId() + " past " + (System.nanoTime() > (start + timeoutNS)));
+                // System.out.println(start + " timeoutNS " + (start + timeoutNS) + " now " + Time.uniqueId() + " past " + (System.nanoTime() > (start + timeoutNS)));
                 p.pause(timeoutNS, TimeUnit.NANOSECONDS);
             } catch (TimeoutException e) {
                 continue;
             }
-            Assert.fail(p + " did not timeoutNS");
+            fail(p + " did not timeoutNS");
         }
     }
 
@@ -60,7 +61,7 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
             } catch (UnsupportedOperationException e) {
                 continue;
             }
-            Assert.fail(p + " did not throw");
+            fail(p + " did not throw");
         }
     }
 }

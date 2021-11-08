@@ -1,13 +1,13 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.EventHandler;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class MediumEventLoopTest {
 
