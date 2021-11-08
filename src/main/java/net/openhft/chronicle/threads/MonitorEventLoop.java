@@ -27,8 +27,8 @@ import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -38,7 +38,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
 
     private transient final ExecutorService service;
     private final EventLoop parent;
-    private final List<EventHandler> handlers = new ArrayList<>();
+    private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final Pauser pauser;
 
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
@@ -77,9 +77,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         unpause();
         Threads.shutdownDaemon(service);
 
-        synchronized (handlers) {
-            handlers.forEach(Threads::loopFinishedQuietly);
-        }
+        handlers.forEach(Threads::loopFinishedQuietly);
     }
 
     @Override
@@ -88,18 +86,16 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     }
 
     @Override
-    public void addHandler(@NotNull final EventHandler handler) {
+    public synchronized void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
 
         if (DEBUG_ADDING_HANDLERS)
             Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
-        synchronized (handlers) {
-            if (!handlers.contains(handler))
-                handlers.add(new IdempotentLoopStartedEventHandler(handler));
-            handler.eventLoop(parent);
-        }
+        if (!handlers.contains(handler))
+            handlers.add(new IdempotentLoopStartedEventHandler(handler));
+        handler.eventLoop(parent);
     }
 
     @Override
@@ -115,9 +111,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             pauser.reset();
             while (isStarted() && !Thread.currentThread().isInterrupted()) {
                 boolean busy;
-                synchronized (handlers) {
-                    busy = runHandlers();
-                }
+                busy = runHandlers();
                 pauser.pause();
                 if (busy)
                     pauser.reset();
@@ -130,7 +124,6 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     @HotMethod
     private boolean runHandlers() {
         boolean busy = false;
-        // assumed to be synchronized in run()
         for (int i = 0; i < handlers.size(); i++) {
             final EventHandler handler = handlers.get(i);
             handler.loopStarted();
@@ -147,7 +140,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         return busy;
     }
 
-    private void removeHandler(int handlerIndex) {
+    private synchronized void removeHandler(int handlerIndex) {
         try {
             EventHandler removedHandler = handlers.remove(handlerIndex);
             removedHandler.loopFinished();
@@ -163,9 +156,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     protected void performClose() {
         super.performClose();
 
-        synchronized (handlers) {
-            net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
-        }
+        net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
     }
 
     /**
