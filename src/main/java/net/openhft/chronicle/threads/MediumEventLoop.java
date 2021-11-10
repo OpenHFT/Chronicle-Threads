@@ -474,8 +474,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
             case HIGH:
-                if (highHandler == EventHandlers.NOOP || highHandler == handler) {
-                    highHandler = handler;
+                if (updateHighHandler(handler))  {
                     break;
                 } else {
                     Jvm.warn().on(getClass(), "Only one high handler supported was " + highHandler + ", treating " + handler + " as MEDIUM");
@@ -509,6 +508,17 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         handler.eventLoop(parent != null ? parent : this);
         if (thread != null)
             handler.loopStarted();
+    }
+
+    /**
+     * This check/assignment needs to be atomic
+     */
+    protected synchronized boolean updateHighHandler(@NotNull EventHandler handler) {
+        if (highHandler == EventHandlers.NOOP || highHandler == handler) {
+            highHandler = handler;
+            return true;
+        }
+        return false;
     }
 
     @Override

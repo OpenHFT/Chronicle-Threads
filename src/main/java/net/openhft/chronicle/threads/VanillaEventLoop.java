@@ -170,8 +170,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
             case HIGH:
-                if (highHandler == EventHandlers.NOOP || highHandler == handler) {
-                    highHandler = handler;
+                if (updateHighHandler(handler)) {
                     break;
                 } else {
                     Jvm.warn().on(getClass(), "Only one high handler supported was " + highHandler + ", treating " + handler + " as MEDIUM");
