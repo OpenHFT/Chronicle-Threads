@@ -47,7 +47,7 @@ public interface Pauser {
     }
 
     static TimingPauser sleepy() {
-        return new LongPauser(0, 100, 500, 20_000, TimeUnit.MICROSECONDS);
+        return new LongPauser(0, 100, 100, 20_000, TimeUnit.MICROSECONDS);
     }
 
     /**
@@ -66,7 +66,7 @@ public interface Pauser {
      * @return a balanced pauser
      */
     static TimingPauser balancedUpToMillis(int millis) {
-        return SLEEPY ? sleepy() : new LongPauser(20000, 250, 50, (Jvm.isDebug() ? 200_000 : 0) + millis * 1_000, TimeUnit.MICROSECONDS);
+        return SLEEPY ? sleepy() : new LongPauser(20000, 250, 10, (Jvm.isDebug() ? 200_000 : 0) + millis * 1_000L, TimeUnit.MICROSECONDS);
     }
 
     /**
