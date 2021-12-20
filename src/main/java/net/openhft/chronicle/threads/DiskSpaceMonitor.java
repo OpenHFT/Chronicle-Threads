@@ -120,7 +120,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             Threads.shutdown(executor);
     }
 
-    final static class DiskAttributes {
+    static final class DiskAttributes {
         volatile boolean polled;
         long timeNextCheckedMS;
         long totalSpace;
@@ -147,7 +147,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                         "warning: chronicle-queue may crash if it runs out of space.");
 
             } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage / 100) {
-                final double diskSpaceFull = ((long) (1000d * ((double) (totalSpace - unallocatedBytes)) / totalSpace + 0.999)) / 10.0;
+                final double diskSpaceFull = ((long) (1000d * (totalSpace - unallocatedBytes) / totalSpace + 0.999)) / 10.0;
                 Jvm.warn().on(getClass(), "your disk " + fileStore
                         + " is " + diskSpaceFull + "% full, " +
                         "warning: chronicle-queue may crash if it runs out of space.");
