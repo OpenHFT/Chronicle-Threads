@@ -51,7 +51,7 @@ public class EventLoopThreadHolder implements ThreadHolder {
                 () -> eventLoop.loopStartNS() == startedNS);
 
         printBlockTimeNS += intervalToAddNS;
-        intervalToAddNS = (long) Math.min(1.41 * intervalToAddNS, 20 * monitorIntervalNS);
+        intervalToAddNS = (long) Math.min(1.41d * intervalToAddNS, 20d * monitorIntervalNS);
     }
 
     @Override

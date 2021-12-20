@@ -201,12 +201,17 @@ public enum Threads {
 
             List<Object> objects = listTL.get();
             objects.clear();
-            if (mainLock != null) mainLock.lock();
-            try {
-                // from ThreadPoolExecutor source docs: workers field is protected by mainLock
+
+            if (mainLock != null) {
+                mainLock.lock();
+                try {
+                    // from ThreadPoolExecutor source docs: workers field is protected by mainLock
+                    objects.addAll(workers);
+                } finally {
+                    mainLock.unlock();
+                }
+            } else {
                 objects.addAll(workers);
-            } finally {
-                if (mainLock != null) mainLock.unlock();
             }
 
             for (Object o : objects) {
