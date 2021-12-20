@@ -55,7 +55,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     @Nullable
     protected final EventLoop parent;
     @NotNull
-    protected transient final ExecutorService service;
+    protected final ExecutorService service;
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     protected final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     protected final Pauser pauser;
@@ -70,7 +70,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     protected volatile long loopStartNS;
     @Nullable
-    protected transient volatile Thread thread = null;
+    protected volatile Thread thread = null;
     @NotNull
     protected final ExceptionHandlerStrategy exceptionThrownByHandler = ExceptionHandlerStrategy.strategy();
 
@@ -304,9 +304,11 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     protected void runTimerHandlers() {
+        // Do nothing unless overridden
     }
 
     protected void runDaemonHandlers() {
+        // Do nothing unless overridden
     }
 
     private void closeAll() {
@@ -351,12 +353,14 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                         handleExceptionMediumHandler(handlers[1], e);
                     }
                     // fall through
-                case 1:
+                case 1: {
                     try {
                         busy |= handlers[0].action();
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[0], e);
                     }
+                    break;
+                }
                 case 0:
                     break;
 
@@ -411,13 +415,15 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                         handleExceptionMediumHandler(handlers[1], e);
                     }
                     // fall through
-                case 1:
+                case 1: {
                     busy |= callHighHandler();
                     try {
                         busy |= handlers[0].action();
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[0], e);
                     }
+                    break;
+                }
                 case 0:
                     break;
 
@@ -474,7 +480,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
             case HIGH:
-                if (updateHighHandler(handler))  {
+                if (updateHighHandler(handler)) {
                     break;
                 } else {
                     Jvm.warn().on(getClass(), "Only one high handler supported was " + highHandler + ", treating " + handler + " as MEDIUM");
@@ -484,7 +490,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             case REPLICATION:
             case CONCURRENT:
             case DAEMON:
-            case MEDIUM:
+            case MEDIUM: {
                 if (!mediumHandlers.contains(handler)) {
                     clearUsedByThread(handler);
                     mediumHandlers.add(handler);
@@ -493,6 +499,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     handler.loopStarted();
                 }
                 break;
+            }
 
             case MONITOR:
                 if (parent != null) {
@@ -523,10 +530,10 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     @Override
     public void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck) {
-        final Thread thread = this.thread;
-        if (thread == null) return;
+        final Thread threadSnapshot = this.thread;
+        if (threadSnapshot == null) return;
         final StringBuilder out = new StringBuilder(message);
-        Jvm.trimStackTrace(out, thread.getStackTrace());
+        Jvm.trimStackTrace(out, threadSnapshot.getStackTrace());
 
         if (finalCheck.getAsBoolean() && Jvm.isDebugEnabled(getClass()))
             Jvm.debug().on(getClass(), out.toString());
@@ -558,7 +565,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         final List<EventHandler> collect = Stream.of(Collections.singletonList(highHandler), mediumHandlers)
                 .flatMap(List::stream)
                 .filter(e -> e != EventHandlers.NOOP)
-                .filter(e -> e instanceof Closeable)
+                .filter(Closeable.class::isInstance)
                 .collect(Collectors.toList());
         if (collect.isEmpty())
             return;
@@ -568,8 +575,8 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     @Override
     public boolean isAlive() {
-        final Thread thread = this.thread;
-        return thread != null && thread.isAlive();
+        final Thread threadSnapshot = this.thread;
+        return threadSnapshot != null && threadSnapshot.isAlive();
     }
 
     @Override

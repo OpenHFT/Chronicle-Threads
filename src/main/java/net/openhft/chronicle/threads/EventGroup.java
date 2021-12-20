@@ -223,14 +223,14 @@ public class EventGroup
 
     private synchronized VanillaEventLoop getReplication() {
         if (replication == null) {
-            Pauser pauser = replicationPauser != null ? replicationPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
-            replication = new VanillaEventLoop(this, name + "replication-event-loop", pauser,
+            final Pauser newReplicationPauser = replicationPauser != null ? replicationPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
+            replication = new VanillaEventLoop(this, name + "replication-event-loop", newReplicationPauser,
                     REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER));
 
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, replication);
             if (isAlive())
                 replication.start();
-            monitor.addHandler(new PauserMonitor(pauser, name + "replication pauser", 300));
+            monitor.addHandler(new PauserMonitor(newReplicationPauser, name + "replication pauser", 300));
         }
         return replication;
     }

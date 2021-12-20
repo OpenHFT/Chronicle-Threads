@@ -28,31 +28,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 
 public class LongPauserTest extends ThreadsTestCommon {
-    @Test
-    public void testLongPauser() {
-        final LongPauser pauser = new LongPauser(1, 1, 100, 1000, TimeUnit.MICROSECONDS);
-        Thread thread = new Thread() {
-            @Override
-            public void run() {
-                while (!Thread.interrupted()) {
-                    pauser.pause();
-                    Thread.yield();
-                }
-            }
-        };
-        thread.start();
-
-        for (int t = 0; t < 3; t++) {
-            long start = System.nanoTime();
-            int runs = 10000000;
-            for (int i = 0; i < runs; i++)
-                pauser.unpause();
-            long time = System.nanoTime() - start;
-            // System.out.printf("Average time to unpark was %,d ns%n", time / runs);
-            Jvm.pause(20);
-        }
-        thread.interrupt();
-    }
 
     @Test
     public void unpauseStopsPausing() throws InterruptedException {

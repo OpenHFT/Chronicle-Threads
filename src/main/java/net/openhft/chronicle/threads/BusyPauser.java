@@ -24,6 +24,7 @@ public enum BusyPauser implements Pauser {
 
     @Override
     public void reset() {
+        // Do nothing
     }
 
     @Override

@@ -41,7 +41,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     @NotNull
     private final EventLoop parent;
     @NotNull
-    private transient final ExecutorService service;
+    private final ExecutorService service;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final NamedThreadFactory threadFactory;
     private final Pauser pauser = Pauser.balanced();
@@ -76,10 +76,6 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         handler.eventLoop(parent);
         if (isStarted())
             this.startHandler(handler);
-    }
-
-    private String asString(final Object handler) {
-        return Integer.toHexString(System.identityHashCode(handler));
     }
 
     @Override
@@ -181,5 +177,10 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 }
             }
         }
+
+        private String asString(final Object handler) {
+            return Integer.toHexString(System.identityHashCode(handler));
+        }
+
     }
 }

@@ -1,6 +1,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.onoes.ExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -10,12 +11,23 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class EventLoopsTest {
 
     @Test
     public void stopAllCanHandleNulls() {
-        EventLoops.stopAll(null, Arrays.asList(null, null, null), null);
+        final StringBuilder sb = new StringBuilder();
+        final ExceptionHandler eh = (c, m, t) -> sb.append(m);
+        ExceptionHandler exceptionHandler = Jvm.warn();
+        try {
+            Jvm.setWarnExceptionHandler(exceptionHandler);
+            EventLoops.stopAll(null, Arrays.asList(null, null, null), null);
+            // Should silently accept nulls
+            assertTrue(sb.toString().isEmpty());
+        } finally {
+            Jvm.setWarnExceptionHandler(exceptionHandler);
+        }
     }
 
     @Timeout(5_000)
