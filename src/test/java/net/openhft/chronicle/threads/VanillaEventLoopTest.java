@@ -54,7 +54,7 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
             if (el.thread() != null)
                 break;
             Jvm.pause(50);
-            assertFalse(i == 0, "thread failed to start");
+            assertNotEquals(0, i, "thread failed to start");
         }
 
         // System.out.println(eh0);

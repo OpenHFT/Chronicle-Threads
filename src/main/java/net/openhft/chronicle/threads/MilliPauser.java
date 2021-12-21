@@ -85,6 +85,7 @@ public class MilliPauser implements Pauser {
 
     @Override
     public void unpause() {
+        // Do nothing
     }
 
     @Override

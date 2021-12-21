@@ -123,6 +123,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             daemonHandlers.forEach(EventHandler::loopStarted);
     }
 
+    @Override
     protected void loopFinishedAllHandlers() {
         super.loopFinishedAllHandlers();
         if (!timerHandlers.isEmpty())
@@ -136,6 +137,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         return timerIntervalMS;
     }
 
+    @Override
     protected void runTimerHandlers() {
         for (int i = 0; i < timerHandlers.size(); i++) {
             EventHandler handler = null;
@@ -151,6 +153,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         }
     }
 
+    @Override
     protected void runDaemonHandlers() {
         for (int i = 0; i < daemonHandlers.size(); i++) {
             EventHandler handler = null;
@@ -166,6 +169,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         }
     }
 
+    @Override
     protected void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
@@ -208,6 +212,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             handler.loopStarted();
     }
 
+    @Override
     public int handlerCount() {
         return nonDaemonHandlerCount() + daemonHandlers.size() + timerHandlers.size();
     }
@@ -222,12 +227,14 @@ public class VanillaEventLoop extends MediumEventLoop {
         }
     }
 
+    @Override
     protected void closeAllHandlers() {
         closeAll(daemonHandlers);
         closeAll(timerHandlers);
         super.closeAllHandlers();
     }
 
+    @Override
     public void dumpRunningHandlers() {
         final int handlerCount = handlerCount();
         if (handlerCount <= 0)
@@ -235,7 +242,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         final List<EventHandler> collect = Stream.of(Collections.singletonList(highHandler), mediumHandlers, daemonHandlers, timerHandlers)
                 .flatMap(List::stream)
                 .filter(e -> e != EventHandlers.NOOP)
-                .filter(e -> e instanceof Closeable)
+                .filter(Closeable.class::isInstance)
                 .collect(Collectors.toList());
         if (collect.isEmpty())
             return;

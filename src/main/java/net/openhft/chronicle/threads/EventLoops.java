@@ -12,7 +12,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 
-public class EventLoops {
+public final class EventLoops {
+
+    // Suppresses default constructor, ensuring non-instantiability.
+    private EventLoops() {
+    }
 
     /**
      * Stop many {@link EventLoop}s concurrently using {@link ForkJoinPool#commonPool()}

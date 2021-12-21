@@ -121,10 +121,12 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     }
 
     static final class DiskAttributes {
+
+        private final FileStore fileStore;
+
         volatile boolean polled;
         long timeNextCheckedMS;
         long totalSpace;
-        private final FileStore fileStore;
 
         DiskAttributes(FileStore fileStore) {
             this.fileStore = fileStore;

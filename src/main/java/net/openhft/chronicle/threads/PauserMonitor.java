@@ -49,11 +49,11 @@ public class PauserMonitor implements EventHandler {
         if (nextLongTime > now) {
             return false;
         }
-        Pauser pauser = this.pauser.get();
-        if (pauser == null)
+        final Pauser pauserSnapshot = this.pauser.get();
+        if (pauserSnapshot == null)
             throw new InvalidEventHandlerException();
-        long timePaused = pauser.timePaused();
-        long countPaused = pauser.countPaused();
+        long timePaused = pauserSnapshot.timePaused();
+        long countPaused = pauserSnapshot.countPaused();
 
         if (nextLongTime > 0) {
             long timeDelta = now - lastTime;

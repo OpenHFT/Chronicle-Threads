@@ -7,7 +7,8 @@ import net.openhft.chronicle.threads.ThreadHolder;
 public class EventLoopThreadHolder implements ThreadHolder {
     private final CoreEventLoop eventLoop;
     private final long monitorIntervalNS;
-    private long intervalToAddNS, printBlockTimeNS;
+    private long intervalToAddNS;
+    private long printBlockTimeNS;
 
     public EventLoopThreadHolder(long monitorIntervalNS, CoreEventLoop eventLoop) {
         this.monitorIntervalNS = intervalToAddNS = printBlockTimeNS = monitorIntervalNS;
