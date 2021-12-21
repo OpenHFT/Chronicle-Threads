@@ -32,5 +32,6 @@ public interface TimingPauser extends Pauser {
      * @param timeUnit unit
      * @throws TimeoutException thrown if timeout passes
      */
+    @Override
     void pause(long timeout, TimeUnit timeUnit) throws TimeoutException;
 }

@@ -218,6 +218,7 @@ public interface Pauser {
         }
 
         static void warnSleepy() {
+            // Do nothing here as run-once code is in the static block above.
         }
     }
 }

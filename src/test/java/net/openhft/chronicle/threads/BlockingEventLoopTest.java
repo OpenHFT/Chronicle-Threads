@@ -10,6 +10,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class BlockingEventLoopTest extends ThreadsTestCommon {
 
     @Test
@@ -38,6 +41,8 @@ public class BlockingEventLoopTest extends ThreadsTestCommon {
             while (!wasStoppedSuccessfully.get()) {
                 pauser.pause(1, TimeUnit.SECONDS);
             }
+            assertTrue(wasStoppedSuccessfully.get());
+            assertFalse(Thread.currentThread().isInterrupted());
         }
     }
 
@@ -45,6 +50,7 @@ public class BlockingEventLoopTest extends ThreadsTestCommon {
         try {
             barrier.await();
         } catch (InterruptedException | BrokenBarrierException e) {
+            Thread.currentThread().interrupt();
             throw new InterruptedRuntimeException("Interrupted waiting at barrier");
         }
     }

@@ -36,7 +36,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
-    private transient final ExecutorService service;
+    private final ExecutorService service;
     private final EventLoop parent;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final Pauser pauser;

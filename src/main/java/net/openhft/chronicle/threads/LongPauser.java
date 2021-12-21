@@ -31,7 +31,8 @@ public class LongPauser implements Pauser, TimingPauser {
     private final long minPauseTimeNS;
     private final long maxPauseTimeNS;
     private final AtomicBoolean pausing = new AtomicBoolean();
-    private final int minBusy, minCount;
+    private final int minBusy;
+    private final int minCount;
     private int count = 0;
     private long pauseTimeNS;
     private long timePaused = 0;
@@ -168,9 +169,9 @@ public class LongPauser implements Pauser, TimingPauser {
 
     @Override
     public void unpause() {
-        Thread thread = this.thread;
-        if (thread != null && pausing.get())
-            LockSupport.unpark(thread);
+        final Thread threadSnapshot = this.thread;
+        if (threadSnapshot != null && pausing.get())
+            LockSupport.unpark(threadSnapshot);
     }
 
     @Override

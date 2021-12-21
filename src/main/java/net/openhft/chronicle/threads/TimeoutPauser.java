@@ -55,7 +55,7 @@ public class TimeoutPauser implements Pauser, TimingPauser {
             return;
         }
 
-        yield();
+        yield0();
         checkYieldTime();
     }
 
@@ -67,7 +67,7 @@ public class TimeoutPauser implements Pauser, TimingPauser {
         ++count;
         if (count < minBusy)
             return;
-        yield();
+        yield0();
 
         if (timeOutStart + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
             throw new TimeoutException();
@@ -83,7 +83,7 @@ public class TimeoutPauser implements Pauser, TimingPauser {
         }
     }
 
-    private void yield() {
+    private void yield0() {
         if (yieldStart == 0)
             yieldStart = System.nanoTime();
         Thread.yield();
@@ -91,6 +91,7 @@ public class TimeoutPauser implements Pauser, TimingPauser {
 
     @Override
     public void unpause() {
+        // Do nothing
     }
 
     @Override

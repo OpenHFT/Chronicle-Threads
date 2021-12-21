@@ -49,7 +49,7 @@ public class YieldingPauser implements Pauser {
             Jvm.safepoint();
             return;
         }
-        yield();
+        yield0();
     }
 
     private void checkYieldTime() {
@@ -61,7 +61,7 @@ public class YieldingPauser implements Pauser {
         }
     }
 
-    private void yield() {
+    private void yield0() {
         if (yieldStart == 0)
             yieldStart = System.nanoTime();
         Thread.yield();
@@ -69,6 +69,7 @@ public class YieldingPauser implements Pauser {
 
     @Override
     public void unpause() {
+        // Do nothing
     }
 
     @Override

@@ -34,6 +34,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.IntStream;
 
@@ -108,6 +109,8 @@ public class EventGroupTest extends ThreadsTestCommon {
         eventGroup.addHandler(new PausingBlockingEventHandler());
         eventGroup.close();
         eventGroup.awaitTermination();
+        assertTrue(eventGroup.isClosed());
+        assertTrue(eventGroup.isStopped());
     }
 
     @Timeout(5_000)
@@ -117,6 +120,8 @@ public class EventGroupTest extends ThreadsTestCommon {
         eventGroup.start();
         eventGroup.close();
         eventGroup.awaitTermination();
+        assertTrue(eventGroup.isClosed());
+        assertTrue(eventGroup.isStopped());
     }
 
     @Timeout(5_000)
@@ -127,6 +132,8 @@ public class EventGroupTest extends ThreadsTestCommon {
         eventGroup.stop();
         eventGroup.close();
         eventGroup.awaitTermination();
+        assertTrue(eventGroup.isClosed());
+        assertTrue(eventGroup.isStopped());
     }
 
     @Timeout(5_000)
@@ -138,6 +145,8 @@ public class EventGroupTest extends ThreadsTestCommon {
         eventGroup.stop();
         eventGroup.close();
         eventGroup.awaitTermination();
+        assertTrue(eventGroup.isClosed());
+        assertTrue(eventGroup.isStopped());
     }
 
     @Timeout(5_000)
@@ -146,6 +155,8 @@ public class EventGroupTest extends ThreadsTestCommon {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.close();
         eventGroup.awaitTermination();
+        assertTrue(eventGroup.isClosed());
+        assertTrue(eventGroup.isStopped());
     }
 
     @Timeout(5_000)
@@ -183,7 +194,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                 handler.assertStarted();
             eventGroup.stop();
             threadDump.assertNoNewThreads();
-            handlers.forEach(testHandler -> assertTrue(testHandler.loopFinishedNS.get() != 0));
+            handlers.forEach(testHandler -> assertNotEquals(0, testHandler.loopFinishedNS.get()));
         }
     }
 
@@ -329,14 +340,15 @@ public class EventGroupTest extends ThreadsTestCommon {
     public void testCloseAddHandler() {
         try (final EventLoop eventGroup = EventGroup.builder().build()) {
             eventGroup.close();
-            for (HandlerPriority hp : HandlerPriority.values())
+            for (HandlerPriority hp : HandlerPriority.values()) {
+                final TestHandler handler = new TestHandler(hp);
                 try {
-                    TestHandler handler = new TestHandler(hp);
                     eventGroup.addHandler(handler);
                     fail("Should have failed " + handler);
                 } catch (IllegalStateException e) {
                     // this is what we want
                 }
+            }
             handlers.clear();
         }
     }
@@ -344,12 +356,15 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Timeout(5_000)
     @Test
     public void testEventGroupNoCoreEventLoop() {
+        final AtomicReference<EventLoop> ref = new AtomicReference<>();
         try (EventLoop eg = EventGroup.builder()
                 .withConcurrentThreadsNum(0)
                 .withPriorities(HandlerPriority.REPLICATION)
                 .build()) {
+            ref.set(eg);
             eg.unpause();
         }
+        assertTrue(ref.get().isClosed());
     }
 
     @Test
@@ -566,8 +581,8 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
 
         void checkCloseOrder() {
-            assertTrue(loopFinishedNS.get() != 0, this.toString());
-            assertTrue(closedNS.get() != 0, this.toString());
+            assertNotEquals(0, loopFinishedNS.get(), this.toString());
+            assertNotEquals(0, closedNS.get(), this.toString());
             assertTrue(loopFinishedNS.get() < closedNS.get(), this.toString());
         }
 
