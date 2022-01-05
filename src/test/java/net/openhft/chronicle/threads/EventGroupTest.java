@@ -418,6 +418,18 @@ public class EventGroupTest extends ThreadsTestCommon {
         assertTrue(resource.isClosed());
     }
 
+    @Test
+    void daemonParameterShouldBeUsedWhenCreatingReplicationEventLoop() throws IllegalAccessException {
+        try (final EventGroup eventGroup = EventGroup.builder()
+                .withDaemon(false)
+                .withPriorities(HandlerPriority.REPLICATION)
+                .build()) {
+            eventGroup.addHandler(new TestHandler(HandlerPriority.REPLICATION));  // replication EventLoop is lazily created
+            final MediumEventLoop replication = (MediumEventLoop) Jvm.getField(EventGroup.class, "replication").get(eventGroup);
+            assertFalse(replication.daemon);
+        }
+    }
+
     static class CloseableResource extends AbstractCloseable {
 
         public CloseableResource() {

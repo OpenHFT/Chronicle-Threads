@@ -225,7 +225,7 @@ public class EventGroup
         if (replication == null) {
             final Pauser newReplicationPauser = replicationPauser != null ? replicationPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
             replication = new VanillaEventLoop(this, name + "replication-event-loop", newReplicationPauser,
-                    REPLICATION_EVENT_PAUSE_TIME, true, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER));
+                    REPLICATION_EVENT_PAUSE_TIME, daemon, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER));
 
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, replication);
             if (isAlive())
