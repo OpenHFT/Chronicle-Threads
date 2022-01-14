@@ -17,10 +17,10 @@ import java.util.stream.Stream;
 
 import static java.util.Collections.singleton;
 
-public class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
+class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
 
     private static final int NUM_EVENT_ADDERS = 3;
-    private static final int TIME_TO_WAIT_BEFORE_STARTING_STOPPING_MS = 2;
+    private static final int TIME_TO_WAIT_BEFORE_STARTING_STOPPING_MS = 5;
     private static int originalMonitorDelay = -1;
 
     @BeforeAll
@@ -66,7 +66,7 @@ public class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         });
     }
 
-    static class EventLoopTestParameters<T extends AbstractLifecycleEventLoop> {
+    static final class EventLoopTestParameters<T extends AbstractLifecycleEventLoop> {
         final Class<T> eventLoopClass;
         final Supplier<T> eventLoopSupplier;
         final Set<HandlerPriority> priorities;
@@ -205,7 +205,7 @@ public class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    static class EventLoopStarter implements Runnable {
+    static final class EventLoopStarter implements Runnable {
         private final EventLoop eventLoop;
         private final CyclicBarrier cyclicBarrier;
         private final Semaphore hasStartedEventLoop;
@@ -236,7 +236,7 @@ public class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    static class EventLoopStopper implements Runnable {
+    static final class EventLoopStopper implements Runnable {
         private final EventLoop eventLoop;
         private final CyclicBarrier cyclicBarrier;
         private final Semaphore hasStoppedEventLoop;
@@ -267,7 +267,7 @@ public class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    static class HandlerAdder implements Runnable {
+    static final class HandlerAdder implements Runnable {
         private static final int MAX_HANDLERS_TO_ADD = 30;
 
         private final EventLoop eventLoop;
@@ -281,7 +281,7 @@ public class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             this.eventLoop = eventLoop;
             this.cyclicBarrier = cyclicBarrier;
             this.handlerSupplier = handlerSupplier;
-            this.addedHandlers = new ArrayList<>();
+            this.addedHandlers = new CopyOnWriteArrayList<>();
             this.stoppedAddingHandlers = new Semaphore(0);
         }
 
@@ -324,14 +324,14 @@ public class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    static class ControllableHandler implements AutoCloseable, EventHandler {
+    static final class ControllableHandler implements AutoCloseable, EventHandler {
 
         final HandlerPriority priority;
         final int endOnIteration;
         int iteration = 0;
-        boolean loopFinished = false;
-        boolean loopStarted = false;
-        boolean closed = false;
+        volatile boolean loopFinished = false;
+        volatile boolean loopStarted = false;
+        volatile boolean closed = false;
         volatile boolean exitOnNextIteration = false;
 
         public ControllableHandler(HandlerPriority priority) {
