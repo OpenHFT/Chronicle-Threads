@@ -42,10 +42,7 @@ public class SingleAndMultiThreadedExample {
 
     private Void addOneHundred() {
         for (int i = 0; i < 100; i++) {
-            long value;
-            do {
-                value = multiThreadedValue.get();
-            } while (!multiThreadedValue.compareAndSet(value, value + 1));
+            multiThreadedValue.incrementAndGet();
         }
         return null;
     }
