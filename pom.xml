@@ -243,7 +243,7 @@
         <connection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git
         </developerConnection>
-        <tag>chronicle-threads-2.22ea1</tag>
+        <tag>release/2.22</tag>
     </scm>
 
 </project>
