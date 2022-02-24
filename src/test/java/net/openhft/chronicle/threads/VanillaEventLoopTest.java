@@ -1,11 +1,11 @@
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.FlakyTestRunner;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.testframework.FlakyTestRunner;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -36,7 +36,7 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
     @Timeout(10_000L)
     @Test
     public void testEnsureRemoveInvokesLoopFinishedJustOnce() throws InterruptedException {
-        FlakyTestRunner.run(this::testEnsureRemoveInvokesLoopFinishedJustOnce0);
+        FlakyTestRunner.builder(this::testEnsureRemoveInvokesLoopFinishedJustOnce0).build().run();
     }
 
     private void testEnsureRemoveInvokesLoopFinishedJustOnce0() throws InterruptedException {
