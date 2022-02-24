@@ -65,8 +65,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     @NotNull
     protected EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
     protected EventHandler highHandler = EventHandlers.NOOP;
-    @Deprecated(/* to be removed in x.23 */)
-    protected volatile long loopStartMS;
 
     protected volatile long loopStartNS;
     @Nullable
@@ -91,7 +89,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         this.pauser = pauser;
         this.daemon = daemon;
         this.binding = binding;
-        loopStartMS = Long.MAX_VALUE;
         loopStartNS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon, null, true));
 
@@ -210,11 +207,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     @Override
-    public long loopStartMS() {
-        return loopStartMS;
-    }
-
-    @Override
     public long loopStartNS() {
         return loopStartNS;
     }
@@ -233,7 +225,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 // ignore, already closed
             } finally {
                 loopFinishedAllHandlers();
-                loopStartMS = FINISHED;
                 loopStartNS = FINISHED;
             }
         } catch (Throwable e) {
@@ -264,7 +255,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         while (isStarted()) {
             throwExceptionIfClosed();
 
-            loopStartMS = System.currentTimeMillis();
             loopStartNS = System.nanoTime();
             boolean busy =
                     highHandler == EventHandlers.NOOP
@@ -292,7 +282,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
                 runDaemonHandlers();
                 // reset the loop timeout.
-                loopStartMS = Long.MAX_VALUE;
                 loopStartNS = Long.MAX_VALUE;
                 pauser.pause();
             }

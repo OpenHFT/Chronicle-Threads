@@ -90,6 +90,11 @@
             <artifactId>slf4j-simple</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>chronicle-test-framework</artifactId>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 
