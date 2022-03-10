@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 public class LongPauser implements Pauser, TimingPauser {
-    private static final String SHOW_PAUSES = System.getProperty("pauses.show");
+    private static final String SHOW_PAUSES = Jvm.getProperty("pauses.show");
     private final long minPauseTimeNS;
     private final long maxPauseTimeNS;
     private final AtomicBoolean pausing = new AtomicBoolean();

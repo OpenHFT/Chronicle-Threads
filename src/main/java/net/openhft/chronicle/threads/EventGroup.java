@@ -45,13 +45,13 @@ public class EventGroup
         extends AbstractLifecycleEventLoop
         implements EventLoop {
 
-    public static final int CONC_THREADS = Integer.getInteger("eventGroup.conc.threads",
-            Integer.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
-    private static final long REPLICATION_MONITOR_INTERVAL_MS = Long.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500);
-    private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
-    static final Integer REPLICATION_EVENT_PAUSE_TIME = Integer.getInteger("replicationEventPauseTime", 20);
+    public static final int CONC_THREADS = Jvm.getInteger("eventGroup.conc.threads",
+            Jvm.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
+    private static final long REPLICATION_MONITOR_INTERVAL_MS = Jvm.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500L);
+    private static final long MONITOR_INTERVAL_MS = Jvm.getLong("MONITOR_INTERVAL_MS", 100L);
+    static final Integer REPLICATION_EVENT_PAUSE_TIME = Jvm.getInteger("replicationEventPauseTime", 20);
     private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
-    private static final long WAIT_TO_START_MS = Integer.getInteger("eventGroup.wait.to.start.ms", 1_000);
+    private static final long WAIT_TO_START_MS = Jvm.getInteger("eventGroup.wait.to.start.ms", 1_000);
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
     private final EventLoop monitor;

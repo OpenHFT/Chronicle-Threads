@@ -34,7 +34,7 @@ import java.util.concurrent.Executors;
 
 public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runnable, EventLoop {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
-    static int MONITOR_INITIAL_DELAY_MS = Integer.getInteger(MONITOR_INITIAL_DELAY, 10_000);
+    static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
     private final ExecutorService service;
     private final EventLoop parent;
