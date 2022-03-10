@@ -17,10 +17,12 @@
  */
 package net.openhft.chronicle.threads.internal;
 
+import net.openhft.chronicle.core.Jvm;
+
 public enum EventLoopUtil {
     ; // none
     private static final int DEFAULT_ACCEPT_HANDLER_MOD_COUNT = 128;
-    public static final int ACCEPT_HANDLER_MOD_COUNT = Integer.getInteger("eventloop.accept.mod", DEFAULT_ACCEPT_HANDLER_MOD_COUNT);
+    public static final int ACCEPT_HANDLER_MOD_COUNT = Jvm.getInteger("eventloop.accept.mod", DEFAULT_ACCEPT_HANDLER_MOD_COUNT);
     public static final boolean IS_ACCEPT_HANDLER_MOD_COUNT = ACCEPT_HANDLER_MOD_COUNT > 0;
 }
 

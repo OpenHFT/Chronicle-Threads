@@ -42,14 +42,14 @@ public enum Threads {
 
     private static final int MAX_DEPTH_TO_FOLLOW_DELEGATIONS = 20;
     static final Field GROUP = Jvm.getField(Thread.class, "group");
-    static final long SHUTDOWN_WAIT_MILLIS = Long.getLong("SHUTDOWN_WAIT_MS", 500);
+    static final long SHUTDOWN_WAIT_MILLIS = Jvm.getLong("SHUTDOWN_WAIT_MS", 500L);
     static final ThreadLocal<List<Object>> listTL = ThreadLocal.withInitial(ArrayList::new);
     static ExecutorFactory executorFactory;
 
     static {
         ExecutorFactory instance = VanillaExecutorFactory.INSTANCE;
         try {
-            String property = System.getProperty("threads.executor.factory");
+            String property = Jvm.getProperty("threads.executor.factory");
             if (property != null)
                 instance = ObjectUtils.newInstance(property);
         } catch (Exception e) {

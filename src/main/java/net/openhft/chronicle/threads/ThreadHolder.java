@@ -1,9 +1,10 @@
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 
 public interface ThreadHolder {
-    int TIMING_ERROR = Integer.getInteger("threads.timing.error", 20_000_000);
+    int TIMING_ERROR = Jvm.getInteger("threads.timing.error", 20_000_000);
 
     boolean isAlive() throws InvalidEventHandlerException;
 

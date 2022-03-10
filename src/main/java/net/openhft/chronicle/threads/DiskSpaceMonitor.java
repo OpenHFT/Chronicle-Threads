@@ -44,7 +44,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
     final ScheduledExecutorService executor;
-    private int thresholdPercentage = Integer.getInteger("chronicle.disk.monitor.threshold.percent", 0);
+    private int thresholdPercentage = Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 0);
 
     DiskSpaceMonitor() {
         if (!Jvm.getBoolean("chronicle.disk.monitor.disable")) {
