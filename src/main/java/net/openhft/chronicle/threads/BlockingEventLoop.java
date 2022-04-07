@@ -39,9 +39,9 @@ import static net.openhft.chronicle.threads.Threads.unpark;
 public class BlockingEventLoop extends AbstractLifecycleEventLoop implements EventLoop {
 
     @NotNull
-    private final EventLoop parent;
+    private transient final EventLoop parent;
     @NotNull
-    private final ExecutorService service;
+    private transient final ExecutorService service;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final NamedThreadFactory threadFactory;
     private final Pauser pauser = Pauser.balanced();

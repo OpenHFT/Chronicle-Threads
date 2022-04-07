@@ -53,9 +53,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     protected static final long FINISHED = Long.MAX_VALUE - 1;
 
     @Nullable
-    protected final EventLoop parent;
+    protected transient final EventLoop parent;
     @NotNull
-    protected final ExecutorService service;
+    protected transient final ExecutorService service;
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     protected final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
     protected final Pauser pauser;
