@@ -59,7 +59,8 @@ public class EventGroup
     private final BlockingEventLoop blocking;
     @NotNull
     private final Pauser pauser;
-    private final Pauser concPauser;
+    @NotNull
+    private final Supplier<Pauser> concPauserSupplier;
     private final String concBinding;
     private final String bindingReplication;
     private final Set<HandlerPriority> priorities;
@@ -69,6 +70,8 @@ public class EventGroup
     private final boolean daemon;
 
     private final Pauser replicationPauser;
+    @NotNull
+    private final Supplier<Pauser> blockingPauserSupplier;
     private VanillaEventLoop replication;
 
     /**
@@ -119,6 +122,10 @@ public class EventGroup
         this(daemon, pauser, null, binding, bindingReplication, name, concThreadsNum, concBinding, concPauser, priorities);
     }
 
+    /**
+     * @deprecated Use {@link #builder()} - to be removed in .25
+     */
+    @Deprecated
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
                       final Pauser replicationPauser,
@@ -129,14 +136,30 @@ public class EventGroup
                       final String concBinding,
                       @NotNull final Pauser concPauser,
                       final Set<HandlerPriority> priorities) {
+        this(daemon, pauser, replicationPauser, binding, bindingReplication, name, concThreadsNum, concBinding, () -> concPauser, priorities, PauserMode.balanced);
+        Jvm.warn().on(EventGroup.class, "You've provided a single Pauser as your concurrent Pauser, this may not be thread safe, we recommend you migrate to the new constructor where a Supplier<Pauser> can be provided");
+    }
+
+    public EventGroup(final boolean daemon,
+                      @NotNull final Pauser pauser,
+                      final Pauser replicationPauser,
+                      final String binding,
+                      final String bindingReplication,
+                      final String name,
+                      final int concThreadsNum,
+                      final String concBinding,
+                      @NotNull final Supplier<Pauser> concPauserSupplier,
+                      final Set<HandlerPriority> priorities,
+                      @NotNull final Supplier<Pauser> blockingPauserSupplier) {
         super(name);
         this.daemon = daemon;
         this.pauser = pauser;
         this.replicationPauser = replicationPauser;
         this.concBinding = concBinding;
-        this.concPauser = concPauser;
+        this.concPauserSupplier = concPauserSupplier;
         this.bindingReplication = bindingReplication;
         this.priorities = EnumSet.copyOf(priorities);
+        this.blockingPauserSupplier = blockingPauserSupplier;
         List<Object> closeable = new ArrayList<>();
         try {
             final Set<HandlerPriority> corePriorities = priorities.stream()
@@ -153,7 +176,7 @@ public class EventGroup
             closeable.add(monitor);
             if (core != null)
                 monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 300));
-            blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop") : null;
+            blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop", blockingPauserSupplier.get()) : null;
             closeable.add(blocking);
             if (priorities.contains(HandlerPriority.CONCURRENT))
                 IntStream.range(0, concThreadsNum).forEach(i -> concThreads.add(null));
@@ -244,7 +267,7 @@ public class EventGroup
     private synchronized VanillaEventLoop getConcThread(int n) {
         VanillaEventLoop loop = concThreads.get(n);
         if (loop == null) {
-            loop = new VanillaEventLoop(this, name + "conc-event-loop-" + n, concPauser,
+            loop = new VanillaEventLoop(this, name + "conc-event-loop-" + n, concPauserSupplier.get(),
                     REPLICATION_EVENT_PAUSE_TIME, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT));
             concThreads.set(n, loop);
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, loop);

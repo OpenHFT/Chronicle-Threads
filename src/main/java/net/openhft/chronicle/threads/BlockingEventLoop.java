@@ -44,14 +44,25 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     private transient final ExecutorService service;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final NamedThreadFactory threadFactory;
-    private final Pauser pauser = Pauser.balanced();
+    private final Pauser pauser;
 
+    /**
+     * @deprecated to be removed in .25
+     */
+    @Deprecated
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name) {
+        this(parent, name, Pauser.balanced());
+    }
+
+    public BlockingEventLoop(@NotNull final EventLoop parent,
+                             @NotNull final String name,
+                             @NotNull final Pauser pauser) {
         super(name);
         this.parent = parent;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
+        this.pauser = pauser;
     }
 
     public BlockingEventLoop(@NotNull final String name) {
@@ -59,6 +70,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         this.parent = this;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
+        this.pauser = Pauser.balanced();
     }
 
     /**

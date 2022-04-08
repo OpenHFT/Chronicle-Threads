@@ -1,9 +1,12 @@
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.HandlerPriority;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import static net.openhft.chronicle.threads.EventGroup.REPLICATION_EVENT_PAUSE_TIME;
 
@@ -17,9 +20,12 @@ public class EventGroupBuilder {
     private String name = "";
     private int concurrentThreadsNum = EventGroup.CONC_THREADS;
     private String concurrentBinding = "none";
-    private Pauser concurrentPauser;
+    @NotNull
+    private Supplier<Pauser> concurrentPauserSupplier = () -> Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
     private Set<HandlerPriority> priorities = EnumSet.allOf(HandlerPriority.class);
     private String defaultBinding = "none";
+    @NotNull
+    private Supplier<Pauser> blockingPauserSupplier = PauserMode.balanced;
 
     public static EventGroupBuilder builder() {
         return new EventGroupBuilder();
@@ -37,16 +43,13 @@ public class EventGroupBuilder {
                 name,
                 concurrentThreadsNum,
                 defaultBinding(concurrentBinding),
-                concurrentPauserOrDefault(),
-                priorities);
+                concurrentPauserSupplier,
+                priorities,
+                blockingPauserSupplier);
     }
 
     private Pauser pauserOrDefault() {
         return pauser != null ? pauser : Pauser.balanced();
-    }
-
-    private Pauser concurrentPauserOrDefault() {
-        return concurrentPauser != null ? concurrentPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
     }
 
     private String defaultBinding(String specifiedBinding) {
@@ -88,6 +91,11 @@ public class EventGroupBuilder {
         return this;
     }
 
+    public EventGroupBuilder withBlockingPauserSupplier(@NotNull Supplier<Pauser> blockingPauserSupplier) {
+        this.blockingPauserSupplier = blockingPauserSupplier;
+        return this;
+    }
+
     public EventGroupBuilder withName(String name) {
         this.name = name;
         return this;
@@ -103,8 +111,18 @@ public class EventGroupBuilder {
         return this;
     }
 
+    /**
+     * @deprecated Use {@link #withConcurrentPauserSupplier(Supplier)} instead - to be removed in .25
+     */
+    @Deprecated
     public EventGroupBuilder withConcurrentPauser(Pauser concurrentPauser) {
-        this.concurrentPauser = concurrentPauser;
+        Jvm.warn().on(EventGroupBuilder.class, "Providing a single Pauser instance for concurrentPauser is not thread safe, consider using EventGroupBuilder#withConcurrentPauserSupplier(Supplier) instead!");
+        this.concurrentPauserSupplier = () -> concurrentPauser;
+        return this;
+    }
+
+    public EventGroupBuilder withConcurrentPauserSupplier(Supplier<Pauser> concurrentPauserSupplier) {
+        this.concurrentPauserSupplier = concurrentPauserSupplier;
         return this;
     }
 
