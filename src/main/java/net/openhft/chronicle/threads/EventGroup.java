@@ -136,8 +136,10 @@ public class EventGroup
                       final String concBinding,
                       @NotNull final Pauser concPauser,
                       final Set<HandlerPriority> priorities) {
-        this(daemon, pauser, replicationPauser, binding, bindingReplication, name, concThreadsNum, concBinding, () -> concPauser, priorities, PauserMode.balanced);
-        Jvm.warn().on(EventGroup.class, "You've provided a single Pauser as your concurrent Pauser, this may not be thread safe, we recommend you migrate to the new constructor where a Supplier<Pauser> can be provided");
+        this(daemon, pauser, replicationPauser, binding, bindingReplication, name, concThreadsNum, concBinding, () -> {
+            Jvm.warn().on(EventGroup.class, "You've provided a single Pauser as your concurrent Pauser, this may not be thread safe, we recommend you migrate to the new constructor where a Supplier<Pauser> can be provided");
+            return concPauser;
+        }, priorities, PauserMode.balanced);
     }
 
     public EventGroup(final boolean daemon,
