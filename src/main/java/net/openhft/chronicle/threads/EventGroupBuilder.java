@@ -116,8 +116,10 @@ public class EventGroupBuilder {
      */
     @Deprecated
     public EventGroupBuilder withConcurrentPauser(Pauser concurrentPauser) {
-        Jvm.warn().on(EventGroupBuilder.class, "Providing a single Pauser instance for concurrentPauser is not thread safe, consider using EventGroupBuilder#withConcurrentPauserSupplier(Supplier) instead!");
-        this.concurrentPauserSupplier = () -> concurrentPauser;
+        this.concurrentPauserSupplier = () -> {
+            Jvm.warn().on(EventGroupBuilder.class, "Providing a single Pauser instance for concurrentPauser is not thread safe, consider using EventGroupBuilder#withConcurrentPauserSupplier(Supplier) instead!");
+            return concurrentPauser;
+        };
         return this;
     }
 
