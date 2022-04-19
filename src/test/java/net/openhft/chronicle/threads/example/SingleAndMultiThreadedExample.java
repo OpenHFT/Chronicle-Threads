@@ -24,7 +24,7 @@ public class SingleAndMultiThreadedExample {
 
 
     /**
-     * The two examples in this code do the same thing, they both print the Fibonacci sequence, see https://en.wikipedia.org/wiki/Fibonacci
+     * The two examples in this code do the same thing, they both increment a shared counter from 0 to 500
      * one is written using java threads and the other uses the Chronicle Event Loop.
      *
      * @param args
@@ -32,7 +32,7 @@ public class SingleAndMultiThreadedExample {
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         SingleAndMultiThreadedExample example = new SingleAndMultiThreadedExample();
 
-        // runs using java Executor - outputs 0 1 1 2 3 5 8 13 21 34
+        // runs using java Executor - outputs 500
         example.multiThreadedExample();
 
         // using the chronicle event loop
