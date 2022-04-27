@@ -31,7 +31,7 @@ public enum PauserMode implements Supplier<Pauser> {
     /**
      * Returns Suppliers providing pausers performing busy waiting (spin-wait at 100% CPU) for short
      * periods and then backs off when idle for longer periods, if there are sufficient available processors.
-     * Otherwise, returns Supplers consistent with {@link #sleepy} depending on the system property "pauser.minProcessors".
+     * Otherwise, returns Suppliers consistent with {@link #sleepy} depending on the system property "pauser.minProcessors".
      * <p>
      * Balanced pausers is trying to balance latency and required CPU resources.
      * <p>
@@ -49,7 +49,7 @@ public enum PauserMode implements Supplier<Pauser> {
     },
     /**
      * Returns Suppliers providing pausers performing busy waiting (spin-wait at 100% CPU)
-     * if there are sufficient available processors. Otherwise, returns Supplers consistent with
+     * if there are sufficient available processors. Otherwise, returns Suppliers consistent with
      * {@link #balanced } or even {@link #sleepy} depending on the system property "pauser.minProcessors".
      * <p>
      * Busy pausers have the lowest latency times but requires the most CPU resources.
@@ -79,7 +79,7 @@ public enum PauserMode implements Supplier<Pauser> {
     /**
      * Returns Suppliers providing pausers that sleeps for one millisecond when backing off.
      * <p>
-     * Milli pausers have long latency times but but requires minimum CPU resources.
+     * Milli pausers have long latency times but require minimum CPU resources.
      * <p>
      * The various Pauser modes and their properties can be seen here:
      * <a href="https://github.com/OpenHFT/Chronicle-Threads#pauser-modes">Pauser Mode features</a>
@@ -94,9 +94,9 @@ public enum PauserMode implements Supplier<Pauser> {
         }
     },
     /**
-     * Returns Suppliers providing pausers hat backs off when idle.
+     * Returns Suppliers providing pausers that backs off when idle.
      * <p>
-     * Sleepy pausers have fair latency and requires limited CPU resources.
+     * Sleepy pausers have fair latency and require limited CPU resources.
      * <p>
      * The various Pauser modes and their properties can be seen here:
      * <a href="https://github.com/OpenHFT/Chronicle-Threads#pauser-modes">Pauser Mode features</a>
@@ -131,7 +131,7 @@ public enum PauserMode implements Supplier<Pauser> {
     },
     /**
      * Returns Suppliers providing pausers that is very briefly busy waiting (spin-wait at 100% CPU) and
-     * then yields execution, if there are sufficient available processors. Otherwise, returns Supplers consistent with
+     * then yields execution, if there are sufficient available processors. Otherwise, returns Suppliers consistent with
      * {@link #balanced } or even {@link #sleepy} depending on the system property "pauser.minProcessors".
      * <p>
      * Yelding pausers have low latency times but may require significant CPU resources.

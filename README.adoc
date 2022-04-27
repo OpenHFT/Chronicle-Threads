@@ -77,7 +77,7 @@ The arguments of `VanillaEventLoop` in the order of appearance are:
 
 - final EventLoop parent: The parent event loop if this event loop is in an event group, otherwise "null".
 - final String name: The name of this thread.
-- final Pauser pauser: The pause strategy.
+- final Pauser pauser: The pausing strategy of this event loop. See link:README.adoc#_pauser[Pauser].
 - final long timerIntervalMS: The pause duration.
 - final boolean daemon: "true" if this is a daemon thread.
 - final String binding: Set affinity description, "any", "none", "1", "last-1".
@@ -151,13 +151,13 @@ As a rule of thumb, an action handler should do a certain amount of work then yi
 
 == Pauser
 
-Chronicle Threads provides a number of implementations of the `net.openhft.chronicle.threads.Pauser` interface.
+`Pausers` specify the strategy to pause the current thread. Chronicle Threads provides a number of implementations of the `net.openhft.chronicle.threads.Pauser` interface.
 
 The recommended way to use `Pauser`:
 
 [source,java]
 ----
-    while (running) {}
+    while (running) {
         // pollForWork returns true if it does something, false if it does nothing
         if (pollForWork())
             pauser.reset();
@@ -174,16 +174,21 @@ http://openhft.github.io/Chronicle-Threads/apidocs/index.html[javadoc].
 For the best performance, the default `busy` Pauser mode minimises jitter. However, it does maximise CPU usage and CPUs will run hotter. If there are too many threads in `busy` mode, a machine may slow down.
 
 .Alternative pauser modes
-[cols="2,6,6,1,1"]
+[cols="1,7,6,6,1,1"]
 |===
-| Mode | Benefits | Downside | monitoring | isolcpus
-| `busy` | Minimises jitter | Uses more CPU, no monitoring support | &#9746; | &#9745;
-| `timedBusy` | Minimises jitter | Uses more CPU, slight overhead for monitoring | &#9745; | &#9745;
-| `yielding` | Low jitter, can be shared | Uses more CPU | &#9745; | &#9746;
-| `balanced` | Good balance of busy waiting and back off | Uses less CPU, but more jitter | &#9745; | &#9746;
-| `milli` | Regular checks every 1 ms | Uses minimal CPU, but 1 ms jitter | &#9745; | &#9746;
-| `sleepy` | Minimal CPU, like balanced but less CPU | More millisecond jitter | &#9745; | &#9746;
+| Mode | Description | Benefits | Downside | Can be monitored | Supports CPU isolation
+| `busy` | Does not pause the event loop; performs busy spinning | Minimises jitter | Uses more CPU, no monitoring support | &#9746; | &#9745;
+| `timedBusy` | Performs similar to busy pauser but for a specified time | Minimises jitter | Uses more CPU, slight overhead for monitoring | &#9745; | &#9745;
+| `yielding` | Very briefly busy spins then yields | Low jitter, can be shared | Uses more CPU | &#9745; | &#9746;
+| `balanced` | Performs busy spinning for short periods and then backs off when idle for longer periods | Good balance of busy waiting and back off | Uses less CPU, but more jitter | &#9745; | &#9746;
+| `milli` | Sleeps for one millisecond when backing off | Regular checks every 1 ms | Uses minimal CPU, but 1 ms jitter | &#9745; | &#9746;
+| `sleepy` | Backs off when idle | Minimal CPU, like balanced but less CPU | More millisecond jitter | &#9745; | &#9746;
 |===
+
+=== `TimingPauser`
+
+`TimingPauser` interface extends the `Pauser` interface and pauses the current event loop similarly, but it keeps track of accumulated pause time and throws a `TimeoutException` if the specified timeout is exceeded.
+`sleepy`, `timedBusy` and `balanced` are of type `TimingPauser`.
 
 ==== For example 
 
