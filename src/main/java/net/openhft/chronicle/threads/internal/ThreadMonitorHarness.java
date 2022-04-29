@@ -20,12 +20,15 @@ public class ThreadMonitorHarness implements ThreadMonitor {
         }
         long startedNS = thread.startedNS();
         long nowNS = System.nanoTime();
+
+        // Record lastActionCall time on every call to prevent false-positive "monitorThreadDelayed" reports
+        long actionCallDelay = nowNS - this.lastActionCall;
+        this.lastActionCall = nowNS;
+
         if (startedNS == 0 || startedNS == Long.MAX_VALUE) {
             thread.resetTimers();
             return false;
         }
-        long actionCallDelay = nowNS - this.lastActionCall;
-        this.lastActionCall = nowNS;
         if (actionCallDelay > thread.timingTolerance()) {
             if (thread.isAlive())
                 thread.monitorThreadDelayed(actionCallDelay);
