@@ -26,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-
 public class LongPauserTest extends ThreadsTestCommon {
 
     @Test

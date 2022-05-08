@@ -318,7 +318,6 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             return addedHandlers.stream().allMatch(ControllableHandler::isRunning);
         }
 
-
         public boolean allHandlersAreStopped() {
             return addedHandlers.stream().allMatch(ControllableHandler::isComplete);
         }

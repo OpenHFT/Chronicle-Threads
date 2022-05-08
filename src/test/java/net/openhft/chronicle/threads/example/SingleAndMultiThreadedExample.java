@@ -12,7 +12,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.concurrent.Executors.newCachedThreadPool;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 /**
  * An example that was used in a DZone article
@@ -21,7 +20,6 @@ public class SingleAndMultiThreadedExample {
 
     private AtomicLong multiThreadedValue = new AtomicLong();
     private long singleThreadedValue;
-
 
     /**
      * The two examples in this code do the same thing, they both increment a shared counter from 0 to 500
@@ -86,7 +84,6 @@ public class SingleAndMultiThreadedExample {
         finished.await();
         System.out.println("eventLoopExample=" + singleThreadedValue);
     }
-
 
 }
 

@@ -40,7 +40,6 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-
 public class EventGroupTest extends ThreadsTestCommon {
     private static final RuntimeException RUNTIME_EXCEPTION = new RuntimeException("some random text");
     private final List<TestHandler> handlers = new ArrayList<>();

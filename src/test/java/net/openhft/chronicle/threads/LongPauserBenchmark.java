@@ -22,7 +22,6 @@ import net.openhft.chronicle.core.Jvm;
 
 import java.util.concurrent.TimeUnit;
 
-
 public final class LongPauserBenchmark {
 
     public static void main(String[] args) {
