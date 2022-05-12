@@ -23,7 +23,7 @@ Busy waiting tasks have `HIGH`, `MEDIUM`, or `DAEMON` (low) priority, or `TIMER`
 
 See `net.openhft.chronicle.core.threads.EventLoop` and `net.openhft.chronicle.threads.EventGroup`.
 
-== Event loops and event handlers
+== Event Loops and Event Handlers
 An event handler is a routine action that should be executed in response to an event. Therefore,
 event handlers should be invoked frequently to check whether a specific event has happened, and
 subsequently the event handler can execute the relevant action in response to the event. In order
@@ -32,8 +32,8 @@ are added to the event loop. Each event loop can serve multiple event handlers. 
 illustrates a diagram of an event loop that serves several event handlers sequentially.
 
 [#img-eventloop]
-.Event loop and event handlers
-image::docs/images/eventloop.jpg[eventloop,400,400]
+.Event Loop and Event Handlers
+image::docs/images/image1.png[1000,600]
 
 You can create and remove event loops and event handlers and add event handlers to event loops
 as described below:
@@ -126,7 +126,7 @@ immediately. It is not expected that event loops can then be restarted.
 el.close();
 ----
 
-== Monitoring the event loop
+== Monitoring the Event Loop
 
 The `MonitorEventLoop` thread monitors application threads to make sure event loop latency remains within acceptable bounds. The thread monitors latency by measuring the time the `action` method of the application event handlers takes to run. Whenever the method runs beyond an acceptable latency limit, `MonitorEventLoop` prints a stack trace.
 
