@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 26.2.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1"
+	 id="Lager_1" inkscape:version="1.1 (c4e8f9e, 2021-05-24)" sodipodi:docname="queue-replication.svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:svg="http://www.w3.org/2000/svg"
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 658.2 405.8"
+	 style="enable-background:new 0 0 658.2 405.8;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill-rule:evenodd;clip-rule:evenodd;fill:#222649;}
+	.st1{fill:#222649;}
+	.st2{fill:#756EB0;}
+	.st3{fill:#FFFFFF;}
+	.st4{font-family:'Poppins-Medium';}
+	.st5{font-size:15px;}
+</style>
+<sodipodi:namedview  bordercolor="#eeeeee" borderopacity="1" id="namedview1411" inkscape:current-layer="Lager_1" inkscape:cx="381.5959" inkscape:cy="249.6908" inkscape:pagecheckerboard="0" inkscape:pageopacity="0" inkscape:pageshadow="0" inkscape:window-height="770" inkscape:window-maximized="0" inkscape:window-width="1440" inkscape:window-x="0" inkscape:window-y="25" inkscape:zoom="1.3456643" pagecolor="#505050" showgrid="false">
+	</sodipodi:namedview>
+<g>
+	<path class="st0" d="M426.8,198l-30.3-24h13.6c-10.8-42.4-48.6-72-91.8-72l27.3,0c43.2,0,81,29.6,91.8,72l13.6,0L426.8,198z"/>
+	<path class="st0" d="M332,103c-46.6,6.9-81.2,47.3-81.2,95l-27.3,0c0-53,42.4-96,94.8-96C323,102,327.5,102.3,332,103L332,103z"/>
+	<path class="st1" d="M332,103c-46.6,6.9-81.2,47.3-81.2,95l-27.3,0c0-53,42.4-96,94.8-96h27.3c43.2,0,81,29.6,91.8,72l13.6,0
+		l-24.2,24l-30.3-24h13.6c-10.8-42.4-48.6-72-91.8-72"/>
+</g>
+<g>
+	<path class="st0" d="M237.6,212.2l30.3,24.7h-13.6C265,280.5,302.8,311,346,311l-27.3,0c-43.2,0-81-30.5-91.8-74.1l-13.6,0
+		L237.6,212.2z"/>
+	<path class="st0" d="M332.3,309.9c46.6-7.1,81.2-48.7,81.2-97.7l27.3,0c0,54.5-42.4,98.7-94.8,98.7
+		C341.4,311,336.9,310.6,332.3,309.9L332.3,309.9z"/>
+	<path class="st1" d="M332.3,309.9c46.6-7.1,81.2-48.7,81.2-97.7l27.3,0c0,54.5-42.4,98.7-94.8,98.7h-27.3
+		c-43.2,0-81-30.5-91.8-74.1l-13.6,0l24.2-24.7l30.3,24.7h-13.6C265,280.5,302.8,311,346,311"/>
+</g>
+<g>
+	<rect id="rect1348" x="274.1" y="58.6" class="st2" width="115.8" height="29.1"/>
+	<text id="text1346" transform="matrix(0.8842 0 0 1 281.7699 78.6838)" class="st3 st4 st5">Event Handler 1</text>
+</g>
+<g>
+	
+		<rect id="rect1348_00000049943122696375144930000012540756198248512191_" x="427.9" y="293.1" class="st2" width="115.1" height="29.1"/>
+	
+		<text id="text1346_00000051360640741479579630000001060185076890740636_" transform="matrix(0.8842 0 0 1 433.1513 312.6233)" class="st3 st4 st5">Event Handler 3</text>
+</g>
+<g>
+	
+		<rect id="rect1348_00000140012762780464187900000008382704270131708304_" x="444.1" y="135.4" class="st2" width="115.1" height="29.1"/>
+	
+		<text id="text1346_00000073705658941885792550000013260605887029830305_" transform="matrix(0.8842 0 0 1 450.1569 155.4707)" class="st3 st4 st5">Event Handler 2</text>
+</g>
+<g>
+	
+		<rect id="rect1348_00000034768675987425193400000010247845286861744771_" x="101.1" y="135.4" class="st2" width="115.1" height="29.1"/>
+	
+		<text id="text1346_00000179642681824433453270000015304106138748900754_" transform="matrix(0.8842 0 0 1 107.234 155.4707)" class="st3 st4 st5">Event Handler 4</text>
+</g>
+<g>
+	
+		<rect id="rect1348_00000101786379498233652030000006210230853034319760_" x="125.3" y="293.1" class="st2" width="115.1" height="29.1"/>
+	
+		<text id="text1346_00000076570430839845568230000013372848858257488557_" transform="matrix(0.8842 0 0 1 130.9035 313.2579)" class="st3 st4 st5">Event Handler 5</text>
+</g>
+</svg>
