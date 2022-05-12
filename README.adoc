@@ -33,7 +33,7 @@ illustrates a diagram of an event loop that serves several event handlers sequen
 
 [#img-eventloop]
 .Event Loop and Event Handlers
-image::docs/images/Figure1.png[700,400]
+image::docs/images/image1.png[1000,600]
 
 You can create and remove event loops and event handlers and add event handlers to event loops
 as described below:
