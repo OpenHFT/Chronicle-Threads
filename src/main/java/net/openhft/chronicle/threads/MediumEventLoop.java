@@ -531,12 +531,22 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     @Override
     public void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck) {
         final Thread threadSnapshot = this.thread;
-        if (threadSnapshot == null) return;
+        if (threadSnapshot == null || !Jvm.isPerfEnabled(getClass()))
+            return;
         final StringBuilder out = new StringBuilder(message);
+        final int messageIndex = out.length();
+        final long startTimeNanos = System.nanoTime();
         Jvm.trimStackTrace(out, threadSnapshot.getStackTrace());
 
-        if (finalCheck.getAsBoolean() && Jvm.isDebugEnabled(getClass()))
-            Jvm.debug().on(getClass(), out.toString());
+        if (!finalCheck.getAsBoolean()) {
+            // Previously, we did not log anything when finalCheck failed, leading to surprises when loop block monitor
+            // detected pauses but a slow getStackTrace() meant the warning was not logged.
+            // Better to log that a blockage was found (and that the user has paid for a slow getStackTrace())
+            final long timeToTakeStackTraceMillis = (System.nanoTime() - startTimeNanos) / 1_000_000;
+            out.setLength(messageIndex);
+            out.append(" An accurate stack trace could not be determined (capturing the stack trace took " + timeToTakeStackTraceMillis + "ms)");
+        }
+        Jvm.perf().on(getClass(), out.toString());
     }
 
     public int nonDaemonHandlerCount() {
