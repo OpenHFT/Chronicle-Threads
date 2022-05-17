@@ -1,6 +1,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.ClosedIllegalStateException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -28,7 +29,7 @@ public interface ExceptionHandlerStrategy {
     class LogAndRemove implements ExceptionHandlerStrategy {
         @Override
         public boolean handle(EventLoop eventLoop, EventHandler handler, Throwable t) {
-            if (!(t instanceof InvalidEventHandlerException)) {
+            if (!(t instanceof InvalidEventHandlerException || t instanceof ClosedIllegalStateException)) {
                 Jvm.warn().on(eventLoop.getClass(), "Removing " + handler.priority() + " handler " + handler + " after Exception", t);
             }
             return true;
@@ -38,7 +39,7 @@ public interface ExceptionHandlerStrategy {
     class LogDontRemove implements ExceptionHandlerStrategy {
         @Override
         public boolean handle(EventLoop eventLoop, EventHandler handler, Throwable t) {
-            if (!(t instanceof InvalidEventHandlerException)) {
+            if (!(t instanceof InvalidEventHandlerException || t instanceof ClosedIllegalStateException)) {
                 Jvm.warn().on(eventLoop.getClass(), "Exception thrown by handler " + handler, t);
                 return false;
             }

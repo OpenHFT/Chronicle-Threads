@@ -18,6 +18,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.ClosedIllegalStateException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -172,7 +173,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                         pauser.pause();
                 }
                 endedGracefully = true;
-            } catch (InvalidEventHandlerException e) {
+            } catch (InvalidEventHandlerException | ClosedIllegalStateException e) {
                 // expected and logged below.
             } catch (Throwable t) {
                 if (!isClosed())
