@@ -216,5 +216,23 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         protected void performClose() throws IllegalStateException {
             Closeable.closeQuietly(eventHandler);
         }
+
+        @Override
+        public String toString() {
+            return "IdempotentLoopStartedEventHandler{" +
+                    "eventHandler=" + eventHandler +
+                    '}';
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "MonitorEventLoop{" +
+                "service=" + service +
+                ", parent=" + parent +
+                ", handlers=" + handlers +
+                ", pauser=" + pauser +
+                ", name='" + name + '\'' +
+                '}';
     }
 }

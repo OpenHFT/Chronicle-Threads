@@ -21,6 +21,7 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
+import net.openhft.chronicle.threads.internal.EventLoopStateRenderer;
 import net.openhft.chronicle.threads.internal.EventLoopThreadHolder;
 import net.openhft.chronicle.threads.internal.ThreadMonitorHarness;
 import org.jetbrains.annotations.NotNull;
@@ -38,6 +39,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.lang.String.format;
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
@@ -361,6 +363,11 @@ public class EventGroup
             try {
                 timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
+                Jvm.error().on(EventGroup.class, format("Timed out waiting for start!%n" +
+                                "%s%n%n" +
+                                "%s%n%n",
+                        EventLoopStateRenderer.INSTANCE.render("Core", core),
+                        EventLoopStateRenderer.INSTANCE.render("Monitor", monitor)));
                 throw Jvm.rethrow(e);
             }
         }
