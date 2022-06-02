@@ -1,0 +1,22 @@
+== System Properties
+Below, a number of relevant System Properties are listed.
+
+.System properties
+[cols=4*, options="header"]
+|===
+| Property Key | Default | Description | Java Variable Name (Type)
+| chronicle.disk.monitor.disable | `false` | Setting this property to "", "yes" or "true" will enable this feature.| _DISABLED_ (boolean)
+| chronicle.disk.monitor.threshold.percent | 0 | Gets diskSpaceFull % and warns that chronicle-queue may crash if there is not enough disk space | _thresholdPercentage_ (int)
+| disableLoopBlockMonitor | `false` | If set, triggers addThreadMonitoring | _ENABLE_LOOP_BLOCK_MONITOR_ (boolean)
+| disk.monitor.deleted.warning | `false` | Setting this property to "", "yes" or "true" will enable this feature, displays 'unable to get disk space' warning message | _WARN_DELETED_ (boolean)
+| eventloop.accept.mod | 128 | This is used for preventing starvation for new event handlers, each modulo, potentially new event handlers are added even though there might be other handlers that are busy | _ACCEPT_HANDLER_MOD_COUNT_ (int)
+| eventGroup.conc.threads | unknown | Returns the number of concurrent threads | _CONC_THREADS_ (int)
+| eventGroup.wait.to.start.ms | 1_000 | Sets waiting time for core to start | _WAIT_TO_START_MS_ (long)
+| ignoreThreadMonitorEventHandler | `false` | Setting this property to "", "yes" or "true" throws new InvalidEventHandlerException and warning message | _IGNORE_THREAD_MONITOR_EVENT_HANDLER_ (boolean)
+| MONITOR_INTERVAL_MS | 100L | This checks that the core threads have stalled | _MONITOR_INTERVAL_MS_ (long)
+| pauser.minProcessors | 6 | Minimum required number of processors | _MIN_PROCESSORS_ (int)
+| replicationEventPauseTime | 20 SECS | Pause between replication events | _REPLICATION_EVENT_PAUSE_TIME_ (int)
+| REPLICATION_MONITOR_INTERVAL_MS | 500L | Sets interval of monitoring bind replication | _REPLICATION_MONITOR_INTERVAL_MS_ (long)
+| SHUTDOWN_WAIT_MS | 500L | Triggered after service's tasks have already been told to stop, and this stops the service | _SHUTDOWN_WAIT_MILLIS_ (long)
+| threads.timing.error | 20_000_000 | Set threads timing error | _TIMING_ERROR_ (int)
+|===
