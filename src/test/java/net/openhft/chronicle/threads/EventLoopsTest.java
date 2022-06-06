@@ -18,7 +18,6 @@ public class EventLoopsTest {
     @Test
     public void stopAllCanHandleNulls() {
         final StringBuilder sb = new StringBuilder();
-        final ExceptionHandler eh = (c, m, t) -> sb.append(m);
         ExceptionHandler exceptionHandler = Jvm.warn();
         try {
             Jvm.setWarnExceptionHandler(exceptionHandler);

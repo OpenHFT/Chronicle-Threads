@@ -70,7 +70,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     @Nullable
     protected volatile Thread thread = null;
     @NotNull
-    protected final ExceptionHandlerStrategy exceptionThrownByHandler = ExceptionHandlerStrategy.strategy();
+    protected final ExceptionHandlerStrategy exceptionThrownByHandler;
 
     /**
      * @param parent  the parent event loop
@@ -79,16 +79,36 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * @param daemon  is a demon thread
      * @param binding set affinity description, "any", "none", "1", "last-1"
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated(/* Remove in .25 */)
     public MediumEventLoop(@Nullable final EventLoop parent,
                            final String name,
                            final Pauser pauser,
                            final boolean daemon,
                            final String binding) {
+        this(parent, name, pauser, daemon, binding, ExceptionHandlerStrategy.strategy());
+    }
+
+    /**
+     * @param parent  the parent event loop
+     * @param name    the name of this event handler
+     * @param pauser  the pause strategy
+     * @param daemon  is a demon thread
+     * @param binding set affinity description, "any", "none", "1", "last-1"
+     * @param exceptionHandlerStrategy strategy for dealing with exceptions from handlers
+     */
+    public MediumEventLoop(@Nullable final EventLoop parent,
+                           final String name,
+                           final Pauser pauser,
+                           final boolean daemon,
+                           final String binding,
+                           final ExceptionHandlerStrategy exceptionHandlerStrategy) {
         super(name);
         this.parent = parent;
         this.pauser = pauser;
         this.daemon = daemon;
         this.binding = binding;
+        this.exceptionThrownByHandler = exceptionHandlerStrategy;
         loopStartNS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon, null, true));
 

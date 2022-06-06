@@ -52,6 +52,8 @@ public class VanillaEventLoop extends MediumEventLoop {
      * @param daemon          is a demon thread
      * @param binding         set affinity description, "any", "none", "1", "last-1"
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated(/* Remove in .25 */)
     public VanillaEventLoop(@Nullable final EventLoop parent,
                             final String name,
                             final Pauser pauser,
@@ -59,7 +61,27 @@ public class VanillaEventLoop extends MediumEventLoop {
                             final boolean daemon,
                             final String binding,
                             final Set<HandlerPriority> priorities) {
-        super(parent, name, pauser, daemon, binding);
+        this(parent, name, pauser, timerIntervalMS, daemon, binding, priorities, ExceptionHandlerStrategy.strategy());
+    }
+
+    /**
+     * @param parent          the parent event loop
+     * @param name            the name of this event handler
+     * @param pauser          the pause strategy
+     * @param timerIntervalMS how long to pause, Long.MAX_VALUE = always check.
+     * @param daemon          is a demon thread
+     * @param binding         set affinity description, "any", "none", "1", "last-1"
+     * @param exceptionHandlerStrategy strategy for dealing with exceptions from handlers
+     */
+    public VanillaEventLoop(@Nullable final EventLoop parent,
+                            final String name,
+                            final Pauser pauser,
+                            final long timerIntervalMS,
+                            final boolean daemon,
+                            final String binding,
+                            final Set<HandlerPriority> priorities,
+                            final ExceptionHandlerStrategy exceptionHandlerStrategy) {
+        super(parent, name, pauser, daemon, binding, exceptionHandlerStrategy);
         this.timerIntervalMS = timerIntervalMS;
         this.priorities = EnumSet.copyOf(priorities);
     }

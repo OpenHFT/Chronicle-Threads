@@ -228,20 +228,15 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Timeout(5_000)
     @Test
     public void checkHandlersClosedImmediatelyOnRuntimeException() throws InterruptedException {
-        System.setProperty(ExceptionHandlerStrategy.IMPL_PROPERTY, ExceptionHandlerStrategy.LogAndRemove.class.getName());
-        try {
-            expectException(exceptionKey -> exceptionKey.throwable == RUNTIME_EXCEPTION, "message");
-            try (final EventLoop eventGroup = EventGroup.builder().build()) {
-                for (HandlerPriority hp : HandlerPriority.values())
-                    eventGroup.addHandler(new EventGroupTest.TestHandler(hp, ExceptionType.RUNTIME));
-                eventGroup.start();
-                for (TestHandler handler : this.handlers)
-                    handler.assertStarted();
-                for (TestHandler handler : this.handlers)
-                    handler.assertClosed();
-            }
-        } finally {
-            System.clearProperty(ExceptionHandlerStrategy.IMPL_PROPERTY);
+        expectException(exceptionKey -> exceptionKey.throwable == RUNTIME_EXCEPTION, "message");
+        try (final EventLoop eventGroup = EventGroup.builder().withStrategy(new ExceptionHandlerStrategy.LogAndRemove()).build()) {
+            for (HandlerPriority hp : HandlerPriority.values())
+                eventGroup.addHandler(new EventGroupTest.TestHandler(hp, ExceptionType.RUNTIME));
+            eventGroup.start();
+            for (TestHandler handler : this.handlers)
+                handler.assertStarted();
+            for (TestHandler handler : this.handlers)
+                handler.assertClosed();
         }
     }
 
@@ -302,24 +297,21 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @Timeout(5_000)
     @Test
+    @SuppressWarnings("deprecation")
     public void checkAllEventHandlerTypesStartInvalidEventHandlerException() throws InterruptedException {
-        checkException(ExceptionType.INVALID_EVENT_HANDLER);
+        checkException(ExceptionType.INVALID_EVENT_HANDLER, ExceptionHandlerStrategy.strategy());
     }
 
     @Timeout(5_000)
     @Test
     public void checkAllEventHandlerTypesStartRuntimeException() throws InterruptedException {
-        try {
-            System.setProperty(ExceptionHandlerStrategy.IMPL_PROPERTY, ExceptionHandlerStrategy.LogAndRemove.class.getName());
-            expectException(exceptionKey -> exceptionKey.throwable == RUNTIME_EXCEPTION, "message");
-            checkException(ExceptionType.RUNTIME);
-        } finally {
-            System.clearProperty(ExceptionHandlerStrategy.IMPL_PROPERTY);
-        }
+        expectException(exceptionKey -> exceptionKey.throwable == RUNTIME_EXCEPTION, "message");
+        checkException(ExceptionType.RUNTIME, new ExceptionHandlerStrategy.LogAndRemove());
     }
 
-    private void checkException(ExceptionType exceptionType) throws InterruptedException {
-        try (final EventLoop eventGroup = EventGroup.builder().build();) {
+
+    private void checkException(ExceptionType exceptionType, ExceptionHandlerStrategy exceptionHandlerStrategy) throws InterruptedException {
+        try (final EventLoop eventGroup = EventGroup.builder().withStrategy(exceptionHandlerStrategy).build()) {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new TestHandler(hp, exceptionType));
             eventGroup.start();

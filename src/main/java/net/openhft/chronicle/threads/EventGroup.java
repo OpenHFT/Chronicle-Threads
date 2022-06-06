@@ -74,6 +74,7 @@ public class EventGroup
     private final Pauser replicationPauser;
     @NotNull
     private final Supplier<Pauser> blockingPauserSupplier;
+    private final ExceptionHandlerStrategy exceptionHandlerStrategy;
     private VanillaEventLoop replication;
 
     /**
@@ -128,6 +129,7 @@ public class EventGroup
      * @deprecated Use {@link #builder()} - to be removed in .25
      */
     @Deprecated
+    @SuppressWarnings("deprecation")
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
                       final Pauser replicationPauser,
@@ -141,7 +143,7 @@ public class EventGroup
         this(daemon, pauser, replicationPauser, binding, bindingReplication, name, concThreadsNum, concBinding, () -> {
             Jvm.warn().on(EventGroup.class, "You've provided a single Pauser as your concurrent Pauser, this may not be thread safe, we recommend you migrate to the new constructor where a Supplier<Pauser> can be provided");
             return concPauser;
-        }, priorities, PauserMode.balanced);
+        }, priorities, PauserMode.balanced, ExceptionHandlerStrategy.strategy());
     }
 
     public EventGroup(final boolean daemon,
@@ -154,7 +156,8 @@ public class EventGroup
                       final String concBinding,
                       @NotNull final Supplier<Pauser> concPauserSupplier,
                       final Set<HandlerPriority> priorities,
-                      @NotNull final Supplier<Pauser> blockingPauserSupplier) {
+                      @NotNull final Supplier<Pauser> blockingPauserSupplier,
+                      @NotNull final ExceptionHandlerStrategy exceptionHandlerStrategy) {
         super(name);
         this.daemon = daemon;
         this.pauser = pauser;
@@ -164,6 +167,7 @@ public class EventGroup
         this.bindingReplication = bindingReplication;
         this.priorities = EnumSet.copyOf(priorities);
         this.blockingPauserSupplier = blockingPauserSupplier;
+        this.exceptionHandlerStrategy = exceptionHandlerStrategy;
         List<Object> closeable = new ArrayList<>();
         try {
             final Set<HandlerPriority> corePriorities = priorities.stream()
@@ -171,12 +175,12 @@ public class EventGroup
                     .collect(Collectors.toSet());
             core = priorities.stream().anyMatch(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
                     ? corePriorities.equals(EnumSet.of(HandlerPriority.MEDIUM))
-                    ? new MediumEventLoop(this, name + "core-event-loop", pauser, daemon, binding)
-                    : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
+                    ? new MediumEventLoop(this, name + "core-event-loop", pauser, daemon, binding, exceptionHandlerStrategy)
+                    : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities, exceptionHandlerStrategy)
                     : null;
             closeable.add(core);
             monitor = new MonitorEventLoop(this, name + "~monitor",
-                    Pauser.millis(Integer.getInteger("monitor.interval", 10)));
+                    Pauser.millis(Jvm.getInteger("monitor.interval", 10)));
             closeable.add(monitor);
             if (core != null)
                 monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 300));
@@ -252,7 +256,7 @@ public class EventGroup
         if (replication == null) {
             final Pauser newReplicationPauser = replicationPauser != null ? replicationPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
             replication = new VanillaEventLoop(this, name + "replication-event-loop", newReplicationPauser,
-                    REPLICATION_EVENT_PAUSE_TIME, daemon, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER));
+                    REPLICATION_EVENT_PAUSE_TIME, daemon, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER), exceptionHandlerStrategy);
 
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, replication);
             if (isAlive())
@@ -272,7 +276,7 @@ public class EventGroup
         VanillaEventLoop loop = concThreads.get(n);
         if (loop == null) {
             loop = new VanillaEventLoop(this, name + "conc-event-loop-" + n, concPauserSupplier.get(),
-                    REPLICATION_EVENT_PAUSE_TIME, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT));
+                    REPLICATION_EVENT_PAUSE_TIME, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT), exceptionHandlerStrategy);
             concThreads.set(n, loop);
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, loop);
             if (isAlive())

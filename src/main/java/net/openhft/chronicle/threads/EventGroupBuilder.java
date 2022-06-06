@@ -26,12 +26,15 @@ public class EventGroupBuilder {
     private String defaultBinding = "none";
     @NotNull
     private Supplier<Pauser> blockingPauserSupplier = PauserMode.balanced;
+    private ExceptionHandlerStrategy strategy;
 
     public static EventGroupBuilder builder() {
         return new EventGroupBuilder();
     }
 
+    @SuppressWarnings("deprecation")
     private EventGroupBuilder() {
+        strategy = ExceptionHandlerStrategy.strategy();
     }
 
     public EventGroup build() {
@@ -45,7 +48,8 @@ public class EventGroupBuilder {
                 defaultBinding(concurrentBinding),
                 concurrentPauserSupplier,
                 priorities,
-                blockingPauserSupplier);
+                blockingPauserSupplier,
+                strategy);
     }
 
     private Pauser pauserOrDefault() {
@@ -108,6 +112,11 @@ public class EventGroupBuilder {
 
     public EventGroupBuilder withConcurrentBinding(String concurrentBinding) {
         this.concurrentBinding = concurrentBinding;
+        return this;
+    }
+
+    public EventGroupBuilder withStrategy(ExceptionHandlerStrategy strategy) {
+        this.strategy = strategy;
         return this;
     }
 
