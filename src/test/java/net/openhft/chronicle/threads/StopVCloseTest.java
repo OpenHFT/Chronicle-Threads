@@ -84,7 +84,7 @@ public class StopVCloseTest extends ThreadsTestCommon {
     public void blockingStopped() throws InterruptedException {
         BlockingEventLoop bel = new BlockingEventLoop("blocking");
         bel.start();
-        BlockingQueue q = new LinkedBlockingQueue();
+        BlockingQueue<String> q = new LinkedBlockingQueue<>();
         AtomicBoolean stopped = new AtomicBoolean();
         AtomicReference<Thread> thread = new AtomicReference<>();
         bel.addHandler(() -> {

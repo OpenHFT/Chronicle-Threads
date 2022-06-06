@@ -228,6 +228,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Timeout(5_000)
     @Test
     public void checkHandlersClosedImmediatelyOnRuntimeException() throws InterruptedException {
+        expectException("el.exception.handler has been deprecated with no replacement");
         System.setProperty(ExceptionHandlerStrategy.IMPL_PROPERTY, ExceptionHandlerStrategy.LogAndRemove.class.getName());
         try {
             expectException(exceptionKey -> exceptionKey.throwable == RUNTIME_EXCEPTION, "message");
@@ -309,6 +310,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Timeout(5_000)
     @Test
     public void checkAllEventHandlerTypesStartRuntimeException() throws InterruptedException {
+        expectException("el.exception.handler has been deprecated with no replacement");
         try {
             System.setProperty(ExceptionHandlerStrategy.IMPL_PROPERTY, ExceptionHandlerStrategy.LogAndRemove.class.getName());
             expectException(exceptionKey -> exceptionKey.throwable == RUNTIME_EXCEPTION, "message");
