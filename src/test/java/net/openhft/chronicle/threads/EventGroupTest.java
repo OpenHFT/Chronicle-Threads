@@ -368,40 +368,40 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @Test
     public void inEventLoop() {
-        EventGroup eg = EventGroup.builder().build();
-        eg.start();
-        assertFalse(EventLoop.inEventLoop());
-        Set<HandlerPriority> priorities = new ConcurrentSkipListSet<>();
-        for (HandlerPriority priority : HandlerPriority.values()) {
-            eg.addHandler(new EventHandler() {
-                @Override
-                public boolean action() throws InvalidEventHandlerException {
-                    try {
-                        assertTrue(EventLoop.inEventLoop(), priority.name());
-                        priorities.add(priority);
-                    } catch (Throwable t) {
-                        t.printStackTrace();
+        try (EventGroup eg = EventGroup.builder().build()) {
+            eg.start();
+            assertFalse(EventLoop.inEventLoop());
+            Set<HandlerPriority> priorities = new ConcurrentSkipListSet<>();
+            for (HandlerPriority priority : HandlerPriority.values()) {
+                eg.addHandler(new EventHandler() {
+                    @Override
+                    public boolean action() throws InvalidEventHandlerException {
+                        try {
+                            assertTrue(EventLoop.inEventLoop(), priority.name());
+                            priorities.add(priority);
+                        } catch (Throwable t) {
+                            t.printStackTrace();
+                        }
+                        throw new InvalidEventHandlerException("done");
                     }
-                    throw new InvalidEventHandlerException("done");
-                }
 
-                @Override
-                public @NotNull HandlerPriority priority() {
-                    return priority;
-                }
-            });
-        }
+                    @Override
+                    public @NotNull HandlerPriority priority() {
+                        return priority;
+                    }
+                });
+            }
 
-        EnumSet<HandlerPriority> allPriorities = EnumSet.allOf(HandlerPriority.class);
-        for (int i = 1; i < 30; i++) {
-            Jvm.pause(i);
-            if (priorities.equals(allPriorities))
-                break;
+            EnumSet<HandlerPriority> allPriorities = EnumSet.allOf(HandlerPriority.class);
+            for (int i = 1; i < 30; i++) {
+                Jvm.pause(i);
+                if (priorities.equals(allPriorities))
+                    break;
+            }
+            allPriorities.removeAll(priorities);
+            if (!allPriorities.isEmpty())
+                fail("Priorities failed " + allPriorities);
         }
-        allPriorities.removeAll(priorities);
-        if (!allPriorities.isEmpty())
-            fail("Priorities failed " + allPriorities);
-        eg.stop();
     }
 
     @Test
