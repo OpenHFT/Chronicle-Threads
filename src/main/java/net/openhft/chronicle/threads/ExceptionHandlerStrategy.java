@@ -6,16 +6,24 @@ import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.core.util.ObjectUtils;
 
+/**
+ * Strategy for how to deal with exceptions in handlers
+ * @deprecated in future, the default behaviour will be the only supported behaviour
+ */
+@Deprecated(/* Remove in .25 */)
 @FunctionalInterface
 public interface ExceptionHandlerStrategy {
     String IMPL_PROPERTY = "el.exception.handler";
 
     /**
-     * TODO: use a builder pattern to construct EventLoops so we don't have this system property
      * @return ExceptionHandlerStrategy to use
      */
     static ExceptionHandlerStrategy strategy() {
-        String className = Jvm.getProperty(IMPL_PROPERTY, LogDontRemove.class.getName());
+        String className = Jvm.getProperty(IMPL_PROPERTY);
+        if (className != null)
+            Jvm.warn().on(ExceptionHandlerStrategy.class, IMPL_PROPERTY + " has been deprecated with no replacement");
+        if (className == null)
+            className = LogDontRemove.class.getName();
         try {
             return ObjectUtils.newInstance(className);
         } catch (Exception e) {
