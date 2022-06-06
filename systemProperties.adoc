@@ -2,12 +2,12 @@
 Below, a number of relevant System Properties are listed.
 
 
-NOTE:
+NOTE: Returns true if and only if the system property named by the argument exists and is equal to the string "true". If there is no property with the specified name, or if the specified name is empty or null, then false is returned
+
 See javadoc for boolean system properties:
 
 `net.openhft.chronicle.core.Jvm#getBoolean(java.lang.String)`
 
-Setting these properties to "", "yes" or "true" will enable the boolean feature.
 
 .System properties
 [cols=4*, options="header"]
