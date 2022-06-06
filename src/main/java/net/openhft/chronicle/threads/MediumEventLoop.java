@@ -449,7 +449,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     /**
      * This copy needs to be atomic
      * <p>
-     * {@see https://github.com/OpenHFT/Chronicle-Threads/issues/106}
+     * <a href="https://github.com/OpenHFT/Chronicle-Threads/issues/106">Chronicle-Threads/issues/106</a>
      */
     protected synchronized void updateMediumHandlersArray() {
         this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
