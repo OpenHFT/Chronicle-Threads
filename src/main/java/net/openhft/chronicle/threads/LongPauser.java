@@ -31,9 +31,10 @@ public class LongPauser implements Pauser, TimingPauser {
     private final long minPauseTimeNS;
     private final long maxPauseTimeNS;
     private final AtomicBoolean pausing = new AtomicBoolean();
-    private final int minBusy;
-    private final int minCount;
-    private int count = 0;
+    private final long minBusyNS;
+    private final long minYieldNS;
+    private long busyNS = Long.MAX_VALUE;
+    private long yieldNS = Long.MAX_VALUE;
     private long pauseTimeNS;
     private long timePaused = 0;
     private long countPaused = 0;
@@ -42,21 +43,22 @@ public class LongPauser implements Pauser, TimingPauser {
     private long yieldStart = 0;
     private long timeOutStart = Long.MAX_VALUE;
     private long pauseUntilNS = 0;
+    private long pauseStartNS = 0;
 
     /**
      * first it will busy wait, then it will yield, then sleep for a small amount of time, then
      * increases to a large amount of time.
      *
-     * @param minBusy  the min number of times it will go around doing nothing, after this is
+     * @param minBusy  the length in timeUnit to go around doing nothing, after this is
      *                 reached it will then start to yield
-     * @param minCount the number of times it will yield, before it starts to sleep
+     * @param minYield the length in timeUnit it will yield, before it starts to sleep
      * @param minTime  the amount of time to sleep ( initially )
      * @param maxTime  the amount of time subsequently to sleep
      * @param timeUnit the unit of the {@code minTime}  and {@code maxTime}
      */
-    public LongPauser(int minBusy, int minCount, long minTime, long maxTime, @NotNull TimeUnit timeUnit) {
-        this.minBusy = minBusy;
-        this.minCount = minCount;
+    public LongPauser(int minBusy, int minYield, long minTime, long maxTime, @NotNull TimeUnit timeUnit) {
+        this.minBusyNS = timeUnit.toNanos(minBusy);
+        this.minYieldNS = timeUnit.toNanos(minYield);
         this.minPauseTimeNS = timeUnit.toNanos(minTime);
         this.maxPauseTimeNS = timeUnit.toNanos(maxTime);
         pauseTimeNS = minPauseTimeNS;
@@ -66,47 +68,25 @@ public class LongPauser implements Pauser, TimingPauser {
     public void reset() {
         checkYieldTime();
         pauseTimeNS = minPauseTimeNS;
-        count = 0;
-        timeOutStart = Long.MAX_VALUE;
+        busyNS = yieldNS = timeOutStart = Long.MAX_VALUE;
+        if (pauseStartNS > 0) {
+            showPauses();
+            pauseStartNS = 0;
+        }
     }
 
     @Override
     public void pause() {
-        ++count;
-        if (count < minBusy) {
-            Jvm.nanoPause();
-            return;
+        try {
+            pause(Long.MAX_VALUE, TimeUnit.SECONDS);
+        } catch (TimeoutException ignored) {
         }
-
-        checkYieldTime();
-        if (count <= minBusy + minCount) {
-            this.yield();
-            return;
-        }
-        if (SHOW_PAUSES != null) {
-            showPauses();
-        }
-
-        doPause(pauseTimeNS);
-        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 6) + 20_000);
     }
 
     @Override
     public void asyncPause() {
-        pauseUntilNS = 0;
-        ++count;
-        if (count < minBusy) {
-            return;
-        }
-
-        checkYieldTime();
-        if (count <= minBusy + minCount) {
-            return;
-        }
-
         pauseUntilNS = System.nanoTime() + pauseTimeNS;
-        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 6) + 20_000);
-
+        increasePauseTimeNS();
     }
 
     @Override
@@ -117,26 +97,45 @@ public class LongPauser implements Pauser, TimingPauser {
     private void showPauses() {
         String name = Thread.currentThread().getName();
         if (name.startsWith(SHOW_PAUSES))
-            Jvm.perf().on(getClass(), " paused for " + pauseTimeNS / 1000 + " us.");
+            Jvm.perf().on(getClass(), " paused for " + (System.nanoTime() - pauseStartNS) / 1e6 + " ms.");
     }
 
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
-        ++count;
-        if (count < minBusy) {
+        final long now = System.nanoTime();
+        if (busyNS == Long.MAX_VALUE) {
+            busyNS = now;
+            return;
+        }
+        if (now < busyNS + minBusyNS) {
             Jvm.nanoPause();
             return;
         }
-        if (count <= minBusy + minCount) {
+        busyNS = 0;
+        if (SHOW_PAUSES != null && pauseStartNS == 0)
+            pauseStartNS = now;
+
+        if (yieldNS == Long.MAX_VALUE) {
+            yieldNS = now;
+            return;
+
+        } else if (now < yieldNS + minYieldNS) {
             this.yield();
             return;
         }
-        if (timeOutStart == Long.MAX_VALUE)
-            timeOutStart = System.nanoTime();
-        else if (timeOutStart + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
-            throw new TimeoutException();
+
+        if (timeout < Long.MAX_VALUE) {
+            if (timeOutStart == Long.MAX_VALUE)
+                timeOutStart = now;
+            else if (timeOutStart + timeUnit.toNanos(timeout) - now < 0)
+                throw new TimeoutException();
+        }
         checkYieldTime();
         doPause(pauseTimeNS);
+        increasePauseTimeNS();
+    }
+
+    private void increasePauseTimeNS() {
         pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 7) + 10_000);
     }
 

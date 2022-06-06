@@ -46,8 +46,13 @@ public interface Pauser {
                 : new YieldingPauser(minBusy);
     }
 
+    /**
+     * A sleepy pauser which yields for a millisecond, then sleeps for 1 to 20 ms
+     *
+     * @return a sleepy pauser
+     */
     static TimingPauser sleepy() {
-        return new LongPauser(0, 100, 100, 20_000, TimeUnit.MICROSECONDS);
+        return new LongPauser(0, 1, 1, Jvm.isDebug() ? 500 : 20, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -66,7 +71,8 @@ public interface Pauser {
      * @return a balanced pauser
      */
     static TimingPauser balancedUpToMillis(int millis) {
-        return SLEEPY ? sleepy() : new LongPauser(20000, 250, 10, (Jvm.isDebug() ? 200_000 : 0) + millis * 1_000L, TimeUnit.MICROSECONDS);
+        return SLEEPY ? sleepy()
+                : new LongPauser(400, 800, 400, Jvm.isDebug() ? 500_000 : millis * 1_000L, TimeUnit.MICROSECONDS);
     }
 
     /**
