@@ -434,7 +434,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     static class CloseableResource extends AbstractCloseable {
 
         public CloseableResource() {
-            disableThreadSafetyCheck(true);
+            singleThreadedCheckDisabled(true);
         }
 
         @Override

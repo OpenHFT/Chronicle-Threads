@@ -185,7 +185,7 @@ public class EventGroup
             if (priorities.contains(HandlerPriority.CONCURRENT))
                 IntStream.range(0, concThreadsNum).forEach(i -> concThreads.add(null));
 
-            disableThreadSafetyCheck(true);
+            singleThreadedCheckDisabled(true);
 
             closeable.clear();
         } finally {

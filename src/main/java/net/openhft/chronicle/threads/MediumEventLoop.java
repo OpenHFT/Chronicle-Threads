@@ -92,7 +92,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         loopStartNS = Long.MAX_VALUE;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon, null, true));
 
-        disableThreadSafetyCheck(true);
+        singleThreadedCheckDisabled(true);
     }
 
     public static void closeAll(@NotNull final List<EventHandler> handlers) {
@@ -102,7 +102,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     private static void clearUsedByThread(@NotNull EventHandler handler) {
         if (handler instanceof AbstractCloseable)
-            ((AbstractCloseable) handler).clearUsedByThread();
+            ((AbstractCloseable) handler).singleThreadedCheckReset();
     }
 
     static String hasBeen(String offendingProperty) {
