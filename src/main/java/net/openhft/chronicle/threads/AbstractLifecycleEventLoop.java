@@ -30,7 +30,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     protected AbstractLifecycleEventLoop(@NotNull String name) {
         this.name = name;
-        disableThreadSafetyCheck(true);
+        singleThreadedCheckDisabled(true);
     }
 
     @Override

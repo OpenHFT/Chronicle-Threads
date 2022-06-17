@@ -71,7 +71,7 @@ public class VanillaEventLoop extends MediumEventLoop {
 
     private static void clearUsedByThread(@NotNull EventHandler handler) {
         if (handler instanceof AbstractCloseable)
-            ((AbstractCloseable) handler).clearUsedByThread();
+            ((AbstractCloseable) handler).singleThreadedCheckReset();
     }
 
     @NotNull
