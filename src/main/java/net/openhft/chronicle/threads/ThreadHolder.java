@@ -4,7 +4,7 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 
 public interface ThreadHolder {
-    int TIMING_ERROR = Jvm.getInteger("threads.timing.error", 20_000_000);
+    int TIMING_ERROR = Jvm.getInteger("threads.timing.error", 80_000_000);
 
     boolean isAlive() throws InvalidEventHandlerException;
 

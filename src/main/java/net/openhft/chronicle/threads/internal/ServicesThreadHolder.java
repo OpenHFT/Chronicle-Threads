@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
+@Deprecated(/* to be removed in x.24 */)
 public class ServicesThreadHolder extends ThreadsThreadHolder {
     private static final boolean IGNORE_THREAD_MONITOR_EVENT_HANDLER = Jvm.getBoolean("ignoreThreadMonitorEventHandler");
 
