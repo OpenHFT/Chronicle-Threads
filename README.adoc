@@ -16,7 +16,19 @@ image::docs/images/Thread Affinity_line.png[width=20%]
 
 toc::[]
 
-== About
+== Introduction - Java Threads
+A Java thread is used to execute instructions in a program (the thread in turn uses a core on the CPU to execute these instructions).
+
+== Introduction - Thread Pools
+A thread pool is a group of threads that can be used to execute tasks. When using a thread pool, usually a thread is taken out of the pool to run a task, then once the task is complete the thread is returned to the pool.
+
+== Introduction - Event Loops
+Event loops usually work from a stream of tasks. Once a task is processed it then works on the next task in an endless loop. When there are no tasks to run, the event loop has to wait for the next task.
+Due to this endless looping, if there are no tasks for an event loop to execute, the nature of polling/checking to see if a task is available can unnecessarily heat up the CPU, and in the worst case, this can cause thermal throttling, causing the application to slow down.
+As such, if an endless loop with no tasks is found, a pauser can be used to determine how long the event loop should wait, before it checks to see if a task is now available.
+Chronicle Threads provides various types of pausers, with varying degrees of backoff strategies (as seen below).
+
+== This Library
 
 This library provides a high performance thread pool that shares blocking, monitoring, and busy waiting threads.
 Busy waiting tasks have `HIGH`, `MEDIUM`, or `DAEMON` (low) priority, or `TIMER` (fixed rate events) status. All tasks run on a single thread without creating garbage.
