@@ -16,7 +16,14 @@ image::docs/images/Thread Affinity_line.png[width=20%]
 
 toc::[]
 
-== About
+== About Chronicle Threads
+
+A thread is a thread of execution in a program (the information a CPU needs to execute a stream of instructions).
+A thread pool is a group of threads that wait for a task, and these can be reused. Within these threads, event loops are running. An event loop is an endless loop that waits for tasks, executes them, and then waits for further tasks.
+Due to the endless looping, if there are no tasks for an event loop to execute, this can heat up the CPU and cause running applications to slow down. As such, if an endless loop with no tasks is found, a pauser can be used to determine how the program should deal with this.
+Chronicle Threads provides various types of pausers, which all have various benefits (as seen below). Something that they have in common is that they allow a thread to temporarily take over a different task while it is waiting for the current task.
+
+== This Library
 
 This library provides a high performance thread pool that shares blocking, monitoring, and busy waiting threads.
 Busy waiting tasks have `HIGH`, `MEDIUM`, or `DAEMON` (low) priority, or `TIMER` (fixed rate events) status. All tasks run on a single thread without creating garbage.
