@@ -197,6 +197,32 @@ The available `Pauser` modes are summarised in below table.
 
 The `busy` mode minimises jitter for best performance. However, it does maximise CPU usage and CPUs will run hotter. If there are too many threads in `busy` mode, a machine may slow down.
 
+=== `Pauser` Mode Parameters
+
+Each `pauser` mode has the following parameters:
+
+* @param minBusy - the min number of times it will go around doing nothing, after this has been reached it will yield
+* @param minCount - the number of times it will yield, before it starts to sleep
+* @param minTime - the amount of time to sleep (initially)
+* @param maxTime - the amount of time subsequently to sleep
+* @param timeUnit - the unit of the minTime and maxTime
+
+To demonstrate how a `pauser` would perform over time, below are the parameters for `sleepy` mode:
+
+----
+static TimingPauser sleepy() {
+return new LongPauser(0, 100, 100, 20_000, TimeUnit.MICROSECONDS);
+}
+----
+
+As such, this `pauser` would:
+
+* spin for 0 times (minBusy)
+* between 0-100 it will then yield (minCount)
+* above 100, it would pause for 100 (minTime)
+* it would subsequently pause for 20_000 (maxTime)
+* the minTime and maxTime are in MICROSECONDS (timeUnit)
+
 === `TimingPauser`
 
 `TimingPauser` interface extends the `Pauser` interface and pauses the current thread similarly, but it keeps track of accumulated pause times and throws a `TimeoutException` if the specified timeout is exceeded.
