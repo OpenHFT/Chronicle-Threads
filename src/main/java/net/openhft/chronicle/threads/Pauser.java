@@ -52,7 +52,7 @@ public interface Pauser {
      * @return a sleepy pauser
      */
     static TimingPauser sleepy() {
-        return new LongPauser(0, 1, 500, Jvm.isDebug() ? 500_000 : 20_000, TimeUnit.MICROSECONDS);
+        return new LongPauser(0, 50, 500, Jvm.isDebug() ? 500_000 : 20_000, TimeUnit.MICROSECONDS);
     }
 
     /**
