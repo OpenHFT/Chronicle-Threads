@@ -136,7 +136,7 @@ public class LongPauser implements Pauser, TimingPauser {
     }
 
     private void increasePauseTimeNS() {
-        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 7) + 10_000);
+        pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 6) + 10_000);
     }
 
     private void checkYieldTime() {
