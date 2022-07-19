@@ -45,6 +45,7 @@ public class YieldingPauser implements Pauser {
     @Override
     public void pause() {
         ++count;
+        ++countPaused;
         if (count < minBusy) {
             Jvm.safepoint();
             return;
