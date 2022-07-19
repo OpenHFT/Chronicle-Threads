@@ -54,4 +54,9 @@ public enum BusyPauser implements Pauser {
     public long countPaused() {
         return 0;
     }
+
+    @Override
+    public boolean isBusy() {
+        return true;
+    }
 }

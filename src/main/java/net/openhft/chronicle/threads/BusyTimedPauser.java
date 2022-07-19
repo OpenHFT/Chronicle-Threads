@@ -28,6 +28,11 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
     private long countPaused = 0;
 
     @Override
+    public boolean isBusy() {
+        return true;
+    }
+
+    @Override
     public void reset() {
         time = Long.MAX_VALUE;
     }

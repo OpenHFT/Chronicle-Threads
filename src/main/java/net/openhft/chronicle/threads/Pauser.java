@@ -210,6 +210,13 @@ public interface Pauser {
      */
     long countPaused();
 
+    /**
+     * @return true if it doesn't really pause
+     */
+    default boolean isBusy() {
+        return false;
+    }
+
     enum SleepyWarning {
         ; // none
 
