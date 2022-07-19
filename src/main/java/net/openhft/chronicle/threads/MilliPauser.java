@@ -18,7 +18,10 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MilliPauser implements Pauser {
@@ -63,16 +66,6 @@ public class MilliPauser implements Pauser {
         doPauseMS(pauseTimeMS);
     }
 
-    void doPauseMS(long delayMS) {
-        long start = System.nanoTime();
-        pausing.set(true);
-        Jvm.pause(delayMS);
-        pausing.set(false);
-        long time = System.nanoTime() - start;
-        timePaused += time;
-        countPaused++;
-    }
-
     @Override
     public void asyncPause() {
         pauseUntilMS = System.currentTimeMillis() + pauseTimeMS;
@@ -81,6 +74,21 @@ public class MilliPauser implements Pauser {
     @Override
     public boolean asyncPausing() {
         return pauseUntilMS > System.currentTimeMillis();
+    }
+
+    @Override
+    public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
+        doPauseMS(timeUnit.toMillis(timeout));
+    }
+
+    void doPauseMS(long delayMS) {
+        long start = System.nanoTime();
+        pausing.set(true);
+        Jvm.pause(delayMS);
+        pausing.set(false);
+        long time = System.nanoTime() - start;
+        timePaused += time;
+        countPaused++;
     }
 
     @Override

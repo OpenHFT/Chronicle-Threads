@@ -19,6 +19,9 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 public enum BusyPauser implements Pauser {
     INSTANCE;
 
@@ -30,6 +33,11 @@ public enum BusyPauser implements Pauser {
     @Override
     public void pause() {
         Jvm.nanoPause();
+    }
+
+    @Override
+    public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
+        throw new UnsupportedOperationException(this + " is not stateful, use a " + BusyTimedPauser.class.getSimpleName());
     }
 
     @Override

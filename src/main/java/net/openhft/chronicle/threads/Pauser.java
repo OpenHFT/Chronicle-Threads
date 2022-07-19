@@ -43,7 +43,7 @@ public interface Pauser {
         SleepyWarning.warnSleepy();
         return SLEEPY ? sleepy()
                 : BALANCED ? balanced()
-                : new YieldingPauser(minBusy);
+                : new TimeoutPauser(minBusy);
     }
 
     /**
@@ -183,7 +183,7 @@ public interface Pauser {
      * use {@link TimingPauser#pause(long, TimeUnit)} instead
      */
     default void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
-        throw new UnsupportedOperationException(this + " is not stateful, use a TimingPauser");
+        throw new UnsupportedOperationException(this + " is not stateful, use a " + TimingPauser.class.getSimpleName());
     }
 
     /**

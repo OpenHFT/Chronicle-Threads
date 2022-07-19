@@ -102,6 +102,7 @@ public class LongPauser implements Pauser, TimingPauser {
 
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
+        countPaused++;
         final long now = System.nanoTime();
         if (busyNS == Long.MAX_VALUE) {
             busyNS = now;

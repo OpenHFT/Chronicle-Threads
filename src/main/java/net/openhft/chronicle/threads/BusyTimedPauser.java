@@ -25,6 +25,7 @@ import java.util.concurrent.TimeoutException;
 public class BusyTimedPauser implements Pauser, TimingPauser {
 
     private long time = Long.MAX_VALUE;
+    private long countPaused = 0;
 
     @Override
     public void reset() {
@@ -33,6 +34,7 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
 
     @Override
     public void pause() {
+        countPaused++;
         // busy wait.
         Jvm.nanoPause();
     }
@@ -58,6 +60,6 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
 
     @Override
     public long countPaused() {
-        return 0;
+        return countPaused;
     }
 }
