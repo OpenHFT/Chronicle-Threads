@@ -26,14 +26,22 @@ import java.util.concurrent.TimeoutException;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class PauserTimeoutTest extends ThreadsTestCommon {
-    TimingPauser[] pausersSupportTimeout = new TimingPauser[]{new BusyTimedPauser(), new TimeoutPauser(0),
-            new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS)};
-    Pauser[] pausersDontSupportTimeout = new Pauser[]{new MilliPauser(1), BusyPauser.INSTANCE, new YieldingPauser(0)};
+    Pauser[] pausersSupportTimeout = {
+            Pauser.balanced(),
+            Pauser.sleepy(),
+            new BusyTimedPauser(),
+            new TimeoutPauser(0),
+            new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS),
+//            new MilliPauser(1)
+    };
+    Pauser[] pausersDontSupportTimeout = {
+            BusyPauser.INSTANCE,
+            new YieldingPauser(0)};
 
     @Test
     public void pausersSupportTimeout() throws TimeoutException {
         int timeoutNS = 100_000_000;
-        for (TimingPauser p : pausersSupportTimeout) {
+        for (Pauser p : pausersSupportTimeout) {
             p.pause(timeoutNS, TimeUnit.NANOSECONDS);
             long start = System.nanoTime();
             while (System.nanoTime() < start + timeoutNS / 2)

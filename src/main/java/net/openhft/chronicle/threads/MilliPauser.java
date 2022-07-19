@@ -17,18 +17,21 @@
  */
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.Jvm;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 
 public class MilliPauser implements Pauser {
     private final AtomicBoolean pausing = new AtomicBoolean();
     private long pauseTimeMS;
     private long timePaused = 0;
     private long countPaused = 0;
+    @Nullable
+    private volatile Thread thread = null;
     private long pauseUntilMS = 0;
 
     /**
@@ -83,8 +86,10 @@ public class MilliPauser implements Pauser {
 
     void doPauseMS(long delayMS) {
         long start = System.nanoTime();
+        thread = Thread.currentThread();
         pausing.set(true);
-        Jvm.pause(delayMS);
+        if (!Thread.currentThread().isInterrupted())
+            LockSupport.parkNanos(delayMS * 1_000_000L);
         pausing.set(false);
         long time = System.nanoTime() - start;
         timePaused += time;
@@ -93,7 +98,9 @@ public class MilliPauser implements Pauser {
 
     @Override
     public void unpause() {
-        // Do nothing
+        final Thread threadSnapshot = this.thread;
+        if (threadSnapshot != null && pausing.get())
+            LockSupport.unpark(threadSnapshot);
     }
 
     @Override
