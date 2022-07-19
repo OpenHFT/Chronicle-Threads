@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PauserTest extends ThreadsTestCommon {
 
@@ -31,6 +32,7 @@ public class PauserTest extends ThreadsTestCommon {
         }
         assertEquals(0, pauser.countPaused());
         pauser.unpause();
+        assertTrue(pauser.isBusy());
     }
 
     @Test
@@ -61,5 +63,7 @@ public class PauserTest extends ThreadsTestCommon {
         pauser.pause(1, TimeUnit.MILLISECONDS);
         assertEquals(2, pauser.countPaused());
         pauser.unpause();
+        assertEquals(pauser.getClass().getSimpleName().contains("Busy"),
+                pauser.isBusy());
     }
 }
