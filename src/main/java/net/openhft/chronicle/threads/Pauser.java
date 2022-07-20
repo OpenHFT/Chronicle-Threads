@@ -25,7 +25,7 @@ import java.util.concurrent.TimeoutException;
 
 public interface Pauser {
 
-    int MIN_PROCESSORS = Jvm.getInteger("pauser.minProcessors", 6);
+    int MIN_PROCESSORS = Jvm.getInteger("pauser.minProcessors", 4);
     boolean BALANCED = getBalanced();
     boolean SLEEPY = getSleepy();
 
