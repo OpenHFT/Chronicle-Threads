@@ -17,6 +17,7 @@
  */
 package net.openhft.chronicle.threads;
 
+import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,16 +27,17 @@ import java.util.concurrent.TimeoutException;
 public interface Pauser {
 
     int MIN_PROCESSORS = Jvm.getInteger("pauser.minProcessors", 4);
-    boolean BALANCED = getBalanced();
-    boolean SLEEPY = getSleepy();
+
+    boolean BALANCED = getBalanced(); // calculated once
+    boolean SLEEPY = getSleepy();  // calculated once
 
     static boolean getBalanced() {
-        int procs = Runtime.getRuntime().availableProcessors();
+        int procs = AffinityLock.cpuLayout().cpus();
         return procs < MIN_PROCESSORS * 2;
     }
 
     static boolean getSleepy() {
-        int procs = Runtime.getRuntime().availableProcessors();
+        int procs = AffinityLock.cpuLayout().cpus();
         return procs < MIN_PROCESSORS;
     }
 
