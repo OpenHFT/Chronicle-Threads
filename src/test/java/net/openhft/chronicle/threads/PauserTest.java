@@ -22,7 +22,7 @@ public class PauserTest extends ThreadsTestCommon {
 
     @Test
     public void busy() throws TimeoutException {
-        Pauser pauser = Pauser.busy();
+        Pauser pauser = BusyPauser.INSTANCE;
         assertEquals(0, pauser.countPaused());
         assertEquals(0, pauser.timePaused());
         pauser.pause();
