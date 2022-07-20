@@ -30,9 +30,9 @@ public class MilliPauser implements Pauser {
     private long pauseTimeMS;
     private long timePaused = 0;
     private long countPaused = 0;
-    @Nullable
-    private volatile Thread thread = null;
     private long pauseUntilMS = 0;
+    @Nullable
+    private transient volatile Thread thread = null;
 
     /**
      * Pauses for a fixed time
