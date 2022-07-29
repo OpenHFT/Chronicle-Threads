@@ -257,4 +257,7 @@ In a simple example which is reading from and writing to a socket, the handler t
 returns `true` if anything was read or written on the assumption it may need to read/write
 something very soon. However, if nothing is read or written, it may still be called soon
 however this is where the `Pauser` mode determines how the event loop will start backing off
-when no work is being done.
+when no work is being done. The graph below illustrates how each `pauser` yields over time:
+
+.Pauser Mode Performance
+image::docs/images/pauserModes.png[700,600]
