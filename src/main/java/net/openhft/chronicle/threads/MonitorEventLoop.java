@@ -76,8 +76,6 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     private void performStop() {
         unpause();
         Threads.shutdownDaemon(service);
-
-        handlers.forEach(Threads::loopFinishedQuietly);
     }
 
     @Override
@@ -118,6 +116,10 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
+        } finally {
+            synchronized (this) {
+                handlers.forEach(Threads::loopFinishedQuietly);
+            }
         }
     }
 

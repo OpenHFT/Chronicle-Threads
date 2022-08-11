@@ -139,32 +139,25 @@ public class VanillaEventLoop extends MediumEventLoop {
 
     @Override
     protected void runTimerHandlers() {
-        for (int i = 0; i < timerHandlers.size(); i++) {
-            EventHandler handler = null;
-            try {
-                handler = timerHandlers.get(i);
-                handler.action();
-            } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, timerHandlers);
-            } catch (Throwable e) {
-                if (exceptionThrownByHandler.handle(this, handler, e))
-                    removeHandler(handler, timerHandlers);
-            }
-        }
+        runAllHandlers(timerHandlers);
     }
 
     @Override
     protected void runDaemonHandlers() {
-        for (int i = 0; i < daemonHandlers.size(); i++) {
+        runAllHandlers(daemonHandlers);
+    }
+
+    private void runAllHandlers(List<EventHandler> handlers) {
+        for (int i = 0; i < handlers.size(); i++) {
             EventHandler handler = null;
             try {
-                handler = daemonHandlers.get(i);
+                handler = handlers.get(i);
                 handler.action();
             } catch (InvalidEventHandlerException e) {
-                removeHandler(handler, daemonHandlers);
+                removeHandler(handler, handlers);
             } catch (Throwable e) {
                 if (exceptionThrownByHandler.handle(this, handler, e))
-                    removeHandler(handler, daemonHandlers);
+                    removeHandler(handler, handlers);
             }
         }
     }

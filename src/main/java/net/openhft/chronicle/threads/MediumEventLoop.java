@@ -161,7 +161,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     @Override
     protected void performStopFromNew() {
         stopEventLoopThread();
-        loopFinishedAllHandlers();
     }
 
     @Override
