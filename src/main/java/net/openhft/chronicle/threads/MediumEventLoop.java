@@ -22,6 +22,7 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
+import net.openhft.chronicle.core.io.ClosedIllegalStateException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -229,8 +230,12 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     throw new NullPointerException();
                 loopStartedAllHandlers();
                 runLoop();
-            } catch (IllegalStateException e) {
-                // ignore, already closed
+            } catch (ClosedIllegalStateException e) {
+                if (!isClosing()) {
+                    // Event loop isn't closed
+                    Jvm.rethrow(e);
+                }
+                // otherwise ignore, already closed
             } finally {
                 loopFinishedAllHandlers();
                 loopStartMS = FINISHED;
@@ -496,7 +501,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     mediumHandlers.add(handler);
                     updateMediumHandlersArray();
                     handler.eventLoop(parent != null ? parent : this);
-                    handler.loopStarted();
                 }
                 break;
             }
