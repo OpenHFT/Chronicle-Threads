@@ -114,7 +114,6 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     @Override
     protected void performStopFromNew() {
         shutdownExecutorService();
-        handlers.forEach(Threads::loopFinishedQuietly);
     }
 
     @Override

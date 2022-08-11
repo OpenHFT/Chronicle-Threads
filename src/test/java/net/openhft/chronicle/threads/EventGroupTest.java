@@ -609,6 +609,9 @@ public class EventGroupTest extends ThreadsTestCommon {
         @Override
         public void loopFinished() {
             assertTrue(loopFinishedNS.compareAndSet(0, System.nanoTime()), "loopFinished called once only " + this);
+            assertTrue(EventLoop.inEventLoop(), "loopFinished should be called on EL thread (called on `"
+                    + Thread.currentThread().getName()
+                    + "`, priority=" + priority + " )");
             Jvm.busyWaitMicros(1);
         }
 
@@ -634,9 +637,14 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
 
         void checkCloseOrder() {
-            assertNotEquals(0, loopFinishedNS.get(), this.toString());
-            assertNotEquals(0, closedNS.get(), this.toString());
-            assertTrue(loopFinishedNS.get() < closedNS.get(), this.toString());
+            // We call loopFinished if and only if we called loopStarted
+            if (loopStartedNS.get() != 0) {
+                assertNotEquals(0, loopFinishedNS.get(), this.toString());
+                assertNotEquals(0, closedNS.get(), this.toString());
+                assertTrue(loopFinishedNS.get() < closedNS.get(), this.toString());
+            } else {
+                assertEquals(0, loopFinishedNS.get());
+            }
         }
 
         @Override
