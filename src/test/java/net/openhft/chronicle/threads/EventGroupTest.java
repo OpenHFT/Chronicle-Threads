@@ -36,8 +36,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.util.Collections.singleton;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class EventGroupTest extends ThreadsTestCommon {
@@ -431,6 +433,30 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
+    @Test
+    void lifecycleEventsAreCalledAtAppropriateTimesByAppropriateThreads() {
+        lifecycleEventsAreCalledAtAppropriateTimesByAppropriateThreads_ForPriorities(Arrays.stream(HandlerPriority.values()).collect(Collectors.toSet()));
+        // You get a MediumEventLoop instead of a VanillaEventLoop when you only have medium priority
+        lifecycleEventsAreCalledAtAppropriateTimesByAppropriateThreads_ForPriorities(singleton(HandlerPriority.MEDIUM));
+    }
+
+    void lifecycleEventsAreCalledAtAppropriateTimesByAppropriateThreads_ForPriorities(Set<HandlerPriority> priorities) {
+        handlers.clear();
+        EventGroup eventGroup = EventGroup.builder().withPriorities(priorities).build();
+        for (HandlerPriority handlerPriority : priorities) {
+            final TestHandler handler = new TestHandler(handlerPriority);
+            handlers.add(handler);
+            eventGroup.addHandler(handler);
+        }
+        handlers.forEach(handler -> assertEquals(handler.loopStartedNS.get(), 0, handler.priority + " was loopStarted before loop started, priorities=" + priorities));
+        eventGroup.start();
+        handlers.forEach(handler -> assertEquals(handler.loopFinishedNS.get(), 0, handler.priority + " was loopFinished before loop finished, priorities=" + priorities));
+        Jvm.pause(1000);
+        handlers.forEach(handler -> assertNotEquals(handler.loopStartedNS.get(), 0, handler.priority + " was not loopStarted when loop started, priorities=" + priorities));
+        eventGroup.close();
+        handlers.forEach(handler -> assertNotEquals(handler.loopFinishedNS.get(), 0, handler.priority + " was not loopFinished when loop finished, priorities=" + priorities));
+    }
+
     static class CloseableResource extends AbstractCloseable {
 
         public CloseableResource() {
@@ -519,6 +545,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         final CountDownLatch started = new CountDownLatch(1);
         final CountDownLatch closed = new CountDownLatch(1);
         final AtomicLong loopFinishedNS = new AtomicLong();
+        final AtomicLong loopStartedNS = new AtomicLong();
         final AtomicLong closedNS = new AtomicLong();
         final AtomicLong firstActionNs = new AtomicLong();
         final HandlerPriority priority;
@@ -549,6 +576,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
         @Override
         public void loopStarted() {
+            assertTrue(loopStartedNS.compareAndSet(0, System.nanoTime()), "loopStarted should only ever be called once");
             started.countDown();
             assertTrue(EventLoop.inEventLoop(), "loopStarted should be called on EL thread (called on `"
                     + Thread.currentThread().getName()

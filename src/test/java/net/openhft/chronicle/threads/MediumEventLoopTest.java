@@ -27,7 +27,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class MediumEventLoopTest {
+public class MediumEventLoopTest extends ThreadsTest {
 
     @Test
     public void testAddingTwoEventHandlersBeforeStartingLoopIsThreadSafe() {
@@ -46,6 +46,27 @@ public class MediumEventLoopTest {
                         });
                 assertEquals(2, eventLoop.mediumHandlersArray.length);
             }
+        }
+    }
+
+    @Test
+    void illegalStateExceptionsAreLoggedWhenThrownInLoopStarted() {
+        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+            class ThrowingHandler implements EventHandler {
+
+                @Override
+                public void loopStarted() {
+                    throw new IllegalStateException("Something went wrong in loopStarted!!!");
+                }
+
+                @Override
+                public boolean action() {
+                    return false;
+                }
+            }
+            eventLoop.addHandler(new ThrowingHandler());
+            eventLoop.start();
+            expectException("Something went wrong in loopStarted!!!");
         }
     }
 
