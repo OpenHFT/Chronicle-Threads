@@ -261,3 +261,27 @@ when no work is being done. The graph below illustrates how each `pauser` backs 
 
 .Pauser Mode Performance
 image::docs/images/pauserModes.png[700,600]
+
+== Benefits of Chronicle Threads and Event Loops
+
+* Provides a Single Threaded Event Loop
+
+Event loops allow you to drive multiple unrelated processes from a single thread, meaning you remove concurrency, which introduces non-determinism and bugs.
+
+* Lock Free and Shared Mutable State
+
+The removal of concurrency means that when interacting with shared resources, you can do away with mutual exclusion constructs like locks because event handlers running on a single thread are inherently mutually exclusive. And lock-free code runs faster. This also makes it very easy to access and modify mutable state between requests. On the flip side, multi-threaded solutions often have to signal/wait or exchange state. This reduces real-world scaling with the number of threads.
+
+* Testing and Evolving Requirements
+
+Much higher confidence can be gained in single-threaded test cases, which can lead to fewer bugs and more stable code. In addition, as your requirements evolve, it is easier to maintain and extend business cases.
+
+* CPU Utilization
+
+CPU utilization is likely to be higher when using a single-threaded event loop. There is no context switching, signalling or waiting for state from another core.
+
+* CPU Isolation and Thread Affinity
+
+Event loops do have a slight overhead, as the event loop has to be managed, but this can be balanced with the advantage of running code on fewer cores. If we adopt an event-loop design, the context switching between threads can be reduced. However, other processes can also be run on the same core. To eliminate the context switching, we can pin our thread with a link:https://github.com/OpenHFT/Java-Thread-Affinity[thread affinity library] and then apply link:https://www.oreilly.com/library/view/linux-kernel-in/0596100795/re46.html[CPU isolation] to ensure nothing else runs on that core.
+
+
