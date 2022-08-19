@@ -184,6 +184,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             case MEDIUM:
                 if (!mediumHandlers.contains(handler)) {
                     clearUsedByThread(handler);
+                    handler.eventLoop(parent != null ? parent : this);
                     mediumHandlers.add(handler);
                     mediumHandlers.sort(Comparator.comparing(EventHandler::priority).reversed());
                     updateMediumHandlersArray();
@@ -193,6 +194,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             case TIMER:
                 if (!timerHandlers.contains(handler)) {
                     clearUsedByThread(handler);
+                    handler.eventLoop(parent != null ? parent : this);
                     timerHandlers.add(handler);
                 }
                 break;
@@ -200,6 +202,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             case DAEMON:
                 if (!daemonHandlers.contains(handler)) {
                     clearUsedByThread(handler);
+                    handler.eventLoop(parent != null ? parent : this);
                     daemonHandlers.add(handler);
                 }
                 break;
@@ -207,7 +210,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
-        handler.eventLoop(parent != null ? parent : this);
+
         if (thread != null)
             handler.loopStarted();
     }

@@ -487,9 +487,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             case MEDIUM: {
                 if (!mediumHandlers.contains(handler)) {
                     clearUsedByThread(handler);
+                    handler.eventLoop(parent != null ? parent : this);
                     mediumHandlers.add(handler);
                     updateMediumHandlersArray();
-                    handler.eventLoop(parent != null ? parent : this);
                 }
                 break;
             }
@@ -505,7 +505,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
-        handler.eventLoop(parent != null ? parent : this);
         if (thread != null)
             handler.loopStarted();
     }
