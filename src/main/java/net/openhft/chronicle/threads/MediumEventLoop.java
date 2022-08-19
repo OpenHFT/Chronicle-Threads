@@ -514,6 +514,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      */
     protected synchronized boolean updateHighHandler(@NotNull EventHandler handler) {
         if (highHandler == EventHandlers.NOOP || highHandler == handler) {
+            handler.eventLoop(parent != null ? parent : this);
             highHandler = handler;
             return true;
         }
