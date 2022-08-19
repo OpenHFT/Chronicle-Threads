@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Marker interface to show we support pause(long timeout, TimeUnit timeUnit)
+ * Marker interface to show we support {@link #pause(long, TimeUnit)}
  */
 public interface TimingPauser extends Pauser {
 
