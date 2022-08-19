@@ -7,7 +7,6 @@ Chronicle Software
 
 image:https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg[caption="",link=https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads]
 image:https://javadoc.io/badge2/net.openhft/chronicle-threads/javadoc.svg[link="https://www.javadoc.io/doc/net.openhft/chronicle-threads/latest/index.html"]
-//image:https://javadoc-badge.appspot.com/net.openhft/chronicle-wire.svg?label=javadoc[JavaDoc, link=https://www.javadoc.io/doc/net.openhft/chronicle-threads]
 image:https://img.shields.io/github/license/OpenHFT/Chronicle-Threads[GitHub]
 image:https://img.shields.io/badge/release%20notes-subscribe-brightgreen[link="https://chronicle.software/release-notes/"]
 image:https://sonarcloud.io/api/project_badges/measure?project=OpenHFT_Chronicle-Threads&metric=alert_status[link="https://sonarcloud.io/dashboard?id=OpenHFT_Chronicle-Threads"]
@@ -16,138 +15,229 @@ image::docs/images/Thread Affinity_line.png[width=20%]
 
 toc::[]
 
-== Introduction - Java Threads
-A Java thread is used to execute instructions in a program (the thread in turn uses a core on the CPU to execute these instructions).
-
-== Introduction - Thread Pools
-A thread pool is a group of threads that can be used to execute tasks. When using a thread pool, usually a thread is taken out of the pool to run a task, then once the task is complete the thread is returned to the pool.
-
-== Introduction - Event Loops
-Event loops usually work from a stream of tasks. Once a task is processed it then works on the next task in an endless loop. When there are no tasks to run, the event loop has to wait for the next task.
-Due to this endless looping, if there are no tasks for an event loop to execute, the nature of polling/checking to see if a task is available can unnecessarily heat up the CPU, and in the worst case, this can cause thermal throttling, causing the application to slow down.
-As such, if an endless loop with no tasks is found, a pauser can be used to determine how long the event loop should wait, before it checks to see if a task is now available.
-Chronicle Threads provides various types of pausers, with varying degrees of backoff strategies (as seen below).
-
 == This Library
 
-This library provides a high performance thread pool that shares blocking, monitoring, and busy waiting threads.
-Busy waiting tasks have `HIGH`, `MEDIUM`, or `DAEMON` (low) priority, or `TIMER` (fixed rate events) status. All tasks run on a single thread without creating garbage.
+This library provides high performance event loop implementations and utility functions to help with threading and concurrency.
 
-See `net.openhft.chronicle.core.threads.EventLoop` and `net.openhft.chronicle.threads.EventGroup`.
+Concurrency is _hard_, and event loops provide an abstraction to make dealing with concurrency easier.
+Context switching between threads is expensive and best practice in a low latency system is to keep your latency-sensitive operations executing on a small number of "fast" threads
+and the event loop abstraction fits well with this approach.
 
-== Event Loops and Event Handlers
-An event handler is a routine action that should be executed in response to an event. Therefore,
-event handlers should be invoked frequently to check whether a specific event has happened, and
-subsequently the event handler can execute the relevant action in response to the event. In order
-to trigger frequent invocation of event handlers, an event loop is instantiated and event handlers
-are added to the event loop. Each event loop can serve multiple event handlers. Figure 1
+For best latency these fast threads will be busy-spinning i.e. consuming a whole core, and the core running the fast thread is isolated from the OS and other applications.
+
+This library contains a number of event loop implementations and additional features, all implemented with a view to minimising latency and avoiding garbage in the fast path.
+
+* <<Event Handlers and Event Loops>>
+* <<Pausers>>
+* <<Handler priority>>
+* <<Performance Monitoring>>
+
+== Event Handlers and Event Loops
+
+An event loop can have multiple event handlers installed on it and the event loop will repeatedly execute these event handlers.
+Each event handler is guaranteed to be called on only one thread. Event handlers are expected to perform a chunk of work
+quickly and return without blocking, although the <<Event Loops,EventGroup>> does provide a mechanism to support blocking
+event handlers - see
+link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft/chronicle/core/threads/HandlerPriority.java[`HandlerPriority`].
+
+See
+link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft/chronicle/core/threads/EventLoop.java[`EventLoop`]
+and
+link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft/chronicle/core/threads/EventHandler.java[`EventHandler`].
+
+Figure 1
 illustrates a diagram of an event loop that serves several event handlers sequentially.
 
 [#img-eventloop]
 .Event Loop and Event Handlers
 image::docs/images/EventLoop.png[1000,600]
 
-You can create and remove event loops and event handlers and add event handlers to event loops
-as described below:
+=== Event Handlers
 
-* *Creating event handler:* An event handler can be created by implementing the `EventHandler` interface and
-overriding its `action()` method so that it executes some actions in response to the event that
-this event handler is responding to. The `action()` method returns a boolean value. If the `action()`
-method returns true, the event loop is biased to serve the same handler again soon. How soon
-depends on a variety of factors, and the other work the event loop has to do across the other
-event handlers. Returning "true" when there is no actual work to do may waste cycles servicing a handler which has nothing to do, at the
-expense of stealing cycles away from other handlers. Conversely, returning "false" when there is work to do, will
-effectively increase latency as the event loop will take the "false" as a hint that several other handlers can be
-serviced ahead of this one.
+In this section we explore common event handler use cases
+
+==== Implement event handler
+An event handler can be created by implementing the `EventHandler` interface and overriding its `action()` method so that it executes the required work.
+The `action()` method returns a boolean value signifying whether some work was done by the `action()` - an
+example is an event handler that tries to poll from a Chronicle Queue - the return value of the `action()` should
+indicate if the read succeeded and a message was processed.
+
+NOTE: The event loop considers this return value by using a heuristic: if the `action()` did some work, it is likely to do some more
+work next time, and so we should call it again as soon as we can. If it did not do some work, it is less likely
+to do work next time, so it may appropriate to yield or pause before calling again - see <<Pausers>>.
+
+As a rule of thumb, an action handler should do a limited amount of work then return. If it knows for sure that there is remaining work to be done at the point of return then it should return `true`.
 
 [source,java]
 ----
-//Create an event handler class that is ran for 30 times then throws
-//InvalidEventHandlerException in order to remove the handler from event loop
-public final class TestMediumEventHandler implements EventHandler {
-
-        private int actionCnt;
-
-        @Override
-        public boolean action() throws InvalidEventHandlerException {
-            if (actionCnt >= 30)
-                throw InvalidEventHandlerException.reusable();
-            actionCnt++;
-            return true;
-        }
+public final class ExampleEventHandler implements EventHandler {
+    @Override
+    public boolean action() throws InvalidEventHandlerException {
+        // do work
+        return didWork;
+    }
 }
-
-//Instantiate event handler eh0
-final TestMediumEventHandler eh0 = new TestMediumEventHandler();
 ----
-* *Creating event loop:*  You can create an event loop by calling the constructor of the class
-`VanillaEventLoop`. Then by calling the `addHandler()` method of this event loop you can add event handlers to
-the event loop.
+
+==== Adding to event loop
+call the `addHandler` method of the event loop. See also <<Start event loop>>
 
 [source,java]
 ----
-//Create event loop el
-final VanillaEventLoop el = new VanillaEventLoop(null,
-                                                 "test-event-loop",
-                                                 PauserMode.busy.get(),
-                                                 20,
-                                                 false,
-                                                 "none",
-                                                 EnumSet.of(HandlerPriority.MEDIUM));
-----
-The arguments of `VanillaEventLoop` in the order of appearance are:
-
-- final EventLoop parent: The parent event loop if this event loop is in an event group, otherwise "null".
-- final String name: The name of this thread.
-- final Pauser pauser: The pausing strategy of this event loop. See link:#_pauser[Pauser].
-- final long timerIntervalMS: The pause duration.
-- final boolean daemon: "true" if this is a daemon thread.
-- final String binding: Set affinity description, "any", "none", "1", "last-1".
-- final Set<HandlerPriority> priorities): The set of priorities that this event loop accepts for event handlers that
-                                          are added to this event loop. See available priorities in link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft/chronicle/core/threads/HandlerPriority.java[`HandlerPriority.java`].
-
-Methods `start()` and `stop()`, starts and stops event loops respectively. Event handlers are
-not executed before starting the event loop even if they have already been added to an event loop.
-[source,java]
-----
-//Start event loop el.
-el.start();
-----
-
-* *Adding an event handler to an event loop:* By calling `addHandler()` method of an event loop you can add an event
-handler to an event loop.
-
-[source,java]
-----
-//Add event handler eh0 to event loop el
 el.addHandler(eh0);
 ----
 
-* *Removing an event handler from an eventLoop:* When an event handler is not required anymore and should be removed
+==== Removing an event handler from an eventLoop
+When an event handler wants to remove itself
 from the event loop, its `action()` method should throw `InvalidEventHandlerException`. The
 `InvalidEventHandlerException.reusable()` method returns a reusable, pre-created, `InvalidEventHandlerException` that is
-unmodifiable and contains no stack trace.
-
-* *Closing event loop:* Calling the method `close()` shuts down an event loop. The method `close()` first
-calls the method `stop()`. The method `stop()` notifies event loop to stop executing handlers however, this might not happen
-immediately. It is not expected that event loops can then be restarted.
+unmodifiable and contains no stack trace. The below event handler uninstalls itself after being called 30 times.
 
 [source,java]
 ----
-//Remove event loop el
-el.close();
+public final class UninstallingEventHandler implements EventHandler {
+    private int actionCount = 0;
+
+    @Override
+    public boolean action() throws InvalidEventHandlerException {
+        if (++actionCount > 30)
+            throw InvalidEventHandlerException.reusable();
+        // do work
+        return didWork;
+    }
+}
 ----
 
-== Monitoring the Event Loop
+=== Event Loops
 
-The `MonitorEventLoop` thread monitors application threads to make sure event loop latency remains within acceptable bounds. The thread monitors latency by measuring the time the `action` method of the application event handlers takes to run. Whenever the method runs beyond an acceptable latency limit, `MonitorEventLoop` prints a stack trace.
+Chronicle Threads contains a number of event loop implementations. These are aggregated together in the
+link:blob/ea/src/main/java/net/openhft/chronicle/threads/EventGroup.java[`EventGroup`], and the general recommendation
+is to make use of this, although the other implementations of `EventLoop` can of course by used, or the user can implement their own.
+The `EventGroup` also automatically enables <<Performance Monitoring>>.
 
-Set the monitor event interval with system property `MONITOR_INTERVAL_MS` from the `EventGroup` class:
+==== Creating event loop
+event group is created by calling the using the
+link:blob/ea/src/main/java/net/openhft/chronicle/threads/EventGroupBuilder.java[`EventGroupBuilder`]. Basic example shown below:
 
 [source,java]
 ----
-private static final long MONITOR_INTERVAL_MS = Long.getLong("MONITOR_INTERVAL_MS", 100);
+EventLoop eg = EventGroupBuilder.builder()
+                .withPauser(Pauser.busy())
+                .withName("my-eg/")
+                .build()
 ----
+
+==== Start event loop
+
+the `EventLoop.start()` method starts the event loop. Event handlers can be added before
+and after starting the event loop but will not be executed until `start()` has been called.
+
+[source,java]
+----
+el.start();
+----
+
+==== Stop event loop
+
+Calling the `stop()` method will stop the event loop executing handlers and blocks until all handlers have finished executing.
+Calling `close()` on an event loop first calls stop and will then call close on all event handlers.
+Once an event loop has been stopped it is not expected that it can be restarted.
+
+For more details on lifecycle please see javadoc of
+link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft/chronicle/core/threads/EventLoop.java[`EventLoop`]
+and
+link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft/chronicle/core/threads/EventHandler.java[`EventHandler`].
+
+=== Handler priority
+
+Event handlers have a
+link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft/chronicle/core/threads/HandlerPriority.java[`HandlerPriority`]
+(the default is MEDIUM) and when an `EventHandler` is installed on an `EventGroup`, the `HandlerPriority`
+determines which of its child event loops the `EventHandler` is installed on.
+The second use of `HandlerPriority` is to enable each (child) event loop to determine how often each
+`EventHandler` is called e.g. `HandlerPriority.HIGH` handlers are executed more than `HandlerPriority.MEDIUM` handlers.
+
+== Pausers
+
+Chronicle Threads provides a number of implementations of the
+link:blob/ea/src/main/java/net/openhft/chronicle/threads/Pauser.java[`Pauser`]
+and it is straightforward for the user to implement their own if need be.
+The `Pauser` allows the developer to choose an appropriate trade-off between latency vs CPU consumption for when
+an `EventLoop` is running events which exhibit "bursty" behaviour.
+
+The recommended way to use `Pauser` - and this is how Chronicle Thread's event loop implementations use it:
+
+[source,java]
+----
+    while (running) {
+        // pollForWork returns true if work was done
+        if (pollForWork())
+            pauser.reset();
+        else
+            pauser.pause();
+    }
+----
+
+The `Pauser` implementation can choose to yield, pause (with back off if required).
+
+=== Back off pausers
+
+In the context of the heuristic in <<Implement event handler>> above - if an
+`EventHandler` does no work, then it may well not need to do any work for a while, as events often occur in bursts in the real world.
+In this case it makes sense for the `Pauser` to keep track of how many times
+it has been called, and progressively implement longer pauses every time its `pause()` is called.
+This behaviour allows a back off pauser to strike a reasonable balance between handling bursts of events quickly,
+but backing off and reducing CPU consumption in case of gap in incoming events.
+
+A good example of a back off `Pauser` is the `LongPauser` which will busy-loop for `minBusy` events (allowing the event loop to respond
+quickly if a new event arrives immediately), then will yield for `minCount` times before it sleeping for `minTime` increasing up to `maxTime`.
+
+=== TimingPauser
+
+`TimingPauser` interface extends the `Pauser` interface and behaves the same, but if the
+
+[source,java]
+----
+void pause(long timeout, TimeUnit timeUnit) throws TimeoutException;
+----
+
+method is called, the `TimingPauser` will keep track of accumulated pause times and throw a `TimeoutException` if the specified timeout is exceeded.
+`LongPauser`, `TimedBusy` and `TimingPauser` are of type `TimingPauser`.
+
+=== PauserMode
+
+`PauserMode` contains factory methods for `Pauser` implementations. Because `Pauser` is not an enum, and implementations
+are not Marshallable, `PauserMode` can be used in yaml config files.
+
+There are `PauserMode` for all `Pauser` factory methods.
+
+.Available PauserModes
+[cols="1,7,6,6,1,1"]
+|===
+| *Mode* | *Description* | *Benefits* | *Downside* | *Can be monitored* | *Requires CPU isolation*
+| `busy` | Busy-loops | Minimises jitter | Uses max CPU, no monitoring support |  | &#9989;
+| `timedBusy` | Same as `busy` but also implements `TimingPauser` | Minimises jitter | Uses max CPU, no monitoring support | | &#9989;
+| `yielding` | Very briefly busy-loops then yields | Low jitter, stateless and thus can be shared | Uses high CPU | &#9989; |
+| `balanced` | Back off pauser - implemented with `LongPauser` | Good balance of busy waiting and back off | Uses less CPU, but more jitter | &#9989; |
+| `milli` | Sleeps for one millisecond, no back off | Low CPU use | Up to 1 ms jitter | &#9989; |
+| `sleepy` | Less aggressive version of `balanced` | Minimal CPU | High jitter | &#9989; |
+|===
+
+The `busy` pauser minimises jitter for best performance. However, it means that an entire core is consumed and care should be taken
+to ensure that there are enough cores for each busy thread. If not, the machine will perform worse.
+
+The graph below illustrates how each different type of `PauserMode` backs off over time:
+
+.Pauser Mode Performance
+image::docs/images/pauserModes.png[700,600]
+
+== Performance Monitoring
+
+Event Loop Monitoring is a very useful feature. This is implemented by a handler which is installed on the `MonitorEventLoop`
+by the `EventGroup`. The `ThreadMonitorHarness` handler monitors fast event loop threads to make sure event handler latency remains within acceptable bounds. The `ThreadMonitorHarness` monitors latency by measuring the time the `action` method of the application event handlers takes to run. Whenever the method runs beyond an acceptable latency limit, `ThreadMonitorHarness` prints a stack trace for the event loop thread.
+This output can be processed with tools to help identify hotspots in your program.
+
+Set the monitor event interval with system property `MONITOR_INTERVAL_MS`.
 
 Disable the monitor by setting the system property:
 
@@ -156,108 +246,9 @@ Disable the monitor by setting the system property:
 disableLoopBlockMonitor=true
 ----
 
-Use any stack trace information to improve the design for efficiency.
+You can use any stack trace information to improve the design for efficiency.
 
 === Recommendations:
 
-- Impose an interval of 100ms for every event loop.
+- Impose an interval of Xms for every event loop, and gradually decrease as blockages are found and fixed.
 - Consider adding `Jvm.safepoint` calls to help identify hotspots in the code.
-
-=== Event Loop Action Handlers
-
-Each event loop services multiple event handlers. The aggressiveness with which any one handler is serviced is influenced by the handler's priority as well as other activity on the event loop as a whole. If an event handler returns true from action() it biases the event loop to service the same handler again "soon". How soon depends on a variety of factors and the other work the event loop has to do across the other handlers.
-
-Returning true when there is no actual work to do may waste cycles servicing a handler which has nothing to do, at the expense of stealing cycles away from other handlers. Conversely, returning false when there is work to do will effectively increase latency as the event loop will take the "false" as a hint that several other handlers can be serviced ahead of this one.
-
-As a rule of thumb, an action handler should do a certain amount of work then yield/return. If it knows for sure that there is remaining work to be done at the point of yielding then return true. Otherwise return false and the event loop will revisit based on the handler's priority and other work load. As with a lot of scheduling approaches there's no single answer and some experimentation under typical loads would always be recommended. But the above rule of thumb is a good starting point.
-
-== Pauser
-
-`Pausers` specify the strategy to pause the current thread. Chronicle Threads provides a number of implementations of the `net.openhft.chronicle.threads.Pauser` interface.
-
-The recommended way to use `Pauser`:
-
-[source,java]
-----
-    while (running) {
-        // pollForWork returns true if it does something, false if it does nothing
-        if (pollForWork())
-            pauser.reset();
-        else
-            pauser.pause();
-    }
-----
-
-The various implementations of `Pauser` allow for varied pausing strategies - see the
-http://openhft.github.io/Chronicle-Threads/apidocs/index.html[javadoc].
-
-=== `Pauser` Modes
-
-The available `Pauser` modes are summarised in below table.
-
-.Alternative `pauser` modes
-[cols="1,7,6,6,1,1"]
-|===
-| Mode | Description | Benefits | Downside | Can be monitored | Supports CPU isolation
-| `busy` | Does not pause the event loop; performs busy-looping | Minimises jitter | Uses more CPU, no monitoring support | &#9746; | &#9745;
-| `timedBusy` | Performs similar to busy `pauser` but for a specified time | Minimises jitter | Uses more CPU, slight overhead for monitoring | &#9745; | &#9745;
-| `yielding` | Very briefly busy-loops then yields | Low jitter, can be shared | Uses more CPU | &#9745; | &#9746;
-| `balanced` | Performs busy-looping for short periods and then backs off when idle for longer periods | Good balance of busy waiting and back off | Uses less CPU, but more jitter | &#9745; | &#9746;
-| `milli` | Sleeps for one millisecond when backing off | Regular checks every 1 ms | Uses minimal CPU, but 1 ms jitter | &#9745; | &#9746;
-| `sleepy` | Backs off when idle | Minimal CPU, like balanced but less CPU | More millisecond jitter | &#9745; | &#9746;
-|===
-
-The `busy` mode minimises jitter for best performance. However, it does maximise CPU usage and CPUs will run hotter. If there are too many threads in `busy` mode, a machine may slow down.
-
-=== `Pauser` Mode Parameters
-
-Each `pauser` mode has the following parameters:
-
-* @param minBusy - the min number of times it will go around doing nothing, after this has been reached it will yield
-* @param minCount - the number of times it will yield, before it starts to sleep
-* @param minTime - the amount of time to sleep (initially)
-* @param maxTime - the amount of time subsequently to sleep
-* @param timeUnit - the unit of the minTime and maxTime
-
-To demonstrate how a `pauser` would perform over time, below are the parameters for `sleepy` mode:
-
-----
-static TimingPauser sleepy() {
-return new LongPauser(0, 100, 100, 20_000, TimeUnit.MICROSECONDS);
-}
-----
-
-As such, this `pauser` would:
-
-* spin for 0 times (minBusy)
-* between 0-100 it will then yield (minCount)
-* above 100, it would pause for 100 (minTime)
-* it would subsequently pause for 20_000 (maxTime)
-* the minTime and maxTime are in MICROSECONDS (timeUnit)
-
-=== `TimingPauser`
-
-`TimingPauser` interface extends the `Pauser` interface and pauses the current thread similarly, but it keeps track of accumulated pause times and throws a `TimeoutException` if the specified timeout is exceeded.
-`sleepy`, `timedBusy` and `balanced` are of type `TimingPauser`.
-
-=== `LongPauser`
-
-`LongPauser` implements `Pauser` and `TimingPauser` and has the signature indicated below.
-
-[source,java]
-----
-public LongPauser(int minBusy, int minCount, long minTime, long maxTime, @NotNull TimeUnit timeUnit)
-----
-
-`LongPauser` first busy-loops and if it is idle for at least `minBusy` times, then it yields for `minCount` times before it sleeps, then it initially sleeps for `minTime` and if still idle it sleeps for longer periods of `maxTime`.
-
-=== Example
-
-In a simple example which is reading from and writing to a socket, the handler typically
-returns `true` if anything was read or written on the assumption it may need to read/write
-something very soon. However, if nothing is read or written, it may still be called soon
-however this is where the `Pauser` mode determines how the event loop will start backing off
-when no work is being done. The graph below illustrates how each `pauser` backs off over time:
-
-.Pauser Mode Performance
-image::docs/images/pauserModes.png[700,600]

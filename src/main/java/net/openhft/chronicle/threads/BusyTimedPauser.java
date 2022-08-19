@@ -22,6 +22,9 @@ import net.openhft.chronicle.core.Jvm;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+/**
+ * Similar to {@link BusyPauser} but also supporting {@link TimingPauser}
+ */
 public class BusyTimedPauser implements Pauser, TimingPauser {
 
     private long time = Long.MAX_VALUE;

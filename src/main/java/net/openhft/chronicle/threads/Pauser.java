@@ -24,6 +24,9 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+/**
+ * See also {@link PauserMode} for a mechanism to capture these as serialisable configuration
+ */
 public interface Pauser {
 
     int MIN_PROCESSORS = Jvm.getInteger("pauser.minProcessors", 4);
@@ -67,7 +70,7 @@ public interface Pauser {
     }
 
     /**
-     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
+     * A balanced pauser which tries to be busy for short bursts but backs off when idle with a limit of max back off.
      *
      * @param millis maximum millis (unless in debug mode)
      * @return a balanced pauser
@@ -191,8 +194,7 @@ public interface Pauser {
     /**
      * Try to cancel the pausing if it is pausing.
      * <p>
-     * No guarantee is made as to if unpause will actually
-     * have an effect.
+     * No guarantee is made that this call will actually have an effect.
      */
     void unpause();
 

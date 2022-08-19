@@ -43,6 +43,13 @@ import static java.lang.String.format;
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
+/**
+ * Composes child event loops to support all {@link HandlerPriority} priorities. This class will delegate
+ * any {@link EventHandler} that is installed on it (via {@link #addHandler(EventHandler)}) to a child
+ * event loop appropriately. See also other implementations of {@link EventLoop} in this library.
+ * <p>
+ * Supports event loop monitoring - controlled by system property {@code MONITOR_INTERVAL_MS} and documented in README.adoc
+ */
 public class EventGroup
         extends AbstractLifecycleEventLoop
         implements EventLoop {
