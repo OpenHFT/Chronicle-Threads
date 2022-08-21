@@ -203,8 +203,8 @@ public enum Threads {
             objects.clear();
 
             if (mainLock != null) {
-                mainLock.lock();
                 try {
+                    mainLock.lock();
                     // from ThreadPoolExecutor source docs: workers field is protected by mainLock
                     objects.addAll(workers);
                 } finally {
