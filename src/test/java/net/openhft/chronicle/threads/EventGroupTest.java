@@ -61,7 +61,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         handlers.forEach(TestHandler::checkCloseOrder);
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void testSimpleEventGroupTest() throws InterruptedException {
 
@@ -83,7 +83,7 @@ public class EventGroupTest extends ThreadsTestCommon {
             });
 
             final long start = System.currentTimeMillis();
-            while (value.get() != 10) {
+            while (!Thread.currentThread().isInterrupted() && value.get() != 10) {
                 Jvm.pause(10);
             }
 
@@ -102,7 +102,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void testClosePausedBlockingEventLoop() {
         final EventLoop eventGroup = EventGroup.builder().build();
@@ -114,7 +114,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         assertTrue(eventGroup.isStopped());
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void testCloseAwaitTermination() {
         final EventLoop eventGroup = EventGroup.builder().build();
@@ -125,7 +125,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         assertTrue(eventGroup.isStopped());
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void testCloseStopAwaitTermination() {
         final EventLoop eventGroup = EventGroup.builder().build();
@@ -137,7 +137,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         assertTrue(eventGroup.isStopped());
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void testCloseStopIdempotent() {
         final EventLoop eventGroup = EventGroup.builder().build();
@@ -150,7 +150,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         assertTrue(eventGroup.isStopped());
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void testCloseAwaitTerminationWithoutStarting() {
         final EventLoop eventGroup = EventGroup.builder().build();
@@ -160,7 +160,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         assertTrue(eventGroup.isStopped());
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkNoThreadsCreatedIfEventGroupNotStarted() {
         final ThreadDump threadDump = new ThreadDump();
@@ -171,7 +171,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkAllEventHandlerTypesStartAndStop() throws InterruptedException {
         try (final EventLoop eventGroup = EventGroup.builder().build()) {
@@ -183,7 +183,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkNoThreadsAfterStopCalled() throws InterruptedException {
         final ThreadDump threadDump = new ThreadDump();
@@ -199,7 +199,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkHandlersNotClosedAfterStop() throws InterruptedException {
         try (final EventLoop eventGroup = EventGroup.builder().build()) {
@@ -213,7 +213,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkHandlersClosedImmediatelyOnInvalidHandlerException() throws InterruptedException {
         try (final EventLoop eventGroup = EventGroup.builder().build()) {
@@ -227,7 +227,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkHandlersClosedImmediatelyOnRuntimeException() throws InterruptedException {
         expectException("el.exception.handler has been deprecated with no replacement");
@@ -248,7 +248,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkAllEventHandlerTypesStartAndStopAddAgain() throws InterruptedException {
         expectException("Only one high handler supported was TestHandler");
@@ -270,13 +270,13 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkExecutedInOrderOfPriorityInline() throws InterruptedException {
         checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.HIGH, HandlerPriority.MEDIUM);
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkExecutedInOrderOfPriorityLoop() throws InterruptedException {
         checkExecutedOrderOfPriority(HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM, HandlerPriority.MEDIUM);
@@ -296,20 +296,20 @@ public class EventGroupTest extends ThreadsTestCommon {
                 Jvm.pause(1);
                 l0 = this.handlers.get(0).firstActionNs.get();
                 l1 = this.handlers.get(1).firstActionNs.get();
-            } while (l0 == 0 || l1 == 0);
+            } while (!Thread.currentThread().isInterrupted() && (l0 == 0 || l1 == 0));
             assertTrue(l0 < l1);
         }
         Jvm.pause(100);
         assertTrue(this.handlers.get(0).actionCalled.get() > this.handlers.get(1).actionCalled.get());
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkAllEventHandlerTypesStartInvalidEventHandlerException() throws InterruptedException {
         checkException(ExceptionType.INVALID_EVENT_HANDLER);
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void checkAllEventHandlerTypesStartRuntimeException() throws InterruptedException {
         expectException("el.exception.handler has been deprecated with no replacement");
@@ -338,7 +338,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     // TODO: checkAllEventHandlerTypesContinueRuntimeException()
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void testCloseAddHandler() {
         try (final EventLoop eventGroup = EventGroup.builder().build()) {
@@ -356,7 +356,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
+    @Timeout(5)
     @Test
     public void testEventGroupNoCoreEventLoop() {
         final AtomicReference<EventLoop> ref = new AtomicReference<>();
@@ -565,6 +565,9 @@ public class EventGroupTest extends ThreadsTestCommon {
         @Override
         public boolean action() throws InvalidEventHandlerException {
             // // System.out.println("action " + priority + " " + super.toString());
+            assertEquals(0, installed.getCount(), "eventLoop must be called before the first " +
+                    "action call (priority=" + priority + " )");
+
             actionCalled.incrementAndGet();
             exceptionType.throwIt();
             if (priority == HandlerPriority.BLOCKING)

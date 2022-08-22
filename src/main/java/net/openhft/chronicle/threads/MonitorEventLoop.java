@@ -93,9 +93,9 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
+        handler.eventLoop(parent);
         if (!handlers.contains(handler))
             handlers.add(new IdempotentLoopStartedEventHandler(handler));
-        handler.eventLoop(parent);
     }
 
     @Override
