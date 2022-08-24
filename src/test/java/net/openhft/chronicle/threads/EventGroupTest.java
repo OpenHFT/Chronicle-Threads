@@ -262,7 +262,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Test
     public void checkAllEventHandlerTypesStartAndStopAddAgain() throws InterruptedException {
         expectException("Only one high handler supported was TestHandler");
-        try (final EventLoop eventGroup = EventGroup.builder().build()) {
+        try (final EventLoop eventGroup = EventGroup.builder().withName("test-eg").build()) {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             for (TestHandler handler : this.handlers) {
@@ -277,6 +277,24 @@ public class EventGroupTest extends ThreadsTestCommon {
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             for (TestHandler handler : this.handlers)
                 handler.assertStarted();
+            List<EventLoop> eventLoops = new ArrayList<>();
+            EventLoops.copyEventLoopsTo(eventLoops);
+            final String names =
+                    eventLoops.stream()
+                            .collect(Collectors.groupingBy(EventLoop::name, TreeMap::new,
+                                    Collectors.reducing(null, (EventLoop l) -> EventLoops.pauserFor(l).getClass(), (a, b) -> b)))
+                            .entrySet().stream()
+                            .map(Object::toString)
+                            .collect(Collectors.joining("\n"));
+            assertEquals("" +
+                            "test-eg=class net.openhft.chronicle.threads.LongPauser\n" +
+                            "test-eg/blocking-event-loop=class net.openhft.chronicle.threads.LongPauser\n" +
+                            "test-eg/conc-event-loop-0=class net.openhft.chronicle.threads.LongPauser\n" +
+                            "test-eg/conc-event-loop-1=class net.openhft.chronicle.threads.LongPauser\n" +
+                            "test-eg/core-event-loop=class net.openhft.chronicle.threads.LongPauser\n" +
+                            "test-eg/event~loop~monitor=class net.openhft.chronicle.threads.MilliPauser\n" +
+                            "test-eg/replication-event-loop=class net.openhft.chronicle.threads.LongPauser",
+                    names);
         }
     }
 
@@ -466,6 +484,28 @@ public class EventGroupTest extends ThreadsTestCommon {
         handlers.forEach(handler -> assertNotEquals(handler.loopFinishedNS.get(), 0, handler.priority + " was not loopFinished when loop finished, priorities=" + priorities));
     }
 
+    enum ExceptionType {
+        NONE {
+            @Override
+            void throwIt() {
+            }
+        },
+        INVALID_EVENT_HANDLER {
+            @Override
+            void throwIt() throws InvalidEventHandlerException {
+                throw new InvalidEventHandlerException();
+            }
+        },
+        RUNTIME {
+            @Override
+            void throwIt() {
+                throw RUNTIME_EXCEPTION;
+            }
+        };
+
+        abstract void throwIt() throws InvalidEventHandlerException;
+    }
+
     static class CloseableResource extends AbstractCloseable {
 
         public CloseableResource() {
@@ -511,28 +551,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         protected void performClose() {
             closeableResource.close();
         }
-    }
-
-    enum ExceptionType {
-        NONE {
-            @Override
-            void throwIt() {
-            }
-        },
-        INVALID_EVENT_HANDLER {
-            @Override
-            void throwIt() throws InvalidEventHandlerException {
-                throw new InvalidEventHandlerException();
-            }
-        },
-        RUNTIME {
-            @Override
-            void throwIt() {
-                throw RUNTIME_EXCEPTION;
-            }
-        };
-
-        abstract void throwIt() throws InvalidEventHandlerException;
     }
 
     private static class PausingBlockingEventHandler implements EventHandler {

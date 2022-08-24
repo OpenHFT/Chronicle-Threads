@@ -24,12 +24,15 @@ import net.openhft.chronicle.core.io.AbstractReferenceCounted;
 import net.openhft.chronicle.core.onoes.ExceptionKey;
 import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
 import net.openhft.chronicle.core.threads.CleaningThread;
+import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.ThreadDump;
 import net.openhft.chronicle.core.time.SystemTimeProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -41,6 +44,10 @@ public class ThreadsTestCommon {
     private Map<Predicate<ExceptionKey>, String> expectedExceptions = new LinkedHashMap<>();
     private ThreadDump threadDump;
     private Map<ExceptionKey, Integer> exceptions;
+
+    static boolean contains(String text, String message) {
+        return text != null && text.contains(message);
+    }
 
     @BeforeEach
     public void enableReferenceTracing() {
@@ -67,10 +74,6 @@ public class ThreadsTestCommon {
 
     public void ignoreException(String message) {
         ignoreException(k -> contains(k.message, message) || (k.throwable != null && k.throwable.getMessage().contains(message)), message);
-    }
-
-    static boolean contains(String text, String message) {
-        return text != null && text.contains(message);
     }
 
     public void expectException(String message) {
@@ -129,10 +132,24 @@ public class ThreadsTestCommon {
         System.gc();
         AbstractCloseable.waitForCloseablesToClose(1000);
         assertReferencesReleased();
+        checkEventLoops();
         checkThreadDump();
         checkExceptions();
 
         tearDown();
+    }
+
+    private void checkEventLoops() {
+        List<EventLoop> eventLoops = new ArrayList<>();
+        EventLoops.copyEventLoopsTo(eventLoops);
+
+        for (EventLoop eventLoop : eventLoops) {
+            if (!eventLoop.isStopped()) {
+                final String message = eventLoop.toString();
+                eventLoop.close();
+                fail(message + " Not stopped");
+            }
+        }
     }
 
     protected void preAfter() throws InterruptedException {

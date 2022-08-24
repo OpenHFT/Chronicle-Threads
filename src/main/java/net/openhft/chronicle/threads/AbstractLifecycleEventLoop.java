@@ -43,13 +43,14 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      * tests don't block forever. This time should be kept as "effectively forever".
      */
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
-    private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
     protected final String name;
+    private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
 
     protected AbstractLifecycleEventLoop(@NotNull String name) {
         this.name = name.replaceAll("/$", "");
 
         singleThreadedCheckDisabled(true);
+        EventLoops.addEventLoop(this);
     }
 
     protected String nameWithSlash() {
@@ -120,7 +121,11 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     @Override
     protected void performClose() {
-        stop();
+        try {
+            stop();
+        } finally {
+            EventLoops.removeEventLoop(this);
+        }
     }
 
     protected boolean isStarted() {

@@ -24,4 +24,5 @@ NOTE: All boolean properties below are read using link:https://javadoc.io/static
 | REPLICATION_MONITOR_INTERVAL_MS | 500L | Sets interval of monitoring bind replication | _REPLICATION_MONITOR_INTERVAL_MS_ (long)
 | SHUTDOWN_WAIT_MS | 500L | Triggered after service's tasks have already been told to stop, and this stops the service | _SHUTDOWN_WAIT_MILLIS_ (long)
 | threads.timing.error | 20_000_000 | Set threads timing error | _TIMING_ERROR_ (int)
+| trace.eventLoops | false | Enable recording a set of all EventLoops | _TRACE_EVENT_LOOPS_ (boolean)
 |===

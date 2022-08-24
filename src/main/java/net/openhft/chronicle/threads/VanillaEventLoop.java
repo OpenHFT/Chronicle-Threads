@@ -86,7 +86,7 @@ public class VanillaEventLoop extends MediumEventLoop {
                 ", timerHandlers=" + timerHandlers +
                 ", daemonHandlers=" + daemonHandlers +
                 ", newHandler=" + newHandler +
-                ", pauser=" + pauser +
+                ", pauser=" + pauser() +
                 '}';
     }
 
@@ -108,7 +108,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             if (isStopped()) {
                 return;
             }
-            pauser.unpause();
+            unpause();
 
             checkInterruptedAddingNewHandler();
         } while (!newHandler.compareAndSet(null, handler));
