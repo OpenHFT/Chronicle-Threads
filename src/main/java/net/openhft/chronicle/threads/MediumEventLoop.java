@@ -59,6 +59,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     protected transient final ExecutorService service;
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     protected final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
+    @Deprecated(/* to remove in x.24 */)
     protected final Pauser pauser;
     protected final boolean daemon;
     private final String binding;
@@ -85,7 +86,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                            final Pauser pauser,
                            final boolean daemon,
                            final String binding) {
-        super(name);
+        super(name, pauser);
         this.parent = parent;
         this.pauser = pauser;
         this.daemon = daemon;
@@ -137,7 +138,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 ", highHandler=" + highHandler +
                 ", mediumHandlers=" + mediumHandlers +
                 ", newHandler=" + newHandler +
-                ", pauser=" + pauser +
+                ", pauser=" + pauser() +
                 '}';
     }
 
@@ -153,9 +154,10 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         }
     }
 
+    @Deprecated(/* to remove in x.24 */)
     @Override
     public void unpause() {
-        pauser.unpause();
+        super.unpause();
     }
 
     @Override
@@ -196,7 +198,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             if (isStopped()) {
                 return;
             }
-            pauser.unpause();
+            unpause();
 
             checkInterruptedAddingNewHandler();
         } while (!newHandler.compareAndSet(null, handler));
@@ -271,7 +273,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 runTimerHandlers();
             }
             if (busy) {
-                pauser.reset();
+                pauser().reset();
                 /*
                  * This is used for preventing starvation for new event handlers.
                  * Each modulo, potentially new event handlers are added even though
@@ -288,7 +290,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 runDaemonHandlers();
                 // reset the loop timeout.
                 loopStartNS = Long.MAX_VALUE;
-                pauser.pause();
+                pauser().pause();
             }
         }
     }
