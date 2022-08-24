@@ -25,6 +25,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.ref.WeakReference;
 
+@Deprecated(/* to be removed in x.24 */)
 public class PauserMonitor implements EventHandler {
 
     public static final boolean PERF_ENABLED = Jvm.isDebugEnabled(PauserMonitor.class);
