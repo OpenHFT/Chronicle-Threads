@@ -50,8 +50,8 @@ public class TimeoutPauser implements Pauser, TimingPauser {
     @Override
     public void pause() {
         ++count;
-        ++countPaused;
         if (count < minBusy) {
+            ++countPaused;
             Jvm.nanoPause();
             return;
         }

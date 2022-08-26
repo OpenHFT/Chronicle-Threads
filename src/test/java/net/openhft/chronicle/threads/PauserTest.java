@@ -73,12 +73,12 @@ public class PauserTest extends ThreadsTestCommon {
         doTest(Pauser.yielding());
     }
 
-    private void doTest(Pauser pauser) throws TimeoutException {
+    private void doTest(Pauser pauser) {
         assertEquals(0, pauser.countPaused());
         assertEquals(0, pauser.timePaused());
         pauser.pause();
         assertEquals(1, pauser.countPaused());
-        pauser.pause(1, TimeUnit.MILLISECONDS);
+        pauser.pause();
         assertEquals(2, pauser.countPaused());
         pauser.unpause();
         assertEquals(pauser.getClass().getSimpleName().contains("Busy"),
