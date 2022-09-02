@@ -111,13 +111,13 @@ public final class UninstallingEventHandler implements EventHandler {
 === Event Loops
 
 Chronicle Threads contains a number of event loop implementations. These are aggregated together in the
-link:blob/ea/src/main/java/net/openhft/chronicle/threads/EventGroup.java[`EventGroup`], and the general recommendation
+link:src/main/java/net/openhft/chronicle/threads/EventGroup.java[`EventGroup`], and the general recommendation
 is to make use of this, although the other implementations of `EventLoop` can of course by used, or the user can implement their own.
 The `EventGroup` also automatically enables <<Performance Monitoring>>.
 
 ==== Creating event loop
 event group is created by calling the using the
-link:blob/ea/src/main/java/net/openhft/chronicle/threads/EventGroupBuilder.java[`EventGroupBuilder`]. Basic example shown below:
+link:src/main/java/net/openhft/chronicle/threads/EventGroupBuilder.java[`EventGroupBuilder`]. Basic example shown below:
 
 [source,java]
 ----
@@ -160,7 +160,8 @@ The second use of `HandlerPriority` is to enable each (child) event loop to dete
 == Pausers
 
 Chronicle Threads provides a number of implementations of the
-link:blob/ea/src/main/java/net/openhft/chronicle/threads/Pauser.java[`Pauser`]
+link:src/main/java/net/openhft/chronicle/threads/Pauser.java[`Pauser`]
+
 and it is straightforward for the user to implement their own if need be.
 The `Pauser` allows the developer to choose an appropriate trade-off between latency vs CPU consumption for when
 an `EventLoop` is running events which exhibit "bursty" behaviour.
