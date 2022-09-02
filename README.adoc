@@ -205,6 +205,17 @@ void pause(long timeout, TimeUnit timeUnit) throws TimeoutException;
 method is called, the `TimingPauser` will keep track of accumulated pause times and throw a `TimeoutException` if the specified timeout is exceeded.
 `LongPauser`, `TimedBusy` and `TimingPauser` are of type `TimingPauser`.
 
+=== LongPauser
+
+`LongPauser` implements `Pauser` and `TimingPauser` and has the following signature:
+
+[source, java]
+----
+public LongPauser(int minBusy, int minCount, long minTime, long maxTime, @NotNull TimeUnit timeUnit)
+----
+`LongPauser` first busy-loops and if it is loops at least `minBusy` times, then it yields for `minCount` times before it sleeps,
+then it initially sleeps for `minTime` and if there is still nothing to do, it sleeps for longer periods of `maxTime`.
+
 === PauserMode
 
 `PauserMode` contains factory methods for `Pauser` implementations. Because `Pauser` is not an enum, and implementations
@@ -231,6 +242,31 @@ The graph below illustrates how each different type of `PauserMode` backs off ov
 
 .Pauser Mode Performance
 image::docs/images/pauserModes.png[700,600]
+
+=== Setting Up Different Pauser Modes
+
+Noteworthy in setting up different modes are the parameters used. The `PauserModes` from above use the following:
+
+* `minBusy` - the min number of times it will go around doing nothing, after this has been reached it will yield
+* `minCount` - the number of times it will yield, before it starts to sleep
+* `minTime` - the amount of time to sleep (initially)
+* `maxTime` - the amount of time subsequently to sleep
+* `timeUnit` - the unit of the minTime and maxTime
+
+As an example, this is an illustration of the use of the parameters that will enable sleepy mode on a pauser:
+[source, java]
+----
+static TimingPauser sleepy() {
+    return new LongPauser(0, 100, 100, 20_000, TimeUnit.MICROSECONDS);
+}
+----
+In other words, this Pauser would:
+
+1. Spin for 0 times (`minBusy`)
+2. Between 0-100 it will then yield (`minCount`)
+3. Above 100, it would pause for 100 (`minTime`)
+4. It would subsequently pause for 20_000 (`maxTime`)
+5. The minTime and maxTime are in MICROSECONDS (`timeUnit`)
 
 == Performance Monitoring
 
