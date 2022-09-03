@@ -105,7 +105,7 @@ public class MilliPauser implements Pauser {
 
     @Override
     public long timePaused() {
-        return timePaused;
+        return timePaused / 1_000_000;
     }
 
     @Override
