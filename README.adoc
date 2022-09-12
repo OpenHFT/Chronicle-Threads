@@ -123,7 +123,7 @@ link:src/main/java/net/openhft/chronicle/threads/EventGroupBuilder.java[`EventGr
 ----
 EventLoop eg = EventGroupBuilder.builder()
                 .withPauser(Pauser.busy())
-                .withName("my-eg/")
+                .withName("my-eg")
                 .build()
 ----
 

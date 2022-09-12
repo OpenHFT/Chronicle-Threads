@@ -63,6 +63,16 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @Timeout(5)
     @Test
+    public void testEventLoopName() {
+        try (final EventLoop eventGroup = EventGroup.builder()
+                .withName("my-eg/")
+                .build()) {
+            assertEquals("my-eg", eventGroup.name());
+        }
+    }
+
+    @Timeout(5)
+    @Test
     public void testSimpleEventGroupTest() throws InterruptedException {
 
         final AtomicInteger value = new AtomicInteger();
@@ -445,7 +455,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         EventGroup eventGroup = EventGroup.builder().withPriorities(priorities).build();
         for (HandlerPriority handlerPriority : priorities) {
             final TestHandler handler = new TestHandler(handlerPriority);
-            handlers.add(handler);
             eventGroup.addHandler(handler);
         }
         handlers.forEach(handler -> assertEquals(handler.loopStartedNS.get(), 0, handler.priority + " was loopStarted before loop started, priorities=" + priorities));

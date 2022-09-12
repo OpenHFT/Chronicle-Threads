@@ -46,7 +46,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     }
 
     public MonitorEventLoop(final EventLoop parent, final String name, final Pauser pauser) {
-        super(name + (parent == null ? "" : parent.name()) + "/event~loop~monitor");
+        super(name + (withSlash(parent == null ? "" : parent.name())) + "event~loop~monitor");
         this.parent = parent;
         this.pauser = pauser;
         service = Executors.newSingleThreadExecutor(
