@@ -178,16 +178,16 @@ public class EventGroup
                     .collect(Collectors.toSet());
             core = priorities.stream().anyMatch(VanillaEventLoop.ALLOWED_PRIORITIES::contains)
                     ? corePriorities.equals(EnumSet.of(HandlerPriority.MEDIUM))
-                    ? new MediumEventLoop(this, name + "core-event-loop", pauser, daemon, binding)
-                    : new VanillaEventLoop(this, name + "core-event-loop", pauser, 1, daemon, binding, priorities)
+                    ? new MediumEventLoop(this, nameWithSlash() + "core-event-loop", pauser, daemon, binding)
+                    : new VanillaEventLoop(this, nameWithSlash() + "core-event-loop", pauser, 1, daemon, binding, priorities)
                     : null;
             closeable.add(core);
-            monitor = new MonitorEventLoop(this, name + "~monitor",
+            monitor = new MonitorEventLoop(this, nameWithSlash() + "~monitor",
                     Pauser.millis(Integer.getInteger("monitor.interval", 10)));
             closeable.add(monitor);
             if (core != null)
-                monitor.addHandler(new PauserMonitor(pauser, name + "core-pauser", 300));
-            blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, name + "blocking-event-loop", blockingPauserSupplier.get()) : null;
+                monitor.addHandler(new PauserMonitor(pauser, nameWithSlash() + "core-pauser", 300));
+            blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, nameWithSlash() + "blocking-event-loop", blockingPauserSupplier.get()) : null;
             closeable.add(blocking);
             if (priorities.contains(HandlerPriority.CONCURRENT))
                 IntStream.range(0, concThreadsNum).forEach(i -> concThreads.add(null));
@@ -258,13 +258,13 @@ public class EventGroup
     private synchronized VanillaEventLoop getReplication() {
         if (replication == null) {
             final Pauser newReplicationPauser = replicationPauser != null ? replicationPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
-            replication = new VanillaEventLoop(this, name + "replication-event-loop", newReplicationPauser,
+            replication = new VanillaEventLoop(this, nameWithSlash() + "replication-event-loop", newReplicationPauser,
                     REPLICATION_EVENT_PAUSE_TIME, daemon, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER));
 
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, replication);
             if (isAlive())
                 replication.start();
-            monitor.addHandler(new PauserMonitor(newReplicationPauser, name + "replication pauser", 300));
+            monitor.addHandler(new PauserMonitor(newReplicationPauser, nameWithSlash() + "replication pauser", 300));
         }
         return replication;
     }
@@ -278,13 +278,13 @@ public class EventGroup
     private synchronized VanillaEventLoop getConcThread(int n) {
         VanillaEventLoop loop = concThreads.get(n);
         if (loop == null) {
-            loop = new VanillaEventLoop(this, name + "conc-event-loop-" + n, concPauserSupplier.get(),
+            loop = new VanillaEventLoop(this, nameWithSlash() + "conc-event-loop-" + n, concPauserSupplier.get(),
                     REPLICATION_EVENT_PAUSE_TIME, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT));
             concThreads.set(n, loop);
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, loop);
             if (isAlive())
                 loop.start();
-            monitor.addHandler(new PauserMonitor(pauser, name + "conc-event-loop-" + n + " pauser", 300));
+            monitor.addHandler(new PauserMonitor(pauser, nameWithSlash() + "conc-event-loop-" + n + " pauser", 300));
         }
         return loop;
     }

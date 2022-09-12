@@ -47,8 +47,13 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     protected final String name;
 
     protected AbstractLifecycleEventLoop(@NotNull String name) {
-        this.name = name;
+        this.name = name.replaceAll("/$", "");
+
         singleThreadedCheckDisabled(true);
+    }
+
+    protected String nameWithSlash() {
+        return withSlash(name);
     }
 
     @Override
@@ -125,5 +130,9 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     @Override
     public boolean isStopped() {
         return lifecycle.get() == EventLoopLifecycle.STOPPED;
+    }
+
+    static String withSlash(String n) {
+        return n.isEmpty() ? n : n + "/";
     }
 }
