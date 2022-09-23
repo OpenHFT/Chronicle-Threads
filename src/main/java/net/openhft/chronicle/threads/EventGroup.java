@@ -84,57 +84,9 @@ public class EventGroup
     private VanillaEventLoop replication;
 
     /**
-     * Create an EventGroup
-     *
-     * @param daemon             whether to create threads as daemon
-     * @param pauser             pauser to use
-     * @param binding            CPU to bind core event loop to.
-     * @param bindingReplication CPU to bind replication event loop to. -1 means no binding
-     * @param name               name of event group. Any created threads are named after this
-     * @param concThreadsNum     number of concurrent threads to support
-     * @param priorities         priorities that we expect to support
-     * @deprecated Use {@link #builder()}
+     * @deprecated Use {@link #builder()} - to be removed in 2.25
      */
-    @Deprecated(/* Remove in .24 */)
-    public EventGroup(final boolean daemon,
-                      final @NotNull Pauser pauser,
-                      final String binding,
-                      final String bindingReplication,
-                      final String name,
-                      final int concThreadsNum,
-                      final Set<HandlerPriority> priorities) {
-        this(daemon,
-                pauser,
-                null,
-                binding,
-                bindingReplication,
-                name,
-                concThreadsNum,
-                "none",
-                Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME),
-                priorities);
-    }
-
-    /**
-     * @deprecated Use {@link #builder()}
-     */
-    @Deprecated(/* Remove in .24 */)
-    public EventGroup(final boolean daemon,
-                      @NotNull final Pauser pauser,
-                      final String binding,
-                      final String bindingReplication,
-                      final String name,
-                      final int concThreadsNum,
-                      final String concBinding,
-                      @NotNull final Pauser concPauser,
-                      final Set<HandlerPriority> priorities) {
-        this(daemon, pauser, null, binding, bindingReplication, name, concThreadsNum, concBinding, concPauser, priorities);
-    }
-
-    /**
-     * @deprecated Use {@link #builder()} - to be removed in .25
-     */
-    @Deprecated
+    @Deprecated(/* To be removed in 2.25 */)
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
                       final Pauser replicationPauser,
@@ -198,52 +150,6 @@ public class EventGroup
         } finally {
             closeQuietly(closeable);
         }
-    }
-
-    /**
-     * @deprecated Use {@link #builder()}
-     */
-    @Deprecated(/* Remove in .24 */)
-    public EventGroup(final boolean daemon) {
-        this(daemon, false);
-    }
-
-    /**
-     * @deprecated Use {@link #builder()}
-     */
-    @Deprecated(/* Remove in .24 */)
-    public EventGroup(final boolean daemon, boolean binding) {
-        this(daemon, Pauser.balanced(), binding);
-    }
-
-    /**
-     * @deprecated Use {@link #builder()}
-     */
-    @Deprecated(/* Remove in .24 */)
-    public EventGroup(final boolean daemon, @NotNull final Pauser pauser, final boolean binding) {
-        this(daemon, pauser, binding, NO_CPU, NO_CPU, "");
-    }
-
-    /**
-     * @deprecated Use {@link #builder()}
-     */
-    @Deprecated(/* Remove in .24 */)
-    public EventGroup(final boolean daemon, @NotNull final Pauser pauser, final boolean binding, final String name) {
-        this(daemon, pauser, binding, NO_CPU, NO_CPU, name);
-    }
-
-    /**
-     * @deprecated Use {@link #builder()}
-     */
-    @Deprecated(/* Remove in .24 */)
-    public EventGroup(final boolean daemon, @NotNull final Pauser pauser, final boolean binding, final int bindingCpuCore, final int bindingCpuReplication, final String name) {
-        this(daemon,
-                pauser,
-                bindingCpuCore != -1 ? Integer.toString(bindingCpuCore) : binding ? "any" : "none",
-                bindingCpuReplication != -1 ? Integer.toString(bindingCpuReplication) : "none",
-                name,
-                CONC_THREADS,
-                EnumSet.allOf(HandlerPriority.class));
     }
 
     /**

@@ -26,9 +26,9 @@ import net.openhft.chronicle.core.util.ObjectUtils;
 
 /**
  * Strategy for how to deal with exceptions in handlers
- * @deprecated in future, the default behaviour will be the only supported behaviour
+ * @deprecated in the future, the default behaviour will be the only supported behaviour
  */
-@Deprecated(/* Remove in .25 */)
+@Deprecated(/* Remove in x.25 */)
 @FunctionalInterface
 public interface ExceptionHandlerStrategy {
     String IMPL_PROPERTY = "el.exception.handler";

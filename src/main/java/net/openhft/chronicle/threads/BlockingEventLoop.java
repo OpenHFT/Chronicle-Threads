@@ -49,7 +49,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     /**
      * @deprecated to be removed in .25
      */
-    @Deprecated
+    @Deprecated(/* To be removed in 2.25 */)
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name) {
         this(parent, name, Pauser.balanced());
