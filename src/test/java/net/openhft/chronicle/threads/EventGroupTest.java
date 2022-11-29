@@ -114,6 +114,30 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @Timeout(5)
     @Test
+    public void testBlockingEventLoopAlive() {
+        final EventLoop eventGroup = EventGroup.builder().build();
+        eventGroup.addHandler(new EventHandler() {
+            @Override
+            public boolean action() {
+                assert eventGroup.isAlive() : "Event group is missing in action()";
+
+                return false;
+            }
+
+            @NotNull
+            @Override
+            public HandlerPriority priority() {
+                return HandlerPriority.BLOCKING;
+            }
+        });
+        eventGroup.start();
+        eventGroup.close();
+        assertTrue(eventGroup.isClosed());
+        assertTrue(eventGroup.isStopped());
+    }
+
+    @Timeout(5)
+    @Test
     public void testClosePausedBlockingEventLoop() {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.start();

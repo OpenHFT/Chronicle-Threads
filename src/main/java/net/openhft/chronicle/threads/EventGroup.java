@@ -277,8 +277,16 @@ public class EventGroup
      */
     @Override
     protected void performStart() {
-        if (core != null)
+        if (core != null) {
             core.start();
+
+            while (!isAlive()) {
+                Jvm.pause(1); // Busy-ish wait - not safe to allow other loops to start before core
+                if (core.isStopped())
+                    throw new IllegalStateException("Core already stopped");
+            }
+        }
+
         if (blocking != null)
             blocking.start();
 

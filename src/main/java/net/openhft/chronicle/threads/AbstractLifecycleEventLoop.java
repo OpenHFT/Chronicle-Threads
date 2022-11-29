@@ -61,7 +61,12 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         throwExceptionIfClosed();
 
         if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STARTED)) {
-            performStart();
+            try {
+                performStart();
+            } catch (Exception ex) {
+                stop();
+                Jvm.rethrow(ex);
+            }
         }
     }
 

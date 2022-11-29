@@ -34,7 +34,7 @@ public class EventGroupBadAffinityTest extends ThreadsTestCommon {
         expectException("Cannot parse 'xxx'");
         ignoreException("Timed out waiting for start!");
         try (final EventLoop eventGroup = EventGroup.builder().withBinding("xxx").build()) {
-            assertThrows(TimeoutException.class, eventGroup::start);
+            assertThrows(IllegalStateException.class, eventGroup::start);
         }
     }
 }

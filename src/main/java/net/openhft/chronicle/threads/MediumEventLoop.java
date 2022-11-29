@@ -234,6 +234,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
+            stop();
         }
     }
 

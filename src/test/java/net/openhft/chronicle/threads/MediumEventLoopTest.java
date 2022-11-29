@@ -51,6 +51,7 @@ public class MediumEventLoopTest extends ThreadsTest {
 
     @Test
     void illegalStateExceptionsAreLoggedWhenThrownInLoopStarted() {
+        ignoreException("awaitTermination() interrupted");
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
             class ThrowingHandler implements EventHandler {
 
