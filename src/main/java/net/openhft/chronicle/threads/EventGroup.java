@@ -41,7 +41,6 @@ import java.util.stream.IntStream;
 
 import static java.lang.String.format;
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
-import static net.openhft.chronicle.threads.VanillaEventLoop.NO_CPU;
 
 /**
  * Composes child event loops to support all {@link HandlerPriority} priorities. This class will delegate
@@ -277,8 +276,10 @@ public class EventGroup
      */
     @Override
     protected void performStart() {
-        if (core != null)
+        if (core != null) {
             core.start();
+            waitToStart(core);
+        }
         if (blocking != null)
             blocking.start();
 
@@ -295,9 +296,13 @@ public class EventGroup
         if (core != null)
             addThreadMonitoring(MONITOR_INTERVAL_MS, core);
 
-        // wait for core to start, We use a TimingPauser, previously we waited for ever
+        waitToStart(this);
+    }
+
+    private void waitToStart(EventLoop waitfor) {
+        // wait for core to start, We use a TimingPauser, previously we waited forever
         TimingPauser timeoutPauser = Pauser.sleepy();
-        while (!isAlive()) {
+        while (!waitfor.isAlive()) {
             try {
                 timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
