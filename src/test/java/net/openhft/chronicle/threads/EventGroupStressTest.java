@@ -7,7 +7,6 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.testframework.process.JavaProcessBuilder;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -24,7 +23,6 @@ public class EventGroupStressTest {
     private static final int NUM_PROCESSES = 10;
     private static final int NUM_GROUPS_PER_PROCESS = 20;
 
-    @Disabled("https://github.com/OpenHFT/Chronicle-Threads/issues/186")
     @Test
     @Timeout(30)
     void canOverloadTheCPUWithEventGroupsSafely() {
