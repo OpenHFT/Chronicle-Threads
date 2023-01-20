@@ -484,28 +484,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         handlers.forEach(handler -> assertNotEquals(handler.loopFinishedNS.get(), 0, handler.priority + " was not loopFinished when loop finished, priorities=" + priorities));
     }
 
-    enum ExceptionType {
-        NONE {
-            @Override
-            void throwIt() {
-            }
-        },
-        INVALID_EVENT_HANDLER {
-            @Override
-            void throwIt() throws InvalidEventHandlerException {
-                throw new InvalidEventHandlerException();
-            }
-        },
-        RUNTIME {
-            @Override
-            void throwIt() {
-                throw RUNTIME_EXCEPTION;
-            }
-        };
-
-        abstract void throwIt() throws InvalidEventHandlerException;
-    }
-
     static class CloseableResource extends AbstractCloseable {
 
         public CloseableResource() {
@@ -551,6 +529,28 @@ public class EventGroupTest extends ThreadsTestCommon {
         protected void performClose() {
             closeableResource.close();
         }
+    }
+
+    enum ExceptionType {
+        NONE {
+            @Override
+            void throwIt() {
+            }
+        },
+        INVALID_EVENT_HANDLER {
+            @Override
+            void throwIt() throws InvalidEventHandlerException {
+                throw new InvalidEventHandlerException();
+            }
+        },
+        RUNTIME {
+            @Override
+            void throwIt() {
+                throw RUNTIME_EXCEPTION;
+            }
+        };
+
+        abstract void throwIt() throws InvalidEventHandlerException;
     }
 
     private static class PausingBlockingEventHandler implements EventHandler {

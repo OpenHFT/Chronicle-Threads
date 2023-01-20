@@ -43,8 +43,8 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      * tests don't block forever. This time should be kept as "effectively forever".
      */
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
-    protected final String name;
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
+    protected final String name;
 
     protected AbstractLifecycleEventLoop(@NotNull String name) {
         this.name = name.replaceAll("/$", "");
