@@ -292,8 +292,8 @@ public class EventGroupTest extends ThreadsTestCommon {
                             "test-eg/conc-event-loop-0=class net.openhft.chronicle.threads.LongPauser\n" +
                             "test-eg/conc-event-loop-1=class net.openhft.chronicle.threads.LongPauser\n" +
                             "test-eg/core-event-loop=class net.openhft.chronicle.threads.LongPauser\n" +
-                            "test-eg/event~loop~monitor=class net.openhft.chronicle.threads.MilliPauser\n" +
-                            "test-eg/replication-event-loop=class net.openhft.chronicle.threads.LongPauser",
+                            "test-eg/replication-event-loop=class net.openhft.chronicle.threads.LongPauser\n" +
+                            "test-eg/~monitortest-eg/event~loop~monitor=class net.openhft.chronicle.threads.MilliPauser",
                     names);
         }
     }

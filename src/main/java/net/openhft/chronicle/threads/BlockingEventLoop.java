@@ -44,6 +44,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     private transient final ExecutorService service;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final NamedThreadFactory threadFactory;
+    private final Pauser pauser;
 
     /**
      * @deprecated to be removed in .25
@@ -57,17 +58,19 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name,
                              @NotNull final Pauser pauser) {
-        super(name, pauser);
+        super(name);
         this.parent = parent;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
+        this.pauser = pauser;
     }
 
     public BlockingEventLoop(@NotNull final String name) {
-        super(name, Pauser.balanced());
+        super(name);
         this.parent = this;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
+        this.pauser = Pauser.balanced();
     }
 
     /**
@@ -104,7 +107,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     @Override
     public void unpause() {
-        super.unpause();
+        pauser.unpause();
         unpark(service);
     }
 
@@ -117,6 +120,11 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     @Override
     protected void performStopFromStarted() {
         shutdownExecutorService();
+    }
+
+    @Override
+    public Pauser pauser() {
+        return pauser;
     }
 
     private void shutdownExecutorService() {
@@ -164,9 +172,9 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
                 while (isStarted()) {
                     if (handler.action())
-                        pauser().reset();
+                        pauser.reset();
                     else
-                        pauser().pause();
+                        pauser.pause();
                 }
                 endedGracefully = true;
             } catch (InvalidEventHandlerException e) {

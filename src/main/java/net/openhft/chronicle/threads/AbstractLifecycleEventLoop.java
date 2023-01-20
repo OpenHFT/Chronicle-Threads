@@ -103,6 +103,8 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      */
     protected abstract void performStopFromStarted();
 
+    public abstract Pauser pauser();
+
     @Override
     public final void awaitTermination() {
         long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;

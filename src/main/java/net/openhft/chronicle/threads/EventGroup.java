@@ -66,6 +66,8 @@ public class EventGroup
     private final CoreEventLoop core;
     private final BlockingEventLoop blocking;
     @NotNull
+    private final Pauser pauser;
+    @NotNull
     private final Supplier<Pauser> concPauserSupplier;
     private final String concBinding;
     private final String bindingReplication;
@@ -111,8 +113,9 @@ public class EventGroup
                       @NotNull final Supplier<Pauser> concPauserSupplier,
                       final Set<HandlerPriority> priorities,
                       @NotNull final Supplier<Pauser> blockingPauserSupplier) {
-        super(name, pauser);
+        super(name);
         this.daemon = daemon;
+        this.pauser = pauser;
         this.replicationPauser = replicationPauser;
         this.concBinding = concBinding;
         this.concPauserSupplier = concPauserSupplier;
@@ -193,7 +196,7 @@ public class EventGroup
 
     @Override
     public void unpause() {
-        super.unpause();
+        pauser.unpause();
         if (replication != null)
             replication.unpause();
     }
@@ -321,6 +324,11 @@ public class EventGroup
     @Override
     protected void performStopFromStarted() {
         performStop();
+    }
+
+    @Override
+    public Pauser pauser() {
+        return pauser;
     }
 
     private void performStop() {
