@@ -45,10 +45,6 @@ public class ThreadsTestCommon {
     private ThreadDump threadDump;
     private Map<ExceptionKey, Integer> exceptions;
 
-    static boolean contains(String text, String message) {
-        return text != null && text.contains(message);
-    }
-
     @BeforeEach
     public void enableReferenceTracing() {
         AbstractReferenceCounted.enableReferenceTracing();
@@ -74,6 +70,10 @@ public class ThreadsTestCommon {
 
     public void ignoreException(String message) {
         ignoreException(k -> contains(k.message, message) || (k.throwable != null && k.throwable.getMessage().contains(message)), message);
+    }
+
+    static boolean contains(String text, String message) {
+        return text != null && text.contains(message);
     }
 
     public void expectException(String message) {
