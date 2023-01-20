@@ -26,8 +26,7 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +41,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     static final boolean WARN_DELETED = Jvm.getBoolean("disk.monitor.deleted.warning");
     private static final boolean DISABLED = Jvm.getBoolean("chronicle.disk.monitor.disable");
     public static final int TIME_TAKEN_WARN_THRESHOLD_US = Jvm.getInteger("chronicle.disk.monitor.warn.threshold.us", 250);
+    private final NotifyDiskLow notifyDiskLow;
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
     final ScheduledExecutorService executor;
@@ -53,6 +53,15 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             executor.scheduleAtFixedRate(this, 1, 1, TimeUnit.SECONDS);
         } else {
             executor = null;
+        }
+
+        final ServiceLoader<NotifyDiskLow> services = ServiceLoader.load(NotifyDiskLow.class);
+        if (services.iterator().hasNext()) {
+            final List<NotifyDiskLow> warners = new ArrayList<>();
+            services.iterator().forEachRemaining(warners::add);
+            this.notifyDiskLow = new NotifyDiskLowIterator(warners);
+        } else {
+            this.notifyDiskLow = new NotifyDiskLowLogWarn();
         }
     }
 
@@ -121,7 +130,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             Threads.shutdown(executor);
     }
 
-    static final class DiskAttributes {
+    final class DiskAttributes {
 
         private final FileStore fileStore;
 
@@ -146,14 +155,11 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             long unallocatedBytes = fileStore.getUnallocatedSpace();
             if (unallocatedBytes < (200 << 20)) {
                 // if less than 200 Megabytes
-                Jvm.warn().on(getClass(), "your disk " + fileStore + " is almost full, " +
-                        "warning: chronicle-queue may crash if it runs out of space.");
+                notifyDiskLow.panic(fileStore);
 
             } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage / 100) {
                 final double diskSpaceFull = ((long) (1000d * (totalSpace - unallocatedBytes) / totalSpace + 0.999)) / 10.0;
-                Jvm.warn().on(getClass(), "your disk " + fileStore
-                        + " is " + diskSpaceFull + "% full, " +
-                        "warning: chronicle-queue may crash if it runs out of space.");
+                notifyDiskLow.warning(diskSpaceFull, fileStore);
 
             } else {
                 // wait 1 ms per MB or approx 1 sec per GB free.
@@ -162,6 +168,26 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             long time = System.nanoTime() - start;
             if (time > 1_000_000)
                 Jvm.perf().on(getClass(), "Took " + time / 10_000 / 100.0 + " ms to check the disk space of " + fileStore);
+        }
+    }
+
+    private static class NotifyDiskLowIterator implements NotifyDiskLow {
+        private final List<NotifyDiskLow> list;
+
+        public NotifyDiskLowIterator(List<NotifyDiskLow> list) {
+            this.list = list;
+        }
+
+        @Override
+        public void panic(FileStore fileStore) {
+            for (NotifyDiskLow mfy : list)
+                mfy.panic(fileStore);
+        }
+
+        @Override
+        public void warning(double diskSpaceFullPercent, FileStore fileStore) {
+            for (NotifyDiskLow mfy : list)
+                mfy.warning(diskSpaceFullPercent, fileStore);
         }
     }
 }
