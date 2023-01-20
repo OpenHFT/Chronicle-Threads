@@ -46,7 +46,7 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
         map.entrySet().forEach(System.out::println);
         long count = map.entrySet()
                 .stream()
-                .filter(e -> e.getKey().level == LogLevel.WARN)
+                .filter(e -> e.getKey().clazz() == DiskSpaceMonitor.class)
                 .mapToInt(Map.Entry::getValue)
                 .sum();
         Jvm.resetExceptionHandlers();
