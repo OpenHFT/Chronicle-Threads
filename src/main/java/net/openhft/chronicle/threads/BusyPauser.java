@@ -24,7 +24,6 @@ import java.util.concurrent.TimeoutException;
 
 public enum BusyPauser implements Pauser {
     INSTANCE;
-    private long countPaused = 0;
 
     @Override
     public void reset() {
@@ -34,7 +33,6 @@ public enum BusyPauser implements Pauser {
     @Override
     public void pause() {
         Jvm.nanoPause();
-        countPaused++;
     }
 
     @Override
@@ -54,7 +52,7 @@ public enum BusyPauser implements Pauser {
 
     @Override
     public long countPaused() {
-        return countPaused;
+        return 0;
     }
 
     @Override
