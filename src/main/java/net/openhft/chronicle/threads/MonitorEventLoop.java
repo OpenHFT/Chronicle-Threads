@@ -73,11 +73,6 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         performStop();
     }
 
-    @Override
-    public Pauser pauser() {
-        return pauser;
-    }
-
     private void performStop() {
         unpause();
         Threads.shutdownDaemon(service);

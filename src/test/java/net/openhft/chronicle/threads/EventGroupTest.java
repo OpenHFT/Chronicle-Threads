@@ -277,24 +277,6 @@ public class EventGroupTest extends ThreadsTestCommon {
                 eventGroup.addHandler(new EventGroupTest.TestHandler(hp));
             for (TestHandler handler : this.handlers)
                 handler.assertStarted();
-            List<EventLoop> eventLoops = new ArrayList<>();
-            EventLoops.copyEventLoopsTo(eventLoops);
-            final String names =
-                    eventLoops.stream()
-                            .collect(Collectors.groupingBy(EventLoop::name, TreeMap::new,
-                                    Collectors.reducing(null, (EventLoop l) -> EventLoops.pauserFor(l).getClass(), (a, b) -> b)))
-                            .entrySet().stream()
-                            .map(Object::toString)
-                            .collect(Collectors.joining("\n"));
-            assertEquals("" +
-                            "test-eg=class net.openhft.chronicle.threads.LongPauser\n" +
-                            "test-eg/blocking-event-loop=class net.openhft.chronicle.threads.LongPauser\n" +
-                            "test-eg/conc-event-loop-0=class net.openhft.chronicle.threads.LongPauser\n" +
-                            "test-eg/conc-event-loop-1=class net.openhft.chronicle.threads.LongPauser\n" +
-                            "test-eg/core-event-loop=class net.openhft.chronicle.threads.LongPauser\n" +
-                            "test-eg/replication-event-loop=class net.openhft.chronicle.threads.LongPauser\n" +
-                            "test-eg/~monitortest-eg/event~loop~monitor=class net.openhft.chronicle.threads.MilliPauser",
-                    names);
         }
     }
 

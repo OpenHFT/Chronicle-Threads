@@ -20,6 +20,8 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
+import net.openhft.chronicle.core.observable.Observable;
+import net.openhft.chronicle.core.observable.StateReporter;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import org.jetbrains.annotations.NotNull;
@@ -36,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * </ul>
  * See {@link EventLoopLifecycle} for details of the life-cycle
  */
-public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
+public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop, Observable {
 
     /**
      * After this time, awaitTermination will log an error and return, this is really only so
@@ -103,8 +105,6 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      */
     protected abstract void performStopFromStarted();
 
-    public abstract Pauser pauser();
-
     @Override
     public final void awaitTermination() {
         long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
@@ -141,5 +141,11 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     static String withSlash(String n) {
         return n.isEmpty() ? n : n + "/";
+    }
+
+    @Override
+    public void dumpState(StateReporter stateReporter) {
+        stateReporter.writeProperty("name", name);
+        stateReporter.writeProperty("lifecycle", lifecycle.get().name());
     }
 }

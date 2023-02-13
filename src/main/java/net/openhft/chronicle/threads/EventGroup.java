@@ -18,6 +18,8 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.observable.Observable;
+import net.openhft.chronicle.core.observable.StateReporter;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -51,7 +53,7 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  */
 public class EventGroup
         extends AbstractLifecycleEventLoop
-        implements EventLoop {
+        implements EventLoop, Observable {
 
     public static final int CONC_THREADS = Jvm.getInteger("eventGroup.conc.threads",
             Jvm.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
@@ -326,11 +328,6 @@ public class EventGroup
         performStop();
     }
 
-    @Override
-    public Pauser pauser() {
-        return pauser;
-    }
-
     private void performStop() {
         monitor.stop();
         EventLoops.stopAll(concThreads, replication, core, blocking);
@@ -353,5 +350,19 @@ public class EventGroup
 
         closeQuietly(concThreads);
         awaitTermination();
+    }
+
+    @Override
+    public void dumpState(StateReporter stateReporter) {
+        super.dumpState(stateReporter);
+        stateReporter.writeProperty("daemon", pauser.getClass().getSimpleName());
+        stateReporter.writeProperty("pauser", pauser.getClass().getSimpleName());
+        stateReporter.writeProperty("priorities", priorities.toString());
+        stateReporter.writeProperty("concBinding", concBinding);
+        stateReporter.writeProperty("bindingReplication", bindingReplication);
+        stateReporter.writeChild("coreEventLoop", core);
+        stateReporter.writeChild("monitorEventLoop", monitor);
+        stateReporter.writeChild("blockingEventLoop", blocking);
+        stateReporter.writeChild("replicationEventLoop", replication);
     }
 }

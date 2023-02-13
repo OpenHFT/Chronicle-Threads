@@ -18,6 +18,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.observable.StateReporter;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -122,11 +123,6 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         shutdownExecutorService();
     }
 
-    @Override
-    public Pauser pauser() {
-        return pauser;
-    }
-
     private void shutdownExecutorService() {
         /*
          * It's necessary for blocking handlers to be interrupted, so they abort what they're
@@ -199,5 +195,15 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
             return Integer.toHexString(System.identityHashCode(handler));
         }
 
+    }
+
+    @Override
+    public void dumpState(StateReporter stateReporter) {
+        super.dumpState(stateReporter);
+        stateReporter.writeProperty("pauser", pauser.getClass().getSimpleName());
+        stateReporter.writeChildren("handlers", handlers);
+        stateReporter.writeProperty("executorService.isShutdown()", String.valueOf(service.isShutdown()));
+        stateReporter.writeProperty("executorService.isTerminated()", String.valueOf(service.isShutdown()));
+        stateReporter.writeProperty("executorService.isTerminated()", String.valueOf(service.isShutdown()));
     }
 }

@@ -17,12 +17,13 @@
  */
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.observable.Observable;
 import net.openhft.chronicle.core.threads.EventLoop;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.BooleanSupplier;
 
-public interface CoreEventLoop extends EventLoop {
+public interface CoreEventLoop extends EventLoop, Observable {
     /**
      * @return thread that the event loop is running on. Will be null if the event loop has not started
      */

@@ -23,6 +23,8 @@ import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.ClosedIllegalStateException;
+import net.openhft.chronicle.core.observable.Observable;
+import net.openhft.chronicle.core.observable.StateReporter;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -43,7 +45,7 @@ import java.util.stream.Stream;
 
 import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 
-public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
+public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable, Observable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
                     EnumSet.of(HandlerPriority.HIGH,
@@ -167,11 +169,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     @Override
     protected void performStopFromStarted() {
         stopEventLoopThread();
-    }
-
-    @Override
-    public Pauser pauser() {
-        return pauser;
     }
 
     private void stopEventLoopThread() {
@@ -628,5 +625,17 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 }
             }
         }
+    }
+
+    @Override
+    public void dumpState(StateReporter stateReporter) {
+        super.dumpState(stateReporter);
+        stateReporter.writeProperty("daemon", String.valueOf(daemon));
+        stateReporter.writeChild("highHandler", highHandler);
+        stateReporter.writeChildren("mediumHandlers", mediumHandlers);
+        stateReporter.writeChild("newHandler", newHandler.get());
+        stateReporter.writeChild("thread", thread);
+        stateReporter.writeProperty("executor.isShutdown", String.valueOf(service.isShutdown()));
+        stateReporter.writeProperty("executor.isTerminated", String.valueOf(service.isTerminated()));
     }
 }

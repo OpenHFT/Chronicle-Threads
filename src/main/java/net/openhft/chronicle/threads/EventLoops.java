@@ -19,6 +19,8 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.observable.Observable;
+import net.openhft.chronicle.core.observable.StateReporter;
 import net.openhft.chronicle.core.threads.EventLoop;
 
 import java.lang.ref.Reference;
@@ -28,6 +30,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public final class EventLoops {
     static final boolean TRACE_EVENT_LOOPS = Jvm.getBoolean("trace.eventLoops");
@@ -52,16 +55,16 @@ public final class EventLoops {
         }
     }
 
-    public static void copyEventLoopsTo(List<EventLoop> eventLoopList) {
-        eventLoopList.clear();
+    public static void dumpEventLoops(StateReporter stateReporter) {
         EVENT_LOOPS.removeIf(r -> r.get() == null);
         synchronized (EVENT_LOOPS) {
-            for (int i = 0; i < EVENT_LOOPS.size(); i++) {
-                Reference<EventLoop> ref = EVENT_LOOPS.get(i);
-                EventLoop eventLoop = ref.get();
-                if (eventLoop != null)
-                    eventLoopList.add(eventLoop);
-            }
+            final List<Observable> nonGCdObservableEventLoops = EVENT_LOOPS.stream()
+                    .map(Reference::get)
+                    .filter(Objects::nonNull)
+                    .filter(el -> el instanceof Observable)
+                    .map(el -> (Observable) el)
+                    .collect(Collectors.toList());
+            stateReporter.writeChildren("eventLoops", nonGCdObservableEventLoops);
         }
     }
 
@@ -103,13 +106,5 @@ public final class EventLoops {
                 Jvm.warn().on(EventLoops.class, "Unexpected object passed to EventLoops.stop(): " + o);
             }
         }
-    }
-
-    public static Pauser pauserFor(EventLoop loop) {
-        if (loop instanceof AbstractLifecycleEventLoop) {
-            AbstractLifecycleEventLoop alel = (AbstractLifecycleEventLoop) loop;
-            return alel.pauser();
-        }
-        return Pauser.busy();
     }
 }

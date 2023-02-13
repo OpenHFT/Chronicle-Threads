@@ -20,6 +20,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
+import net.openhft.chronicle.core.observable.StateReporter;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -251,5 +252,13 @@ public class VanillaEventLoop extends MediumEventLoop {
             return;
         Jvm.debug().on(getClass(), "Handlers still running after being closed, handlerCount=" + handlerCount);
         collect.forEach(h -> Jvm.debug().on(getClass(), "\t" + h));
+    }
+
+    @Override
+    public void dumpState(StateReporter stateReporter) {
+        super.dumpState(stateReporter);
+        stateReporter.writeProperty("timerIntervalMS", String.valueOf(timerIntervalMS));
+        stateReporter.writeChildren("timerEventHandlers", timerHandlers);
+        stateReporter.writeChildren("daemonHandlers", daemonHandlers);
     }
 }
