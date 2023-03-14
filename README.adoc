@@ -161,7 +161,6 @@ The second use of `HandlerPriority` is to enable each (child) event loop to dete
 
 Chronicle Threads provides a number of implementations of the
 link:src/main/java/net/openhft/chronicle/threads/Pauser.java[`Pauser`]
-
 and it is straightforward for the user to implement their own if need be.
 The `Pauser` allows the developer to choose an appropriate trade-off between latency vs CPU consumption for when
 an `EventLoop` is running events which exhibit "bursty" behaviour.
