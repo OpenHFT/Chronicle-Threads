@@ -249,7 +249,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             mediumHandlers.forEach(Threads::loopFinishedQuietly);
         Optional.ofNullable(newHandler.get())
                 .ifPresent(eventHandler -> {
-                    Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before loop finished " + eventHandler);
+                    Jvm.startup().on(getClass(), "Handler in newHandler was not accepted before loop finished " + eventHandler);
                     loopFinishedQuietly(eventHandler);
                 });
     }
@@ -556,7 +556,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         closeAll(mediumHandlers);
         Optional.ofNullable(newHandler.get())
                 .ifPresent(eventHandler -> {
-                    Jvm.warn().on(getClass(), "Handler in newHandler was not accepted before close " + eventHandler);
+                    Jvm.startup().on(getClass(), "Handler in newHandler was not accepted before close " + eventHandler);
                     Closeable.closeQuietly(eventHandler);
                 });
     }
