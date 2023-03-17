@@ -78,7 +78,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
                 allTests.add(DynamicTest.dynamicTest("canConcurrentlyAddTerminatingHandlersAndStartEventLoop: " + params.className() + "/" + priority,
                         () -> canConcurrentlyAddTerminatingHandlersAndStartEventLoop(params::create, priority)));
                 allTests.add(DynamicTest.dynamicTest("canConcurrentlyAddTerminatingHandlersAndStopEventLoop: " + params.className() + "/" + priority,
-                        () -> canConcurrentlyAddTerminatingHandlersAndStartEventLoop(params::create, priority)));
+                        () -> canConcurrentlyAddTerminatingHandlersAndStopEventLoop(params::create, priority)));
             }
             return allTests.stream();
         });
@@ -143,7 +143,6 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
     }
 
     public void canConcurrentlyAddHandlersAndStopEventLoop(Supplier<AbstractLifecycleEventLoop> eventLoopSupplier, HandlerPriority priority) throws TimeoutException {
-        ignoreException("Handler in newHandler was not accepted before");
         ExecutorService executorService = Executors.newCachedThreadPool();
         try (AbstractLifecycleEventLoop eventLoop = eventLoopSupplier.get()) {
             List<HandlerAdder> handlerAdders = new ArrayList<>();
@@ -195,7 +194,6 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
     }
 
     public void canConcurrentlyAddTerminatingHandlersAndStopEventLoop(Supplier<AbstractLifecycleEventLoop> eventLoopSupplier, HandlerPriority priority) throws TimeoutException {
-        ignoreException("Handler in newHandler was not accepted before");
         ExecutorService executorService = Executors.newCachedThreadPool();
         try (AbstractLifecycleEventLoop eventLoop = eventLoopSupplier.get()) {
             List<HandlerAdder> handlerAdders = new ArrayList<>();
