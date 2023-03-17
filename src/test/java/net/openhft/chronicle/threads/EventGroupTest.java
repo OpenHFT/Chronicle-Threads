@@ -588,7 +588,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
         @Override
         public void loopStarted() {
-            assertTrue(loopStartedNS.compareAndSet(0, System.nanoTime()), "loopStarted should only ever be called once");
+            assertTrue(loopStartedNS.compareAndSet(0, System.nanoTime()), "loopStarted should only ever be called once " + this);
             started.countDown();
             assertTrue(EventLoop.inEventLoop(), "loopStarted should be called on EL thread (called on `"
                     + Thread.currentThread().getName()
