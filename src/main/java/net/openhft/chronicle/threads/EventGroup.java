@@ -136,8 +136,12 @@ public class EventGroup
             monitor = new MonitorEventLoop(this, nameWithSlash() + "~monitor",
                     Pauser.millis(Integer.getInteger("monitor.interval", 10)));
             closeable.add(monitor);
-            if (core != null)
+            if (core != null) {
                 monitor.addHandler(new PauserMonitor(pauser, nameWithSlash() + "core-pauser", 300));
+                long samplerMicros = Integer.getInteger("sampler.micros", 50);
+                if (pauser instanceof TimingPauser && samplerMicros > 0)
+                    setupTimeLimitMonitor(samplerMicros * 1000, core::loopStartNS);
+            }
             blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, nameWithSlash() + "blocking-event-loop", blockingPauserSupplier.get()) : null;
             closeable.add(blocking);
             if (priorities.contains(HandlerPriority.CONCURRENT))

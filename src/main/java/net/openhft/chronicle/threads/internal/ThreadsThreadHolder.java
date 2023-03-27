@@ -83,11 +83,12 @@ public class ThreadsThreadHolder implements ThreadHolder {
         Thread thread = threadSupplier.get();
 
         String type = (startedNS == lastTime) ? "re-reporting" : "new report";
+        double latencyTenthsOfMS = latency / 100_000 / 10.0;
         StringBuilder out = new StringBuilder()
                 .append("THIS IS NOT AN ERROR, but a profile of the thread, ").append(description)
                 .append(" thread ").append(thread.getName())
                 .append(" interrupted ").append(thread.isInterrupted())
-                .append(" blocked for ").append(latency / 100_000.0 / 10.0)
+                .append(" blocked for ").append(latencyTenthsOfMS)
                 .append(" ms. ").append(type);
         Jvm.trimStackTrace(out, thread.getStackTrace());
         logConsumer.accept(out.toString());
