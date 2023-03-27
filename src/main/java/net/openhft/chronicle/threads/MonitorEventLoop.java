@@ -168,10 +168,12 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     private static final class IdempotentLoopStartedEventHandler extends AbstractCloseable implements EventHandler {
 
         private transient final EventHandler eventHandler;
+        private final String handler;
         private boolean loopStarted = false;
 
         public IdempotentLoopStartedEventHandler(@NotNull EventHandler eventHandler) {
             this.eventHandler = eventHandler;
+            handler = eventHandler.toString();
         }
 
         @Override
@@ -220,7 +222,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         @Override
         public String toString() {
             return "IdempotentLoopStartedEventHandler{" +
-                    "eventHandler=" + eventHandler +
+                    "handler=" + handler +
                     '}';
         }
     }
