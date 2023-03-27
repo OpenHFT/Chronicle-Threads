@@ -107,6 +107,7 @@ public class ThreadsThreadHolder implements ThreadHolder {
 
     @Override
     public String getName() {
-        return threadSupplier.get().getName();
+        Thread thread = threadSupplier.get();
+        return thread == null ? "null" : thread.getName();
     }
 }
