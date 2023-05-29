@@ -353,4 +353,9 @@ public class EventGroup
         closeQuietly(concThreads);
         awaitTermination();
     }
+
+    @Override
+    public boolean runsInsideCoreLoop() {
+        return core.runsInsideCoreLoop();
+    }
 }
