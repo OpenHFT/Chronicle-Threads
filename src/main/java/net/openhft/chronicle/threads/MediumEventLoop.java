@@ -623,4 +623,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             }
         }
     }
+
+    @Override
+    public boolean runsInsideCoreLoop() {
+        return thread == Thread.currentThread(); // false if called before run()
+    }
 }
