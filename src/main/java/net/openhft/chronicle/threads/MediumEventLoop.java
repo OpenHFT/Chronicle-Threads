@@ -187,7 +187,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
         }
 
-        if (runsInsideCoreLoop()) {
+        if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
             return;
         }
@@ -626,6 +626,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     @Override
     public boolean runsInsideCoreLoop() {
-        return thread == null || thread == Thread.currentThread();
+        return thread == Thread.currentThread(); // false if called before run()
     }
 }

@@ -100,7 +100,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         if (!priorities.contains(priority))
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler + " allows " + priorities);
 
-        if (runsInsideCoreLoop()) {
+        if (thread == null || thread == Thread.currentThread()) {
             addNewHandler(handler);
             return;
         }
