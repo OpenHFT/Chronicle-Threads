@@ -68,6 +68,7 @@ public class LongPauser implements Pauser, TimingPauser {
     public void reset() {
         checkYieldTime();
         pauseTimeNS = minPauseTimeNS;
+        pauseUntilNS = 0;
         busyNS = yieldNS = timeOutStart = Long.MAX_VALUE;
         if (pauseStartNS > 0) {
             showPauses();

@@ -58,6 +58,15 @@ public class LongPauserTest extends ThreadsTestCommon {
         }
     }
 
+    @Test
+    void asyncPauseIsResetOnReset() {
+        final LongPauser longPauser = new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS);
+        longPauser.asyncPause();
+        assertTrue(longPauser.asyncPausing());
+        longPauser.reset();
+        assertFalse(longPauser.asyncPausing());
+    }
+
     static void testUntilUnpaused(LongPauser pauser, int n, TimeUnit timeUnit) {
         long timeNS = timeUnit.convert(n, TimeUnit.NANOSECONDS);
         long start = System.nanoTime();
