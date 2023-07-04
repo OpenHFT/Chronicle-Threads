@@ -134,7 +134,7 @@ public class EventGroup
             closeable.add(monitor);
             if (core != null) {
                 monitor.addHandler(new PauserMonitor(pauser, nameWithSlash() + "core-pauser", 300));
-                long samplerMicros = Integer.getInteger("sampler.micros", 50);
+                long samplerMicros = Integer.getInteger("sampler.micros", 0);
                 if (pauser instanceof TimingPauser && samplerMicros > 0)
                     setupTimeLimitMonitor(samplerMicros * 1000, core::loopStartNS);
             }
