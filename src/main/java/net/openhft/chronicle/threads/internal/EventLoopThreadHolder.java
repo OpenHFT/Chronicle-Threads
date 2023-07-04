@@ -74,11 +74,11 @@ public class EventLoopThreadHolder implements ThreadHolder {
     }
 
     @Override
-    public long timingTolerance() {
-        return monitorIntervalNS + timingError();
+    public long timingToleranceNS() {
+        return monitorIntervalNS + timingErrorNS();
     }
 
-    protected long timingError() {
+    protected long timingErrorNS() {
         return TIMING_ERROR;
     }
 

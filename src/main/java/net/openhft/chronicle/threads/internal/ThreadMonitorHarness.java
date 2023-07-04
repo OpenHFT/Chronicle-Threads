@@ -47,7 +47,7 @@ public class ThreadMonitorHarness implements ThreadMonitor {
             thread.resetTimers();
             return false;
         }
-        if (actionCallDelay > thread.timingTolerance()) {
+        if (actionCallDelay > thread.timingToleranceNS()) {
             if (thread.isAlive())
                 thread.monitorThreadDelayed(actionCallDelay);
             return true;

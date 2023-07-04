@@ -30,16 +30,16 @@ import java.util.function.Supplier;
 
 public class ThreadsThreadHolder implements ThreadHolder {
     private final String description;
-    private final long timeLimit;
+    private final long timeLimitNS;
     private final LongSupplier timeSupplier;
     private final Supplier<Thread> threadSupplier;
     private final BooleanSupplier logEnabled;
     private final Consumer<String> logConsumer;
     private long lastTime = 0;
 
-    public ThreadsThreadHolder(String description, long timeLimit, LongSupplier timeSupplier, Supplier<Thread> threadSupplier, BooleanSupplier logEnabled, Consumer<String> logConsumer) {
+    public ThreadsThreadHolder(String description, long timeLimitNS, LongSupplier timeSupplier, Supplier<Thread> threadSupplier, BooleanSupplier logEnabled, Consumer<String> logConsumer) {
         this.description = description;
-        this.timeLimit = timeLimit;
+        this.timeLimitNS = timeLimitNS;
         this.timeSupplier = timeSupplier;
         this.threadSupplier = threadSupplier;
         this.logEnabled = logEnabled;
@@ -73,22 +73,21 @@ public class ThreadsThreadHolder implements ThreadHolder {
 
     @Override
     public boolean shouldLog(long nowNS) {
-        return nowNS - startedNS() > timeLimit
+        return nowNS - startedNS() > timeLimitNS
                 && logEnabled.getAsBoolean();
     }
 
     @Override
     public void dumpThread(long startedNS, long nowNS) {
-        long latency = nowNS - startedNS;
+        long latencyNS = nowNS - startedNS;
         Thread thread = threadSupplier.get();
 
         String type = (startedNS == lastTime) ? "re-reporting" : "new report";
-        double latencyTenthsOfMS = latency / 100_000 / 10.0;
         StringBuilder out = new StringBuilder()
                 .append("THIS IS NOT AN ERROR, but a profile of the thread, ").append(description)
                 .append(" thread ").append(thread.getName())
                 .append(" interrupted ").append(thread.isInterrupted())
-                .append(" blocked for ").append(latencyTenthsOfMS)
+                .append(" blocked for ").append(nanosecondsToMillisWithTenthsPrecision(latencyNS))
                 .append(" ms. ").append(type);
         Jvm.trimStackTrace(out, thread.getStackTrace());
         logConsumer.accept(out.toString());
@@ -96,12 +95,24 @@ public class ThreadsThreadHolder implements ThreadHolder {
         lastTime = startedNS;
     }
 
-    @Override
-    public long timingTolerance() {
-        return timeLimit + timingError();
+    /**
+     * Results in a double that retains only it's 1/10ths precision
+     *
+     * @param timeInNS The time in nanoseconds
+     * @return The time in milliseconds represented as a float with limited precision
+     */
+    @SuppressWarnings(/* we mean to do the integer division first */
+            {"java:S2184", "IntegerDivisionInFloatingPointContext"})
+    static double nanosecondsToMillisWithTenthsPrecision(long timeInNS) {
+        return (timeInNS / 100_000) / 10d;
     }
 
-    protected long timingError() {
+    @Override
+    public long timingToleranceNS() {
+        return timeLimitNS + timingErrorNS();
+    }
+
+    protected long timingErrorNS() {
         return TIMING_ERROR;
     }
 

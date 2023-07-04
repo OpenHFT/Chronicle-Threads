@@ -74,12 +74,9 @@ public class EventGroup
     private final Set<HandlerPriority> priorities;
     @NotNull
     private final List<VanillaEventLoop> concThreads = new CopyOnWriteArrayList<>();
-    private final MilliPauser milliPauser = Pauser.millis(50);
     private final boolean daemon;
 
     private final Pauser replicationPauser;
-    @NotNull
-    private final Supplier<Pauser> blockingPauserSupplier;
     private VanillaEventLoop replication;
 
     /**
@@ -121,7 +118,6 @@ public class EventGroup
         this.concPauserSupplier = concPauserSupplier;
         this.bindingReplication = bindingReplication;
         this.priorities = EnumSet.copyOf(priorities);
-        this.blockingPauserSupplier = blockingPauserSupplier;
         List<Object> closeable = new ArrayList<>();
         try {
             final Set<HandlerPriority> corePriorities = priorities.stream()
@@ -142,7 +138,7 @@ public class EventGroup
                 if (pauser instanceof TimingPauser && samplerMicros > 0)
                     setupTimeLimitMonitor(samplerMicros * 1000, core::loopStartNS);
             }
-            blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, nameWithSlash() + "blocking-event-loop", blockingPauserSupplier.get()) : null;
+            blocking = priorities.contains(HandlerPriority.BLOCKING) ? new BlockingEventLoop(this, nameWithSlash() + "blocking-event-loop", blockingPauserSupplier) : null;
             closeable.add(blocking);
             if (priorities.contains(HandlerPriority.CONCURRENT))
                 IntStream.range(0, concThreadsNum).forEach(i -> concThreads.add(null));
@@ -270,7 +266,6 @@ public class EventGroup
                                  final long timeLimitNS,
                                  final LongSupplier timeSupplier,
                                  final Supplier<Thread> threadSupplier) {
-        milliPauser.minPauseTimeMS((timeLimitNS + 999_999) / 1_000_000);
         addHandler(ThreadMonitors.forThread(description, timeLimitNS, timeSupplier, threadSupplier));
     }
 

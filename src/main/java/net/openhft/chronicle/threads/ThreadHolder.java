@@ -40,5 +40,13 @@ public interface ThreadHolder {
 
     void monitorThreadDelayed(long actionCallDelayNS);
 
-    long timingTolerance();
+    /**
+     * @deprecated Use {@link #timingToleranceNS()} instead
+     */
+    @Deprecated(/* To be removed in x.25 */)
+    default long timingTolerance() {
+        return timingToleranceNS();
+    }
+
+    long timingToleranceNS();
 }

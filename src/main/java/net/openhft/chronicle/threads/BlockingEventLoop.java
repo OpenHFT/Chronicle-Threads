@@ -28,6 +28,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.function.Supplier;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
@@ -43,26 +44,40 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     @NotNull
     private transient final ExecutorService service;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
+    private final List<Runner> runners = new CopyOnWriteArrayList<>();
     private final NamedThreadFactory threadFactory;
-    private final Pauser pauser;
+    private final Supplier<Pauser> pauserSupplier;
 
     /**
-     * @deprecated to be removed in .25
+     * @deprecated to be removed in x.25
      */
     @Deprecated(/* To be removed in 2.25 */)
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name) {
-        this(parent, name, Pauser.balanced());
+        this(parent, name, Pauser::balanced);
+    }
+
+    /**
+     * @deprecated to be removed in x.25
+     */
+    @Deprecated(/* To be removed in 2.25 */)
+    public BlockingEventLoop(@NotNull final EventLoop parent,
+                             @NotNull final String name,
+                             @NotNull final Pauser pauser) {
+        this(parent, name, () -> pauser);
+        Jvm.warn().on(BlockingEventLoop.class, "The constructor you're using to create your BlockingEventLoop will cause a " +
+                "single Pauser to be shared between handlers in a non-thread-safe way and will be removed in x.25. " +
+                "Please consider switching to another one.");
     }
 
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name,
-                             @NotNull final Pauser pauser) {
+                             @NotNull final Supplier<Pauser> pauser) {
         super(name);
         this.parent = parent;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
-        this.pauser = pauser;
+        this.pauserSupplier = pauser;
     }
 
     public BlockingEventLoop(@NotNull final String name) {
@@ -70,7 +85,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         this.parent = this;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
         this.service = Executors.newCachedThreadPool(threadFactory);
-        this.pauser = Pauser.balanced();
+        this.pauserSupplier = Pauser::balanced;
     }
 
     /**
@@ -97,7 +112,9 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     private void startHandler(final EventHandler handler) {
         try {
-            service.submit(new Runner(handler));
+            final Runner runner = new Runner(handler, pauserSupplier.get());
+            runners.add(runner);
+            service.submit(runner);
 
         } catch (RejectedExecutionException e) {
             if (!service.isShutdown())
@@ -107,7 +124,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     @Override
     public void unpause() {
-        pauser.unpause();
+        runners.forEach(Runner::unpause);
         unpark(service);
     }
 
@@ -140,6 +157,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     protected void performClose() {
         super.performClose();
         closeQuietly(handlers);
+        runners.clear();
     }
 
     @Override
@@ -151,10 +169,12 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     private final class Runner implements Runnable {
         private final EventHandler handler;
+        private final Pauser pauser;
         private boolean endedGracefully = false;
 
-        public Runner(final EventHandler handler) {
+        public Runner(final EventHandler handler, Pauser pauser) {
             this.handler = handler;
+            this.pauser = pauser;
         }
 
         @Override
@@ -186,6 +206,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                     handlers.remove(handler);
                     closeQuietly(handler);
                 }
+                runners.remove(this);
             }
         }
 
@@ -193,5 +214,8 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
             return Integer.toHexString(System.identityHashCode(handler));
         }
 
+        public void unpause() {
+            pauser.unpause();
+        }
     }
 }
