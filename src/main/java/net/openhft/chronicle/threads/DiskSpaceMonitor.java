@@ -41,6 +41,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     public static final String DISK_SPACE_CHECKER_NAME = "disk~space~checker";
     static final boolean WARN_DELETED = Jvm.getBoolean("disk.monitor.deleted.warning");
     private static final boolean DISABLED = Jvm.getBoolean("chronicle.disk.monitor.disable");
+    public static final int TIME_TAKEN_WARN_THRESHOLD_US = Jvm.getInteger("chronicle.disk.monitor.warn.threshold.us", 250);
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
     final ScheduledExecutorService executor;
@@ -88,7 +89,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         da.polled = true;
 
         final long tookUs = (System.nanoTime() - start) / 1_000;
-        if (tookUs > 250)
+        if (tookUs > TIME_TAKEN_WARN_THRESHOLD_US)
             Jvm.perf().on(getClass(), "Took " + tookUs / 1000.0 + " ms to pollDiskSpace for " + file.getAbsolutePath());
     }
 
