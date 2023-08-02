@@ -19,6 +19,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.OS;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
@@ -33,6 +34,7 @@ public interface Pauser {
 
     boolean BALANCED = getBalanced(); // calculated once
     boolean SLEEPY = getSleepy();  // calculated once
+    int MIN_BUSY = Integer.getInteger("balances.minBusy", OS.isWindows() ? 100_000 : 10_000);
 
     static boolean getBalanced() {
         int procs = AffinityLock.cpuLayout().cpus();
@@ -77,7 +79,7 @@ public interface Pauser {
      */
     static TimingPauser balancedUpToMillis(int millis) {
         return SLEEPY ? sleepy()
-                : new LongPauser(400, 800, 200, Jvm.isDebug() ? 500_000 : millis * 1_000L, TimeUnit.MICROSECONDS);
+                : new LongPauser(MIN_BUSY, 800, 200, Jvm.isDebug() ? 500_000 : millis * 1_000L, TimeUnit.MICROSECONDS);
     }
 
     /**
