@@ -22,6 +22,8 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.threads.CoreEventLoop;
 import net.openhft.chronicle.threads.ThreadHolder;
 
+import static net.openhft.chronicle.threads.internal.NanosecondDurationRenderer.renderNanosecondDuration;
+
 public class EventLoopThreadHolder implements ThreadHolder {
     private final CoreEventLoop eventLoop;
     private final long monitorIntervalNS;
@@ -65,7 +67,7 @@ public class EventLoopThreadHolder implements ThreadHolder {
         long blockingTimeNS = nowNS - startedNS;
 
         eventLoop.dumpRunningState(eventLoop.name() + " thread has blocked for "
-                        + blockingTimeNS / 100_000 / 10.0 + " ms.",
+                        + renderNanosecondDuration(blockingTimeNS) + ".",
                 // check we are still in the loop.
                 () -> eventLoop.loopStartNS() == startedNS);
 

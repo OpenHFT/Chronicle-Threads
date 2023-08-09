@@ -28,6 +28,8 @@ import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
+import static net.openhft.chronicle.threads.internal.NanosecondDurationRenderer.renderNanosecondDuration;
+
 public class ThreadsThreadHolder implements ThreadHolder {
     private final String description;
     private final long timeLimitNS;
@@ -87,24 +89,12 @@ public class ThreadsThreadHolder implements ThreadHolder {
                 .append("THIS IS NOT AN ERROR, but a profile of the thread, ").append(description)
                 .append(" thread ").append(thread.getName())
                 .append(" interrupted ").append(thread.isInterrupted())
-                .append(" blocked for ").append(nanosecondsToMillisWithTenthsPrecision(latencyNS))
-                .append(" ms. ").append(type);
+                .append(" blocked for ").append(renderNanosecondDuration(latencyNS))
+                .append(". ").append(type);
         Jvm.trimStackTrace(out, thread.getStackTrace());
         logConsumer.accept(out.toString());
 
         lastTime = startedNS;
-    }
-
-    /**
-     * Results in a double that retains only it's 1/10ths precision
-     *
-     * @param timeInNS The time in nanoseconds
-     * @return The time in milliseconds represented as a float with limited precision
-     */
-    @SuppressWarnings(/* we mean to do the integer division first */
-            {"java:S2184", "IntegerDivisionInFloatingPointContext"})
-    static double nanosecondsToMillisWithTenthsPrecision(long timeInNS) {
-        return (timeInNS / 100_000) / 10d;
     }
 
     @Override
