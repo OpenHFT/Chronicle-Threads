@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
-public class EventGroupStressTest {
+public class EventGroupStressTest extends ThreadsTestCommon {
 
     private static final int NUM_PROCESSES = 10;
     private static final int NUM_GROUPS_PER_PROCESS = 20;
