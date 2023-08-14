@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class EventLoopsTest {
+public class EventLoopsTest extends ThreadsTestCommon {
 
     @Test
     public void stopAllCanHandleNulls() {
@@ -80,5 +80,7 @@ public class EventLoopsTest {
             }
             Jvm.pause(1);
         }
+        blockingEventLoop.stop();
+        mediumEventLoop.stop();
     }
 }

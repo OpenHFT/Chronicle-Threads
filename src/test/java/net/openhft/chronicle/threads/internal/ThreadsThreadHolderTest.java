@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class ThreadsThreadHolderTest {
+class ThreadsThreadHolderTest extends net.openhft.chronicle.threads.ThreadsTestCommon {
 
     @Test
     void testNanosecondsToMillisWithTenthsPrecision() {

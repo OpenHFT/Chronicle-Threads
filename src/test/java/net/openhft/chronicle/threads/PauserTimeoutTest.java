@@ -39,20 +39,17 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
             new YieldingPauser(0)};
 
     @Test
-    public void pausersSupportTimeout() throws TimeoutException {
+    public void pausersSupportTimeout() {
         int timeoutNS = 100_000_000;
         for (Pauser p : pausersSupportTimeout) {
-            p.pause(timeoutNS, TimeUnit.NANOSECONDS);
             long start = System.nanoTime();
-            while (System.nanoTime() < start + timeoutNS / 2)
-                try {
-                    p.pause(timeoutNS, TimeUnit.NANOSECONDS);
-                } catch (TimeoutException e) {
-                    fail(p + " timed out");
-                }
-            while (System.nanoTime() < start + timeoutNS * 2) ;
+            do try {
+                p.pause(timeoutNS, TimeUnit.NANOSECONDS);
+            } catch (TimeoutException e) {
+                fail(p + " timed out");
+            } while (System.nanoTime() < start + timeoutNS / 2);
+            while (System.nanoTime() < start + timeoutNS * 5 / 4) ;
             try {
-                // System.out.println(start + " timeoutNS " + (start + timeoutNS) + " now " + Time.uniqueId() + " past " + (System.nanoTime() > (start + timeoutNS)));
                 p.pause(timeoutNS, TimeUnit.NANOSECONDS);
             } catch (TimeoutException e) {
                 continue;

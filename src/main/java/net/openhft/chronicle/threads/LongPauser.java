@@ -33,17 +33,14 @@ public class LongPauser implements Pauser, TimingPauser {
     private final AtomicBoolean pausing = new AtomicBoolean();
     private final long minBusyNS;
     private final long minYieldNS;
-    private long busyNS = Long.MAX_VALUE;
-    private long yieldNS = Long.MAX_VALUE;
+    private long firstPauseNS = Long.MAX_VALUE;
     private long pauseTimeNS;
     private long timePaused = 0;
     private long countPaused = 0;
     @Nullable
     private volatile Thread thread = null;
     private long yieldStart = 0;
-    private long timeOutStart = Long.MAX_VALUE;
     private long pauseUntilNS = 0;
-    private long pauseStartNS = 0;
 
     /**
      * first it will busy wait, then it will yield, then sleep for a small amount of time, then
@@ -69,11 +66,9 @@ public class LongPauser implements Pauser, TimingPauser {
         checkYieldTime();
         pauseTimeNS = minPauseTimeNS;
         pauseUntilNS = 0;
-        busyNS = yieldNS = timeOutStart = Long.MAX_VALUE;
-        if (pauseStartNS > 0) {
+        if (SHOW_PAUSES != null && firstPauseNS < Long.MAX_VALUE)
             showPauses();
-            pauseStartNS = 0;
-        }
+        firstPauseNS = Long.MAX_VALUE;
     }
 
     @Override
@@ -98,42 +93,54 @@ public class LongPauser implements Pauser, TimingPauser {
     private void showPauses() {
         String name = Thread.currentThread().getName();
         if (name.startsWith(SHOW_PAUSES))
-            Jvm.perf().on(getClass(), " paused for " + (System.nanoTime() - pauseStartNS) / 1e6 + " ms.");
+            Jvm.perf().on(getClass(), " paused for " + (System.nanoTime() - firstPauseNS) / 1e6 + " ms.");
     }
 
+    /**
+     * Implementation of the pause method for the LongPauser. This method introduces pauses of
+     * increasing duration up to a specified timeout. If the timeout is exceeded, a TimeoutException is thrown.
+     *
+     * @param timeout  The maximum time duration to wait before throwing a TimeoutException.
+     * @param timeUnit The unit of the timeout parameter.
+     * @throws TimeoutException If the pause exceeds the specified timeout.
+     */
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
+        // Increment the pause count
         countPaused++;
+
+        // Get the current time in nanoseconds
         final long now = System.nanoTime();
-        if (busyNS == Long.MAX_VALUE) {
-            busyNS = now;
-            return;
-        }
-        if (now < busyNS + minBusyNS) {
+
+        // Check if this is the first pause; if so, record the time of the first pause
+        if (firstPauseNS == Long.MAX_VALUE)
+            firstPauseNS = now;
+
+        // If the current time is within the minimum busy period, do a nanosecond pause and return
+        if (now < firstPauseNS + minBusyNS) {
             Jvm.nanoPause();
             return;
         }
-        busyNS = 0;
-        if (SHOW_PAUSES != null && pauseStartNS == 0)
-            pauseStartNS = now;
 
-        if (yieldNS == Long.MAX_VALUE) {
-            yieldNS = now;
-            return;
-
-        } else if (now < yieldNS + minYieldNS) {
+        // If the current time is within the minimum yield period, yield the thread and return
+        if (now < firstPauseNS + minYieldNS) {
             this.yield();
             return;
         }
 
+        // If a finite timeout is given, check if it's exceeded and throw a TimeoutException if it is
         if (timeout < Long.MAX_VALUE) {
-            if (timeOutStart == Long.MAX_VALUE)
-                timeOutStart = now;
-            else if (timeOutStart + timeUnit.toNanos(timeout) - now < 0)
+            if (firstPauseNS + timeUnit.toNanos(timeout) - now < 0)
                 throw new TimeoutException();
         }
+
+        // Check the yield time to determine whether to continue yielding or to move to the next pause strategy
         checkYieldTime();
+
+        // Pause for the current pause duration
         doPause(pauseTimeNS);
+
+        // Increase the pause duration for the next pause
         increasePauseTimeNS();
     }
 
