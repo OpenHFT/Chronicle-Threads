@@ -75,7 +75,7 @@ public class EventLoopsTest extends ThreadsTestCommon {
             EventLoops.stopAll(mediumEventLoop, Arrays.asList(null, Collections.singleton(blockingEventLoop)));
             stoppedEm.set(true);
         }).start();
-        long endTime = System.currentTimeMillis() + 50;
+        long endTime = System.currentTimeMillis() + 300;
         while (System.currentTimeMillis() < endTime) {
             assertFalse(stoppedEm.get());
         }
