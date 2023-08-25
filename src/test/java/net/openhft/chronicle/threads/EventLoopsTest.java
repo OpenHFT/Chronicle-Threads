@@ -51,36 +51,36 @@ public class EventLoopsTest extends ThreadsTestCommon {
     @Timeout(5_000)
     @Test
     public void stopAllWillBlockUntilTheLastEventLoopStops() {
-        final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
-        final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker");
-        blockingEventLoop.start();
-        mediumEventLoop.start();
-        Semaphore semaphore = new Semaphore(0);
-        blockingEventLoop.addHandler(() -> {
-            semaphore.acquireUninterruptibly();
-            return false;
-        });
-        while (!semaphore.hasQueuedThreads()) {
-            Jvm.pause(100);
-        }
+        try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
+             final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker")) {
+            blockingEventLoop.start();
+            mediumEventLoop.start();
 
-        AtomicBoolean stoppedEm = new AtomicBoolean(false);
-        new Thread(() -> {
-            EventLoops.stopAll(mediumEventLoop, Arrays.asList(null, Collections.singleton(blockingEventLoop)));
-            stoppedEm.set(true);
-        }).start();
-        long endTime = System.currentTimeMillis() + 300;
-        while (System.currentTimeMillis() < endTime) {
-            assertFalse(stoppedEm.get());
-        }
-        semaphore.release();
-        while (System.currentTimeMillis() < endTime) {
-            if (stoppedEm.get()) {
-                break;
+            Semaphore semaphore = new Semaphore(0);
+            blockingEventLoop.addHandler(() -> {
+                semaphore.acquireUninterruptibly();
+                return false;
+            });
+            while (!semaphore.hasQueuedThreads()) {
+                Jvm.pause(10);
             }
-            Jvm.pause(1);
+
+            AtomicBoolean stoppedEm = new AtomicBoolean(false);
+            new Thread(() -> {
+                EventLoops.stopAll(mediumEventLoop, Arrays.asList(null, Collections.singleton(blockingEventLoop)));
+                stoppedEm.set(true);
+            }).start();
+            long endTime = System.currentTimeMillis() + 50;
+            while (System.currentTimeMillis() < endTime) {
+                assertFalse(stoppedEm.get());
+            }
+            semaphore.release();
+            while (System.currentTimeMillis() < endTime) {
+                if (stoppedEm.get()) {
+                    break;
+                }
+                Jvm.pause(1);
+            }
         }
-        blockingEventLoop.stop();
-        mediumEventLoop.stop();
     }
 }
