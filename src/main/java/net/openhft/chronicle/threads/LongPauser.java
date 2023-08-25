@@ -63,7 +63,10 @@ public class LongPauser implements Pauser, TimingPauser {
 
     @Override
     public void reset() {
-        checkYieldTime();
+        if (yieldStart > 0) {
+            checkYieldTime();
+            countPaused++;
+        }
         pauseTimeNS = minPauseTimeNS;
         pauseUntilNS = 0;
         if (SHOW_PAUSES != null && firstPauseNS < Long.MAX_VALUE)
@@ -152,7 +155,6 @@ public class LongPauser implements Pauser, TimingPauser {
         if (yieldStart > 0) {
             long time = System.nanoTime() - yieldStart;
             timePaused += time;
-            countPaused++;
             yieldStart = 0;
         }
     }
@@ -172,7 +174,6 @@ public class LongPauser implements Pauser, TimingPauser {
         pausing.set(false);
         long time = System.nanoTime() - start;
         timePaused += time;
-        countPaused++;
     }
 
     @Override

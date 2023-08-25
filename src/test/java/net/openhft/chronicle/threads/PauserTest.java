@@ -29,12 +29,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class PauserTest extends ThreadsTestCommon {
 
     @Test
-    public void balanced() throws TimeoutException {
+    public void balanced() {
         doTest(Pauser.balanced());
     }
 
     @Test
-    public void balancedUpToMillis1() throws TimeoutException {
+    public void balancedUpToMillis1() {
         doTest(Pauser.balancedUpToMillis(1));
     }
 
@@ -54,32 +54,36 @@ public class PauserTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void millis1() throws TimeoutException {
-        doTest(Pauser.millis(1));
+    public void millis1() {
+        doTest(Pauser.millis(1), 200);
     }
 
     @Test
-    public void sleepy() throws TimeoutException {
-        doTest(Pauser.sleepy());
+    public void sleepy() {
+        doTest(Pauser.sleepy(), 200);
     }
 
     @Test
-    public void timedBusy() throws TimeoutException {
+    public void timedBusy() {
         doTest(Pauser.timedBusy());
     }
 
     @Test
-    public void yielding() throws TimeoutException {
+    public void yielding() {
         doTest(Pauser.yielding());
     }
 
     private void doTest(Pauser pauser) {
+        doTest(pauser, 2000);
+    }
+
+    private void doTest(Pauser pauser, int count) {
         assertEquals(0, pauser.countPaused());
         assertEquals(0, pauser.timePaused());
-        pauser.pause();
-        assertEquals(1, pauser.countPaused());
-        pauser.pause();
-        assertEquals(2, pauser.countPaused());
+        for (int i = 1; i < count; i++) {
+            pauser.pause();
+            assertEquals(i, pauser.countPaused());
+        }
         pauser.unpause();
         assertEquals(pauser.getClass().getSimpleName().contains("Busy"),
                 pauser.isBusy());
