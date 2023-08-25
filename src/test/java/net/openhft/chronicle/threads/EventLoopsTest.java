@@ -53,34 +53,38 @@ public class EventLoopsTest extends ThreadsTestCommon {
     public void stopAllWillBlockUntilTheLastEventLoopStops() {
         try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
              final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker")) {
-            blockingEventLoop.start();
-            mediumEventLoop.start();
+            doTest(blockingEventLoop, mediumEventLoop);
+        }
+    }
 
-            Semaphore semaphore = new Semaphore(0);
-            blockingEventLoop.addHandler(() -> {
-                semaphore.acquireUninterruptibly();
-                return false;
-            });
-            while (!semaphore.hasQueuedThreads()) {
-                Jvm.pause(10);
-            }
+    private static void doTest(BlockingEventLoop blockingEventLoop, MediumEventLoop mediumEventLoop) {
+        blockingEventLoop.start();
+        mediumEventLoop.start();
 
-            AtomicBoolean stoppedEm = new AtomicBoolean(false);
-            new Thread(() -> {
-                EventLoops.stopAll(mediumEventLoop, Arrays.asList(null, Collections.singleton(blockingEventLoop)));
-                stoppedEm.set(true);
-            }).start();
-            long endTime = System.currentTimeMillis() + 50;
-            while (System.currentTimeMillis() < endTime) {
-                assertFalse(stoppedEm.get());
+        Semaphore semaphore = new Semaphore(0);
+        blockingEventLoop.addHandler(() -> {
+            semaphore.acquireUninterruptibly();
+            return false;
+        });
+        while (!semaphore.hasQueuedThreads()) {
+            Jvm.pause(10);
+        }
+
+        AtomicBoolean stoppedEm = new AtomicBoolean(false);
+        new Thread(() -> {
+            EventLoops.stopAll(mediumEventLoop, Arrays.asList(null, Collections.singleton(blockingEventLoop)));
+            stoppedEm.set(true);
+        }).start();
+        long endTime = System.currentTimeMillis() + 50;
+        while (System.currentTimeMillis() < endTime) {
+            assertFalse(stoppedEm.get());
+        }
+        semaphore.release();
+        while (System.currentTimeMillis() < endTime) {
+            if (stoppedEm.get()) {
+                break;
             }
-            semaphore.release();
-            while (System.currentTimeMillis() < endTime) {
-                if (stoppedEm.get()) {
-                    break;
-                }
-                Jvm.pause(1);
-            }
+            Jvm.pause(1);
         }
     }
 }
