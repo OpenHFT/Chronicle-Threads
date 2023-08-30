@@ -51,17 +51,23 @@ public class EventLoopsTest extends ThreadsTestCommon {
     @Timeout(5_000)
     @Test
     public void stopAllWillBlockUntilTheLastEventLoopStops() {
-        final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
-        final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker");
+        try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
+             final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker")) {
+            doTest(blockingEventLoop, mediumEventLoop);
+        }
+    }
+
+    private static void doTest(BlockingEventLoop blockingEventLoop, MediumEventLoop mediumEventLoop) {
         blockingEventLoop.start();
         mediumEventLoop.start();
+
         Semaphore semaphore = new Semaphore(0);
         blockingEventLoop.addHandler(() -> {
             semaphore.acquireUninterruptibly();
             return false;
         });
         while (!semaphore.hasQueuedThreads()) {
-            Jvm.pause(100);
+            Jvm.pause(10);
         }
 
         AtomicBoolean stoppedEm = new AtomicBoolean(false);
@@ -80,7 +86,5 @@ public class EventLoopsTest extends ThreadsTestCommon {
             }
             Jvm.pause(1);
         }
-        blockingEventLoop.stop();
-        mediumEventLoop.stop();
     }
 }
