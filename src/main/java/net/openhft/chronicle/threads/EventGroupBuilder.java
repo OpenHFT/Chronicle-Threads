@@ -28,7 +28,11 @@ import java.util.function.Supplier;
 
 import static net.openhft.chronicle.threads.EventGroup.REPLICATION_EVENT_PAUSE_TIME;
 
-public class EventGroupBuilder {
+/**
+ * Builder for {@link EventGroup}. Implements {@link Supplier} so we can provide this to configuration
+ * that expects a Supplier<EventGroup> (e.g. QE, FIX)
+ */
+public class EventGroupBuilder implements Supplier<EventGroup> {
 
     private boolean daemon = true;
     private Pauser pauser;
@@ -153,5 +157,10 @@ public class EventGroupBuilder {
 
     public EventGroupBuilder withPriorities(HandlerPriority firstPriority, HandlerPriority... priorities) {
         return withPriorities(EnumSet.of(firstPriority, priorities));
+    }
+
+    @Override
+    public EventGroup get() {
+        return build();
     }
 }
