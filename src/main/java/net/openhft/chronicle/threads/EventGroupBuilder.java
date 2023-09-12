@@ -19,6 +19,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import org.jetbrains.annotations.NotNull;
 
@@ -30,9 +31,9 @@ import static net.openhft.chronicle.threads.EventGroup.REPLICATION_EVENT_PAUSE_T
 
 /**
  * Builder for {@link EventGroup}. Implements {@link Supplier} so we can provide this to configuration
- * that expects a Supplier<EventGroup> (e.g. QE, FIX)
+ * that expects a Supplier<EventLoop> (e.g. QE, FIX)
  */
-public class EventGroupBuilder implements Supplier<EventGroup> {
+public class EventGroupBuilder implements Supplier<EventLoop> {
 
     private boolean daemon = true;
     private Pauser pauser;
@@ -160,7 +161,7 @@ public class EventGroupBuilder implements Supplier<EventGroup> {
     }
 
     @Override
-    public EventGroup get() {
+    public EventLoop get() {
         return build();
     }
 }
