@@ -104,7 +104,7 @@ public class EventGroup
                       final Pauser replicationPauser,
                       final String binding,
                       final String bindingReplication,
-                      final String name,
+                      @NotNull final String name,
                       final int concThreadsNum,
                       final String concBinding,
                       @NotNull final Supplier<Pauser> concPauserSupplier,
