@@ -40,6 +40,7 @@ public class EventGroupBuilder implements Supplier<EventLoop> {
     private Pauser replicationPauser;
     private String binding = "none";
     private String replicationBinding = "none";
+    @NotNull
     private String name = "";
     private int concurrentThreadsNum = EventGroup.CONC_THREADS;
     private String concurrentBinding = "none";
@@ -71,6 +72,7 @@ public class EventGroupBuilder implements Supplier<EventLoop> {
                 blockingPauserSupplier);
     }
 
+    @NotNull
     private Pauser pauserOrDefault() {
         return pauser != null ? pauser : Pauser.balanced();
     }
@@ -119,7 +121,7 @@ public class EventGroupBuilder implements Supplier<EventLoop> {
         return this;
     }
 
-    public EventGroupBuilder withName(String name) {
+    public EventGroupBuilder withName(@NotNull String name) {
         this.name = name;
         return this;
     }
@@ -146,7 +148,7 @@ public class EventGroupBuilder implements Supplier<EventLoop> {
         return this;
     }
 
-    public EventGroupBuilder withConcurrentPauserSupplier(Supplier<Pauser> concurrentPauserSupplier) {
+    public EventGroupBuilder withConcurrentPauserSupplier(@NotNull Supplier<Pauser> concurrentPauserSupplier) {
         this.concurrentPauserSupplier = concurrentPauserSupplier;
         return this;
     }
