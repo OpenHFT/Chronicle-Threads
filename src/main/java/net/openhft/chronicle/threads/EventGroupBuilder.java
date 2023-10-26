@@ -21,6 +21,7 @@ package net.openhft.chronicle.threads;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
+import net.openhft.chronicle.core.util.Builder;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.EnumSet;
@@ -33,7 +34,7 @@ import static net.openhft.chronicle.threads.EventGroup.REPLICATION_EVENT_PAUSE_T
  * Builder for {@link EventGroup}. Implements {@link Supplier} so we can provide this to configuration
  * that expects a Supplier<EventLoop> (e.g. QE, FIX)
  */
-public class EventGroupBuilder implements Supplier<EventLoop> {
+public class EventGroupBuilder implements Builder<EventLoop> {
 
     private boolean daemon = true;
     private Pauser pauser;
@@ -58,6 +59,7 @@ public class EventGroupBuilder implements Supplier<EventLoop> {
     private EventGroupBuilder() {
     }
 
+    @Override
     public EventGroup build() {
         return new EventGroup(daemon,
                 pauserOrDefault(),
@@ -160,10 +162,5 @@ public class EventGroupBuilder implements Supplier<EventLoop> {
 
     public EventGroupBuilder withPriorities(HandlerPriority firstPriority, HandlerPriority... priorities) {
         return withPriorities(EnumSet.of(firstPriority, priorities));
-    }
-
-    @Override
-    public EventLoop get() {
-        return build();
     }
 }
