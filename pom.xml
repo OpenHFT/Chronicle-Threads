@@ -285,7 +285,7 @@
         <connection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git
         </developerConnection>
-        <tag>ea</tag>
+        <tag>release/2.24</tag>
     </scm>
 
 </project>
