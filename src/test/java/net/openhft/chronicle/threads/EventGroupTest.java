@@ -82,7 +82,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                 .withPriorities(HandlerPriority.MEDIUM)
                 .build()) {
             eventGroup.start();
-            t = new Thread(eventGroup::awaitTermination);
+            t = new Thread();
             t.start();
             eventGroup.addHandler(() -> {
                 if (value.get() == 10)
@@ -119,7 +119,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         eventGroup.start();
         eventGroup.addHandler(new PausingBlockingEventHandler());
         eventGroup.close();
-        eventGroup.awaitTermination();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -130,7 +129,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.start();
         eventGroup.close();
-        eventGroup.awaitTermination();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -142,7 +140,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         eventGroup.start();
         eventGroup.stop();
         eventGroup.close();
-        eventGroup.awaitTermination();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -155,7 +152,6 @@ public class EventGroupTest extends ThreadsTestCommon {
         eventGroup.stop();
         eventGroup.stop();
         eventGroup.close();
-        eventGroup.awaitTermination();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -165,7 +161,6 @@ public class EventGroupTest extends ThreadsTestCommon {
     public void testCloseAwaitTerminationWithoutStarting() {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.close();
-        eventGroup.awaitTermination();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
