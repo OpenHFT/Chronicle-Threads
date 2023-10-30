@@ -102,8 +102,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      */
     protected abstract void performStopFromStarted();
 
-    @Deprecated
-    public final void awaitTermination() {
+    protected final void awaitTermination() {
         long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
         while (!Thread.currentThread().isInterrupted()) {
             if (lifecycle.get() == EventLoopLifecycle.STOPPED)
