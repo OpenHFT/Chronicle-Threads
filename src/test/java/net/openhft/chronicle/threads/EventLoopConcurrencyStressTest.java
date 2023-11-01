@@ -72,13 +72,13 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             List<DynamicTest> allTests = new ArrayList<>();
             for (HandlerPriority priority : params.priorities) {
                 allTests.add(DynamicTest.dynamicTest("canConcurrentlyAddHandlersAndStartEventLoop: " + params.className() + "/" + priority,
-                        () -> canConcurrentlyAddHandlersAndStartEventLoop(params::create, priority)));
+                        () -> canConcurrentlyAddHandlersAndStartEventLoop(params, priority)));
                 allTests.add(DynamicTest.dynamicTest("canConcurrentlyAddHandlersAndStopEventLoop: " + params.className() + "/" + priority,
-                        () -> canConcurrentlyAddHandlersAndStopEventLoop(params::create, priority)));
+                        () -> canConcurrentlyAddHandlersAndStopEventLoop(params, priority)));
                 allTests.add(DynamicTest.dynamicTest("canConcurrentlyAddTerminatingHandlersAndStartEventLoop: " + params.className() + "/" + priority,
-                        () -> canConcurrentlyAddTerminatingHandlersAndStartEventLoop(params::create, priority)));
+                        () -> canConcurrentlyAddTerminatingHandlersAndStartEventLoop(params, priority)));
                 allTests.add(DynamicTest.dynamicTest("canConcurrentlyAddTerminatingHandlersAndStopEventLoop: " + params.className() + "/" + priority,
-                        () -> canConcurrentlyAddTerminatingHandlersAndStopEventLoop(params::create, priority)));
+                        () -> canConcurrentlyAddTerminatingHandlersAndStopEventLoop(params, priority)));
             }
             return allTests.stream();
         });
@@ -108,9 +108,10 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    public void canConcurrentlyAddHandlersAndStartEventLoop(Supplier<AbstractLifecycleEventLoop> eventLoopSupplier, HandlerPriority priority) throws TimeoutException {
+    public void canConcurrentlyAddHandlersAndStartEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) throws TimeoutException {
+        Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
         ExecutorService executorService = Executors.newCachedThreadPool();
-        try (AbstractLifecycleEventLoop eventLoop = eventLoopSupplier.get()) {
+        try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
             List<HandlerAdder> handlerAdders = new ArrayList<>();
             CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM_EVENT_ADDERS + 1);
             final EventLoopStarter eventLoopStarter = new EventLoopStarter(eventLoop, cyclicBarrier);
@@ -142,9 +143,10 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    public void canConcurrentlyAddHandlersAndStopEventLoop(Supplier<AbstractLifecycleEventLoop> eventLoopSupplier, HandlerPriority priority) throws TimeoutException {
+    public void canConcurrentlyAddHandlersAndStopEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) throws TimeoutException {
+        Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
         ExecutorService executorService = Executors.newCachedThreadPool();
-        try (AbstractLifecycleEventLoop eventLoop = eventLoopSupplier.get()) {
+        try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
             List<HandlerAdder> handlerAdders = new ArrayList<>();
             eventLoop.start();
             CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM_EVENT_ADDERS + 1);
@@ -167,9 +169,10 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    public void canConcurrentlyAddTerminatingHandlersAndStartEventLoop(Supplier<AbstractLifecycleEventLoop> eventLoopSupplier, HandlerPriority priority) throws TimeoutException {
+    public void canConcurrentlyAddTerminatingHandlersAndStartEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) throws TimeoutException {
+        Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
         ExecutorService executorService = Executors.newCachedThreadPool();
-        try (AbstractLifecycleEventLoop eventLoop = eventLoopSupplier.get()) {
+        try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
             List<HandlerAdder> handlerAdders = new ArrayList<>();
             CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM_EVENT_ADDERS + 1);
             final EventLoopStarter eventLoopStarter = new EventLoopStarter(eventLoop, cyclicBarrier);
@@ -193,9 +196,10 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    public void canConcurrentlyAddTerminatingHandlersAndStopEventLoop(Supplier<AbstractLifecycleEventLoop> eventLoopSupplier, HandlerPriority priority) throws TimeoutException {
+    public void canConcurrentlyAddTerminatingHandlersAndStopEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) throws TimeoutException {
+        Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
         ExecutorService executorService = Executors.newCachedThreadPool();
-        try (AbstractLifecycleEventLoop eventLoop = eventLoopSupplier.get()) {
+        try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
             List<HandlerAdder> handlerAdders = new ArrayList<>();
             eventLoop.start();
             while (!eventLoop.isStarted()) {
