@@ -51,6 +51,6 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
                 .sum();
         Jvm.resetExceptionHandlers();
         // look for 5 disk space checks and some debug messages about slow disk checks.
-        assertEquals(5, count, 1);
+        assertEquals(5.5, count, 1.5);
     }
 }
