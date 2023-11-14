@@ -89,7 +89,7 @@ public enum Threads {
     public static void setThreadGroup(Thread thread, ThreadGroup tg) {
         try {
             if (group == null)
-                 group = Jvm.getField(Thread.class, "group");
+                group = Jvm.getField(Thread.class, "group");
             group.set(thread, tg);
 
         } catch (IllegalAccessException e) {
@@ -108,6 +108,7 @@ public enum Threads {
     /**
      * Shutdown a daemon {@link ExecutorService}. We stop the service immediately as we want to
      * stop whatever is executing quickly
+     *
      * @param service service
      */
     public static void shutdownDaemon(@NotNull ExecutorService service) {
@@ -140,6 +141,7 @@ public enum Threads {
      * Shutdown a {@link ExecutorService}. We assume that the service's tasks have already been told to
      * stop (e.g. {@code running.set(false)}) and that we can initially just wait (for {@link #SHUTDOWN_WAIT_MILLIS})
      * for the service to complete. If it does not stop by itself then we terminate it.
+     *
      * @param service service
      */
     public static void shutdown(@NotNull ExecutorService service) {
@@ -171,10 +173,20 @@ public enum Threads {
             StringBuilder b = new StringBuilder("**** THE " +
                     t.getName() +
                     " THREAD DID NOT SHUTDOWN ***\n");
-            for (StackTraceElement s : t.getStackTrace())
-                b.append("  ").append(s).append("\n");
+            renderStackTrace(b, t.getStackTrace());
             Jvm.warn().on(Threads.class, b.toString());
         });
+    }
+
+    /**
+     * Render a stack trace
+     *
+     * @param stringBuilder      The string builder to render to
+     * @param stackTraceElements The array of stack-trace elements
+     */
+    public static void renderStackTrace(StringBuilder stringBuilder, StackTraceElement[] stackTraceElements) {
+        for (StackTraceElement s : stackTraceElements)
+            stringBuilder.append("  ").append(s).append("\n");
     }
 
     public static void unpark(ExecutorService service) {
