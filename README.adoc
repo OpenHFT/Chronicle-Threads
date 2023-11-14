@@ -233,7 +233,7 @@ image::docs/images/pauserModes.png[700,600]
 
 == Performance Monitoring
 
-Event Loop Monitoring is a very useful feature. This is implemented by a handler which is installed on the `MonitorEventLoop`
+Event Loop Monitoring (AKA Loop Block Monitoring) is a very useful feature. This is implemented by a handler which is installed on the `MonitorEventLoop`
 by the `EventGroup`. The `ThreadMonitorHarness` handler monitors fast event loop threads to make sure event handler latency remains within acceptable bounds. The `ThreadMonitorHarness` monitors latency by measuring the time the `action` method of the application event handlers takes to run. Whenever the method runs beyond an acceptable latency limit, `ThreadMonitorHarness` prints a stack trace for the event loop thread.
 This output can be processed with tools to help identify hotspots in your program.
 
