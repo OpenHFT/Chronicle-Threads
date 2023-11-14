@@ -18,6 +18,9 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.time.SystemTimeProvider;
+import net.openhft.chronicle.core.time.TimeProvider;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import java.io.Closeable;
 import java.io.File;
@@ -45,6 +48,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
     final ScheduledExecutorService executor;
     private int thresholdPercentage = Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 0);
+    private TimeProvider timeProvider = SystemTimeProvider.INSTANCE;
 
     DiskSpaceMonitor() {
         if (!Jvm.getBoolean("chronicle.disk.monitor.disable")) {
@@ -64,7 +68,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     public void pollDiskSpace(File file) {
         if (DISABLED)
             return;
-        long start = System.nanoTime();
+        long start = timeProvider.currentTimeNanos();
 
         final String absolutePath = file.getAbsolutePath();
         FileStore fs = fileStoreCacheMap.get(absolutePath);
@@ -85,9 +89,8 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             }
         }
         DiskAttributes da = diskAttributesMap.computeIfAbsent(fs, DiskAttributes::new);
-        da.polled = true;
 
-        final long tookUs = (System.nanoTime() - start) / 1_000;
+        final long tookUs = (timeProvider.currentTimeNanos() - start) / 1_000;
         if (tookUs > 250)
             Jvm.perf().on(getClass(), "Took " + tookUs / 1000.0 + " ms to pollDiskSpace for " + file.getAbsolutePath());
     }
@@ -114,17 +117,21 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         this.thresholdPercentage = thresholdPercentage;
     }
 
+    @VisibleForTesting
+    protected void setTimeProvider(TimeProvider timeProvider) {
+        this.timeProvider = timeProvider;
+    }
+
     @Override
     public void close() {
         if (executor != null)
             Threads.shutdown(executor);
     }
 
-    static final class DiskAttributes {
+    final class DiskAttributes {
 
         private final FileStore fileStore;
 
-        volatile boolean polled;
         long timeNextCheckedMS;
         long totalSpace;
 
@@ -133,11 +140,10 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         }
 
         void run() throws IOException {
-            long now = System.currentTimeMillis();
-            if (timeNextCheckedMS > now || !polled)
+            long now = timeProvider.currentTimeMillis();
+            if (timeNextCheckedMS > now)
                 return;
 
-            polled = false;
             long start = System.nanoTime();
             if (totalSpace <= 0)
                 totalSpace = fileStore.getTotalSpace();
