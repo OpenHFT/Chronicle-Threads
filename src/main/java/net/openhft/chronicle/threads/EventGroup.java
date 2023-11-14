@@ -57,7 +57,7 @@ public class EventGroup
     private static final long MONITOR_INTERVAL_MS = Jvm.getLong("MONITOR_INTERVAL_MS", 100L);
     static final Integer REPLICATION_EVENT_PAUSE_TIME = Jvm.getInteger("replicationEventPauseTime", 20);
     private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
-    private static final long WAIT_TO_START_MS = Jvm.getInteger("eventGroup.wait.to.start.ms", 1_000);
+    private static final long WAIT_TO_START_MS = Jvm.getInteger("eventGroup.wait.to.start.ms", 2_000);
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
     private final EventLoop monitor;
@@ -394,15 +394,18 @@ public class EventGroup
     private void waitToStart(EventLoop waitfor) {
         // wait for core to start, We use a TimingPauser, previously we waited forever
         TimingPauser timeoutPauser = Pauser.sleepy();
+        long waitStartTimeMs = System.currentTimeMillis();
         while (!waitfor.isAlive()) {
             try {
                 timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
+                long waitTime = System.currentTimeMillis() - waitStartTimeMs;
                 String threadDump = renderThreadDump();
-                Jvm.error().on(EventGroup.class, format("Timed out waiting for start!%n" +
+                Jvm.error().on(EventGroup.class, format("Timed out waiting for start! (waited %,dms)%n" +
                                 "%s%n%n" +
                                 "%s%n%n" +
                                 "%s%n",
+                        waitTime,
                         EventLoopStateRenderer.INSTANCE.render("Core", core),
                         EventLoopStateRenderer.INSTANCE.render("Monitor", monitor),
                         threadDump));
