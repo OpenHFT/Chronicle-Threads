@@ -25,6 +25,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 public class ThreadsTest extends ThreadsTestCommon {
 
     @Test
@@ -82,5 +84,21 @@ public class ThreadsTest extends ThreadsTestCommon {
         expectException("*** FAILED TO TERMINATE java.util.concurrent.Executors$");
         expectException("**** THE main/non-daemon-test THREAD DID NOT SHUTDOWN ***");
         assertExceptionThrown("**** THE main/non-daemon-test THREAD DID NOT SHUTDOWN ***");
+    }
+
+    @Test
+    void testRenderStackTrace() {
+        StackTraceElement[] stackTrace = new StackTraceElement[]{
+                new StackTraceElement("com.test.Something", "doSomething", "Something.java", 123),
+                new StackTraceElement("com.test.SomethingElse", "doSomethingElse", "SomethingElse.java", 456),
+                new StackTraceElement("com.test.SomethingElseAgain", "doSomethingElseAgain", "SomethingElseAgain.java", 789),
+        };
+        StringBuilder stringBuilder = new StringBuilder();
+        Threads.renderStackTrace(stringBuilder, stackTrace);
+        assertEquals(
+                "  com.test.Something.doSomething(Something.java:123)\n" +
+                        "  com.test.SomethingElse.doSomethingElse(SomethingElse.java:456)\n" +
+                        "  com.test.SomethingElseAgain.doSomethingElseAgain(SomethingElseAgain.java:789)\n",
+                stringBuilder.toString());
     }
 }

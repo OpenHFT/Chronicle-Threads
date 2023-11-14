@@ -26,10 +26,7 @@ import net.openhft.chronicle.threads.internal.EventLoopThreadHolder;
 import net.openhft.chronicle.threads.internal.ThreadMonitorHarness;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -305,14 +302,29 @@ public class EventGroup
             try {
                 timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
+                String threadDump = renderThreadDump();
                 Jvm.error().on(EventGroup.class, format("Timed out waiting for start!%n" +
                                 "%s%n%n" +
-                                "%s%n%n",
+                                "%s%n%n" +
+                                "%s%n",
                         EventLoopStateRenderer.INSTANCE.render("Core", core),
-                        EventLoopStateRenderer.INSTANCE.render("Monitor", monitor)));
+                        EventLoopStateRenderer.INSTANCE.render("Monitor", monitor),
+                        threadDump));
                 throw Jvm.rethrow(e);
             }
         }
+    }
+
+    private static String renderThreadDump() {
+        final Map<Thread, StackTraceElement[]> allStackTraces = Thread.getAllStackTraces();
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("Thread dump at time of occurrence:\n\n");
+        allStackTraces.forEach((key, value) -> {
+            stringBuilder.append("------- Thread '").append(key.getName()).append("'\n");
+            Threads.renderStackTrace(stringBuilder, value);
+            stringBuilder.append("\n\n");
+        });
+        return stringBuilder.toString();
     }
 
     @Override
