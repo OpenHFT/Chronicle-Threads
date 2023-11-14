@@ -20,16 +20,34 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.onoes.ExceptionKey;
-import net.openhft.chronicle.core.onoes.LogLevel;
+import net.openhft.chronicle.core.time.SetTimeProvider;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class DiskSpaceMonitorTest extends ThreadsTestCommon {
+
+    @BeforeEach
+    public void beforeEach(){
+        clearState();
+    }
+
+    @AfterEach
+    public void afterEach(){
+        clearState();
+    }
+
+    private void clearState() {
+        DiskSpaceMonitor.INSTANCE.setThresholdPercentage(0);
+        DiskSpaceMonitor.INSTANCE.clear();
+    }
 
     @Test
     public void pollDiskSpace() {
@@ -53,4 +71,21 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
         // look for 5 disk space checks and some debug messages about slow disk checks.
         assertEquals(5, count, 1);
     }
+
+    /**
+     * This test was created to verify that the core monitoring loop actually runs more than once. It used to run once
+     * and then never again. This test explicitly changes the threshold after the first run has happened to ensure that
+     * a failure occurs on a subsequent run.
+     */
+    @Test
+    public void ensureThatDiskSpaceMonitorRunsForMoreThanOneIteration() throws InterruptedException {
+        SetTimeProvider timeProvider = new SetTimeProvider();
+        expectException("warning: the JVM may crash if it undertakes an operation with a memory-mapped file and the disk is out of space");
+        DiskSpaceMonitor.INSTANCE.pollDiskSpace(new File("."));
+        timeProvider.advanceMillis(1200);
+        DiskSpaceMonitor.INSTANCE.setThresholdPercentage(100);
+        timeProvider.advanceMillis(Duration.ofHours(24).toMillis());
+        Thread.sleep(1000);
+    }
+
 }
