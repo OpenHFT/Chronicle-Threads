@@ -48,28 +48,6 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     private final NamedThreadFactory threadFactory;
     private final Supplier<Pauser> pauserSupplier;
 
-    /**
-     * @deprecated to be removed in x.25
-     */
-    @Deprecated(/* To be removed in 2.25 */)
-    public BlockingEventLoop(@NotNull final EventLoop parent,
-                             @NotNull final String name) {
-        this(parent, name, Pauser::balanced);
-    }
-
-    /**
-     * @deprecated to be removed in x.25
-     */
-    @Deprecated(/* To be removed in 2.25 */)
-    public BlockingEventLoop(@NotNull final EventLoop parent,
-                             @NotNull final String name,
-                             @NotNull final Pauser pauser) {
-        this(parent, name, () -> pauser);
-        Jvm.warn().on(BlockingEventLoop.class, "The constructor you're using to create your BlockingEventLoop will cause a " +
-                "single Pauser to be shared between handlers in a non-thread-safe way and will be removed in x.25. " +
-                "Please consider switching to another one.");
-    }
-
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name,
                              @NotNull final Supplier<Pauser> pauser) {

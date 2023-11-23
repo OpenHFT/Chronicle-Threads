@@ -156,7 +156,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, handlers);
             } catch (Throwable e) {
-                if (exceptionThrownByHandler.handle(this, handler, e))
+                if (handle(this, handler, e))
                     removeHandler(handler, handlers);
             }
         }

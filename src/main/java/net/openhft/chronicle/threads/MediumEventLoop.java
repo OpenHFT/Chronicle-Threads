@@ -26,6 +26,7 @@ import net.openhft.chronicle.core.io.ClosedIllegalStateException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
+import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.threads.internal.EventLoopUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -70,8 +71,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     protected volatile long loopStartNS;
     @Nullable
     protected volatile Thread thread = null;
-    @NotNull
-    protected final ExceptionHandlerStrategy exceptionThrownByHandler = ExceptionHandlerStrategy.strategy();
 
     /**
      * @param parent  the parent event loop
@@ -434,7 +433,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         try {
             return highHandler.action();
         } catch (Exception e) {
-            if (exceptionThrownByHandler.handle(this, highHandler, e)) {
+            if (handle(this, highHandler, e)) {
                 loopFinishedQuietly(highHandler);
                 Closeable.closeQuietly(highHandler);
                 highHandler = EventHandlers.NOOP;
@@ -444,10 +443,18 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     private void handleExceptionMediumHandler(EventHandler handler, Throwable t) {
-        if (exceptionThrownByHandler.handle(this, handler, t)) {
+        if (handle(this, handler, t)) {
             removeHandler(handler, mediumHandlers);
             updateMediumHandlersArray();
         }
+    }
+
+    protected boolean handle(EventLoop eventLoop, EventHandler handler, Throwable t) {
+        if (!(t instanceof InvalidEventHandlerException)) {
+            Jvm.warn().on(eventLoop.getClass(), "Exception thrown by handler " + handler, t);
+            return false;
+        }
+        return true;
     }
 
     /**
