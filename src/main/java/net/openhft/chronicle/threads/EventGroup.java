@@ -76,26 +76,6 @@ public class EventGroup
     private final Pauser replicationPauser;
     private VanillaEventLoop replication;
 
-    /**
-     * @deprecated Use {@link #builder()} - to be removed in 2.25
-     */
-    @Deprecated(/* To be removed in 2.25 */)
-    public EventGroup(final boolean daemon,
-                      @NotNull final Pauser pauser,
-                      final Pauser replicationPauser,
-                      final String binding,
-                      final String bindingReplication,
-                      final String name,
-                      final int concThreadsNum,
-                      final String concBinding,
-                      @NotNull final Pauser concPauser,
-                      final Set<HandlerPriority> priorities) {
-        this(daemon, pauser, replicationPauser, binding, bindingReplication, name, concThreadsNum, concBinding, () -> {
-            Jvm.warn().on(EventGroup.class, "You've provided a single Pauser as your concurrent Pauser, this may not be thread safe, we recommend you migrate to the new constructor where a Supplier<Pauser> can be provided");
-            return concPauser;
-        }, priorities, PauserMode.balanced);
-    }
-
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
                       final Pauser replicationPauser,

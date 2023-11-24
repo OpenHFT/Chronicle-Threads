@@ -138,18 +138,6 @@ public class EventGroupBuilder implements Builder<EventLoop> {
         return this;
     }
 
-    /**
-     * @deprecated Use {@link #withConcurrentPauserSupplier(Supplier)} instead - to be removed in .25
-     */
-    @Deprecated(/* To be removed in 2.25 */)
-    public EventGroupBuilder withConcurrentPauser(Pauser concurrentPauser) {
-        this.concurrentPauserSupplier = () -> {
-            Jvm.warn().on(EventGroupBuilder.class, "Providing a single Pauser instance for concurrentPauser is not thread safe, consider using EventGroupBuilder#withConcurrentPauserSupplier(Supplier) instead!");
-            return concurrentPauser;
-        };
-        return this;
-    }
-
     public EventGroupBuilder withConcurrentPauserSupplier(@NotNull Supplier<Pauser> concurrentPauserSupplier) {
         this.concurrentPauserSupplier = concurrentPauserSupplier;
         return this;
