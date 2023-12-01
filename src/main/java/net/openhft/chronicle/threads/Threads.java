@@ -41,7 +41,6 @@ public enum Threads {
     ; // none
 
     private static final int MAX_DEPTH_TO_FOLLOW_DELEGATIONS = 20;
-    private static Field group;
     static final long SHUTDOWN_WAIT_MILLIS = Jvm.getLong("SHUTDOWN_WAIT_MS", 500L);
     static final ThreadLocal<List<Object>> listTL = ThreadLocal.withInitial(ArrayList::new);
     static ExecutorFactory executorFactory;
@@ -68,33 +67,6 @@ public enum Threads {
 
     public static void executorFactory(ExecutorFactory executorFactory) {
         Threads.executorFactory = executorFactory;
-    }
-
-    @Deprecated(/* To be removed in 2.24. No replacement */)
-    @ForceInline
-    public static <R, T extends Throwable> R withThreadGroup(ThreadGroup tg, @NotNull ThrowingCallable<R, T> callable) throws T {
-        Thread thread = Thread.currentThread();
-        ThreadGroup tg0 = thread.getThreadGroup();
-        setThreadGroup(thread, tg);
-        try {
-            return callable.call();
-
-        } finally {
-            setThreadGroup(thread, tg0);
-        }
-    }
-
-    @Deprecated(/* To be removed in 2.24. No replacement */)
-    @ForceInline
-    public static void setThreadGroup(Thread thread, ThreadGroup tg) {
-        try {
-            if (group == null)
-                group = Jvm.getField(Thread.class, "group");
-            group.set(thread, tg);
-
-        } catch (IllegalAccessException e) {
-            throw new AssertionError(e);
-        }
     }
 
     @NotNull
