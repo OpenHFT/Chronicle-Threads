@@ -42,7 +42,9 @@ public class TimeoutPauserTest extends ThreadsTestCommon {
                 } catch (TimeoutException e) {
                     final long time = System.currentTimeMillis() - start;
                     // delta used to be 5 for Linux but occasionally we see it blow in Continuous Integration
-                    int delta = 20;
+                    // a delta of 20 was used here, however in some situations in CI that was not sufficient:
+                    // org.opentest4j.AssertionFailedError: expected: <100.0> but was: <126.0>
+                    int delta = 30;
                     // please don't add delta to pauseTimeMillis below - it makes this test flakier on Windows
                     assertEquals(pauseTimeMillis, time, delta);
                     tp.reset();

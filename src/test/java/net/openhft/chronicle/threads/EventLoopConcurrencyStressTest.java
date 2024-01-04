@@ -23,6 +23,7 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.testframework.Waiters;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.*;
 
@@ -125,19 +126,10 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             eventLoopStarter.waitUntilEventLoopStarted();
             // Stop adding new handlers
             handlerAdders.forEach(HandlerAdder::stopAddingHandlers);
-            // All added handlers should eventually start
-            TimingPauser pauser = Pauser.balanced();
-            while (!handlerAdders.stream().allMatch(HandlerAdder::allHandlersAreStarted)) {
-                pauser.pause(3, TimeUnit.SECONDS);
-            }
+            waitForHandlersToStart(handlerAdders);
             // Stop all handlers
             handlerAdders.forEach(HandlerAdder::stopAllHandlers);
-            // All handlers should eventually stop
-            pauser.reset();
-            pauser = Pauser.balanced();
-            while (!handlerAdders.stream().allMatch(HandlerAdder::allHandlersAreStopped)) {
-                pauser.pause(3, TimeUnit.SECONDS);
-            }
+            waitForHandlersToStop(handlerAdders);
         } finally {
             Threads.shutdown(executorService);
         }
@@ -159,11 +151,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             }
             eventLoopStopper.waitUntilEventLoopStopped();
             handlerAdders.forEach(HandlerAdder::stopAddingHandlers);
-            // All handlers should eventually stop
-            TimingPauser pauser = Pauser.balanced();
-            while (!handlerAdders.stream().allMatch(HandlerAdder::allHandlersAreStopped)) {
-                pauser.pause(3, TimeUnit.SECONDS);
-            }
+            waitForHandlersToStop(handlerAdders);
         } finally {
             Threads.shutdown(executorService);
         }
@@ -186,14 +174,18 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             eventLoopStarter.waitUntilEventLoopStarted();
             // Stop adding new handlers
             handlerAdders.forEach(HandlerAdder::stopAddingHandlers);
-            // All handlers should eventually stop
-            TimingPauser pauser = Pauser.balanced();
-            while (!handlerAdders.stream().allMatch(HandlerAdder::allHandlersAreStopped)) {
-                pauser.pause(3, TimeUnit.SECONDS);
-            }
+            waitForHandlersToStop(handlerAdders);
         } finally {
             Threads.shutdown(executorService);
         }
+    }
+
+    private static void waitForHandlersToStart(List<HandlerAdder> handlerAdders) throws TimeoutException {
+        Waiters.waitForCondition("Waited for handlers to start", () -> handlerAdders.stream().allMatch(HandlerAdder::allHandlersAreStarted), 15_000);
+    }
+
+    private static void waitForHandlersToStop(List<HandlerAdder> handlerAdders) {
+        Waiters.waitForCondition("Waited for all handlers to eventually stop", () -> handlerAdders.stream().allMatch(HandlerAdder::allHandlersAreStopped), 15_000);
     }
 
     public void canConcurrentlyAddTerminatingHandlersAndStopEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) throws TimeoutException {
@@ -215,11 +207,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             }
             eventLoopStopper.waitUntilEventLoopStopped();
             handlerAdders.forEach(HandlerAdder::stopAddingHandlers);
-            // All handlers should eventually stop
-            TimingPauser pauser = Pauser.balanced();
-            while (!handlerAdders.stream().allMatch(HandlerAdder::allHandlersAreStopped)) {
-                pauser.pause(3, TimeUnit.SECONDS);
-            }
+            waitForHandlersToStop(handlerAdders);
         } finally {
             Threads.shutdown(executorService);
         }

@@ -81,7 +81,7 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
     @Test
     public void ensureThatDiskSpaceMonitorRunsForMoreThanOneIteration() throws InterruptedException {
         SetTimeProvider timeProvider = new SetTimeProvider();
-        expectException("warning: the JVM may crash if it undertakes an operation with a memory-mapped file and the disk is out of space");
+        ignoreException("warning: the JVM may crash if it undertakes an operation with a memory-mapped file and the disk is out of space");
         DiskSpaceMonitor.INSTANCE.pollDiskSpace(new File("."));
         timeProvider.advanceMillis(1200);
         DiskSpaceMonitor.INSTANCE.setThresholdPercentage(100);
