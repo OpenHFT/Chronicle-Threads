@@ -54,6 +54,10 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     protected static final EventHandler[] NO_EVENT_HANDLERS = {};
     protected static final long FINISHED = Long.MAX_VALUE - 1;
 
+    private final Object startStopMutex = new Object();
+    private final Object setHighHandlerMutex = new Object();
+    private final Object copyMediumArrayMutex = new Object();
+
     @Nullable
     protected transient final EventLoop parent;
     @NotNull
@@ -142,12 +146,14 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     @Override
     protected void performStart() {
-        try {
-            service.submit(this);
-        } catch (RejectedExecutionException e) {
-            if (!isClosed()) {
-                closeAll();
-                throw e;
+        synchronized (startStopMutex) {
+            try {
+                service.submit(this);
+            } catch (RejectedExecutionException e) {
+                if (!isStopped()) {
+                    closeAll();
+                    throw e;
+                }
             }
         }
     }
@@ -168,8 +174,10 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     private void stopEventLoopThread() {
-        unpause();
-        shutdownService();
+        synchronized (startStopMutex) {
+            unpause();
+            shutdownService();
+        }
     }
 
     @Override
@@ -462,8 +470,10 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * <p>
      * <a href="https://github.com/OpenHFT/Chronicle-Threads/issues/106">Chronicle-Threads/issues/106</a>
      */
-    protected synchronized void updateMediumHandlersArray() {
-        this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
+    protected void updateMediumHandlersArray() {
+        synchronized (copyMediumArrayMutex) {
+            this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
+        }
     }
 
     @HotMethod
@@ -518,13 +528,15 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     /**
      * This check/assignment needs to be atomic
      */
-    protected synchronized boolean updateHighHandler(@NotNull EventHandler handler) {
-        if (highHandler == EventHandlers.NOOP || highHandler == handler) {
-            handler.eventLoop(parent != null ? parent : this);
-            highHandler = handler;
-            return true;
+    protected boolean updateHighHandler(@NotNull EventHandler handler) {
+        synchronized (setHighHandlerMutex) {
+            if (highHandler == EventHandlers.NOOP || highHandler == handler) {
+                handler.eventLoop(parent != null ? parent : this);
+                highHandler = handler;
+                return true;
+            }
+            return false;
         }
-        return false;
     }
 
     @Override

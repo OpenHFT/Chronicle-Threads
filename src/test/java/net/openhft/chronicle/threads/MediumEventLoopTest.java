@@ -19,10 +19,10 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.EventHandler;
+import net.openhft.chronicle.testframework.ExecutorServiceUtil;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -68,6 +68,20 @@ public class MediumEventLoopTest extends ThreadsTest {
             eventLoop.start();
             expectException("Something went wrong in loopStarted!!!");
         }
+    }
+
+    @Test
+    void concurrentStartStopDoesNoThrowError() throws ExecutionException, InterruptedException {
+        ExecutorService es = Executors.newCachedThreadPool();
+        for (int i = 0; i < 100; i++) {
+            try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "any")) {
+                final Future<?> starter = es.submit(mediumEventLoop::start);
+                final Future<?> stopper = es.submit(mediumEventLoop::stop);
+                starter.get();
+                stopper.get();
+            }
+        }
+        ExecutorServiceUtil.shutdownAndWaitForTermination(es);
     }
 
     private static class NoOpHandler implements EventHandler {
