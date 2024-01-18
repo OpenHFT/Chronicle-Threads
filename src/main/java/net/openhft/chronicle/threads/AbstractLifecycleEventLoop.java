@@ -128,7 +128,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     @Override
     public boolean isStopped() {
-        return lifecycle.get() == EventLoopLifecycle.STOPPED;
+        return lifecycle.get().isStopped();
     }
 
     static String withSlash(String n) {

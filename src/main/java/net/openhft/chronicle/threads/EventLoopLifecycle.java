@@ -34,20 +34,30 @@ public enum EventLoopLifecycle {
     /**
      * The event loop has been created but not yet started
      */
-    NEW,
+    NEW(false),
 
     /**
      * The event loop has been started but not yet stopped
      */
-    STARTED,
+    STARTED(false),
 
     /**
      * Stop has been called, but some handlers are yet to complete
      */
-    STOPPING,
+    STOPPING(true),
 
     /**
      * The event loop has been stopped
      */
-    STOPPED
+    STOPPED(true);
+
+    private final boolean stopped;
+
+    EventLoopLifecycle(boolean stopped) {
+        this.stopped = stopped;
+    }
+
+    public boolean isStopped() {
+        return stopped;
+    }
 }
