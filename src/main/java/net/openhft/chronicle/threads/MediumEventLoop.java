@@ -54,9 +54,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     protected static final EventHandler[] NO_EVENT_HANDLERS = {};
     protected static final long FINISHED = Long.MAX_VALUE - 1;
 
-    private final Object startStopMutex = new Object();
-    private final Object setHighHandlerMutex = new Object();
-    private final Object copyMediumArrayMutex = new Object();
+    private final transient Object startStopMutex = new Object();
+    private final transient Object setHighHandlerMutex = new Object();
+    private final transient Object copyMediumArrayMutex = new Object();
 
     @Nullable
     protected transient final EventLoop parent;
