@@ -18,6 +18,7 @@
 
 package net.openhft.chronicle.threads.internal;
 
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.threads.ThreadHolder;
 import net.openhft.chronicle.threads.ThreadMonitor;
@@ -25,9 +26,15 @@ import net.openhft.chronicle.threads.ThreadMonitor;
 public class ThreadMonitorHarness implements ThreadMonitor {
     private final ThreadHolder thread;
     private long lastActionCall = Long.MAX_VALUE;
+    private final ThreadMonitorHarnessListener listener;
+
+    public ThreadMonitorHarness(ThreadHolder thread, ThreadMonitorHarnessListener listener) {
+        this.thread = thread;
+        this.listener = listener;
+    }
 
     public ThreadMonitorHarness(ThreadHolder thread) {
-        this.thread = thread;
+        this(thread, ThreadMonitorHarnessListener.NO_OP);
     }
 
     @Override
@@ -54,6 +61,7 @@ public class ThreadMonitorHarness implements ThreadMonitor {
         }
         if (!thread.shouldLog(nowNS))
             return false;
+        listener.blocked();
         thread.dumpThread(startedNS, nowNS);
         return false; // true assumes we are about to need to check again.
     }

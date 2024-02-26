@@ -21,7 +21,19 @@ package net.openhft.chronicle.threads.internal;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.threads.CoreEventLoop;
 import net.openhft.chronicle.threads.ThreadHolder;
+import org.jetbrains.annotations.VisibleForTesting;
 
+/**
+ * <h1>EventLoopThreadHolder</h1>
+ * <h2>Notes on printBlockTime</h2>
+ * <ul>
+ *     <li>{@link #printBlockTimeNS} defines the next time at which a thread dump can be reported</li>
+ *     <li>{@link #printBlockTimeNS} is mutated on every dump and will be set to {@code min(1.41d * intervalToAddNS, 20d * monitorIntervalNS)}</li>
+ *     <li>In other words: {@link #printBlockTimeNS} will grow by the lesser of 41% or {@code 20d * monitorIntervalNS}</li>
+ *     <li>{@link #printBlockTimeNS} will be reset to {@link #monitorIntervalNS} if {@link #resetTimers()} is called</li>
+ *     <li>If {@link #resetTimers()} is not called then {@link #printBlockTimeNS} will grow continuously</li>
+ * </ul>
+ */
 public class EventLoopThreadHolder implements ThreadHolder {
     private final CoreEventLoop eventLoop;
     private final long monitorIntervalNS;
@@ -73,6 +85,11 @@ public class EventLoopThreadHolder implements ThreadHolder {
 
         printBlockTimeNS += intervalToAddNS;
         intervalToAddNS = (long) Math.min(1.41d * intervalToAddNS, 20d * monitorIntervalNS);
+    }
+
+    @VisibleForTesting
+    protected long getPrintBlockTimeNS() {
+        return printBlockTimeNS;
     }
 
     @Override
