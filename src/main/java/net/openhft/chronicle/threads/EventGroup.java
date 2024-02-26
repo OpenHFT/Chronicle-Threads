@@ -24,7 +24,9 @@ import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.threads.internal.EventLoopStateRenderer;
 import net.openhft.chronicle.threads.internal.EventLoopThreadHolder;
 import net.openhft.chronicle.threads.internal.ThreadMonitorHarness;
+import net.openhft.chronicle.threads.internal.ThreadMonitorHarnessListener;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -53,9 +55,7 @@ public class EventGroup
     public static final int CONC_THREADS = Jvm.getInteger("eventGroup.conc.threads",
             Jvm.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Jvm.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500L);
-    private static final long MONITOR_INTERVAL_MS = Jvm.getLong("MONITOR_INTERVAL_MS", 100L);
     static final Integer REPLICATION_EVENT_PAUSE_TIME = Jvm.getInteger("replicationEventPauseTime", 20);
-    private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
     private static final long WAIT_TO_START_MS = Jvm.getInteger("eventGroup.wait.to.start.ms", 2_000);
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
@@ -75,6 +75,7 @@ public class EventGroup
 
     private final Pauser replicationPauser;
     private VanillaEventLoop replication;
+    private ThreadMonitorHarnessListener threadMonitorHarnessListener = ThreadMonitorHarnessListener.NO_OP;
 
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
@@ -151,10 +152,16 @@ public class EventGroup
         return replication;
     }
 
-    private void addThreadMonitoring(long replicationMonitorIntervalMs, CoreEventLoop replication) {
-        if (ENABLE_LOOP_BLOCK_MONITOR)
-            monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(
-                    TimeUnit.NANOSECONDS.convert(replicationMonitorIntervalMs, TimeUnit.MILLISECONDS), replication)));
+    private void addThreadMonitoring(long monitorIntervalMs, CoreEventLoop replication) {
+        if (!Jvm.getBoolean("disableLoopBlockMonitor")) {
+            Jvm.startup().on(getClass(), String.format("Starting loop block monitor with interval %sms", monitorIntervalMs));
+            long interval = TimeUnit.NANOSECONDS.convert(monitorIntervalMs, TimeUnit.MILLISECONDS);
+            EventLoopThreadHolder threadHolder = new EventLoopThreadHolder(interval, replication);
+            ThreadMonitorHarness threadMonitorHarness = new ThreadMonitorHarness(threadHolder, threadMonitorHarnessListener);
+            monitor.addHandler(threadMonitorHarness);
+        } else {
+            Jvm.startup().on(getClass(), "Loop block monitor is not enabled");
+        }
     }
 
     private synchronized VanillaEventLoop getConcThread(int n) {
@@ -246,6 +253,11 @@ public class EventGroup
         addHandler(ThreadMonitors.forThread(description, timeLimitNS, timeSupplier, threadSupplier));
     }
 
+    @VisibleForTesting
+    protected void setThreadMonitorHarnessListener(ThreadMonitorHarnessListener listener) {
+        this.threadMonitorHarnessListener = listener;
+    }
+
     /**
      * Starts the event loop and waits for the core (or monitor) event loop thread to start before returning
      * (or timing out)
@@ -270,7 +282,7 @@ public class EventGroup
         monitor.start();
         // this checks that the core threads have stalled
         if (core != null)
-            addThreadMonitoring(MONITOR_INTERVAL_MS, core);
+            addThreadMonitoring(Jvm.getLong("MONITOR_INTERVAL_MS", 100L), core);
 
         waitToStart(this);
     }
