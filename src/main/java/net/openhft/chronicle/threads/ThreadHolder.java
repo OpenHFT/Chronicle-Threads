@@ -30,6 +30,11 @@ public interface ThreadHolder {
 
     void resetTimers();
 
+    /**
+     * Get the {@link System#nanoTime()} at which the currently executing loop iteration started
+     *
+     * @return The time the current loop started, or {@link CoreEventLoop#NOT_IN_A_LOOP} if no iteration is executing
+     */
     long startedNS();
 
     boolean shouldLog(long nowNS);

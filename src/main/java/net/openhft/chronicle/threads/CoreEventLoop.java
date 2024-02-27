@@ -23,11 +23,23 @@ import org.jetbrains.annotations.NotNull;
 import java.util.function.BooleanSupplier;
 
 public interface CoreEventLoop extends EventLoop {
+
+    /**
+     * The value returned for {@link #loopStartNS()} when the event loop is not currently
+     * executing an iteration
+     */
+    long NOT_IN_A_LOOP = Long.MAX_VALUE;
+
     /**
      * @return thread that the event loop is running on. Will be null if the event loop has not started
      */
     Thread thread();
 
+    /**
+     * Get the {@link System#nanoTime()} at which the currently executing loop iteration started
+     *
+     * @return The time the current loop started, or {@link #NOT_IN_A_LOOP} if no iteration is executing
+     */
     long loopStartNS();
 
     void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck);
