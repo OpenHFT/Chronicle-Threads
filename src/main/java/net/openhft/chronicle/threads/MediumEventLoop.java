@@ -52,7 +52,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     public static final int NO_CPU = -1;
 
     protected static final EventHandler[] NO_EVENT_HANDLERS = {};
-    protected static final long FINISHED = Long.MAX_VALUE - 1;
 
     private final transient Object startStopMutex = new Object();
     private final transient Object setHighHandlerMutex = new Object();
@@ -93,7 +92,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         this.pauser = pauser;
         this.daemon = daemon;
         this.binding = binding;
-        loopStartNS = Long.MAX_VALUE;
+        loopStartNS = NOT_IN_A_LOOP;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon, null, true));
 
         singleThreadedCheckDisabled(true);
@@ -236,7 +235,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 // otherwise ignore, already closed
             } finally {
                 loopFinishedAllHandlers();
-                loopStartNS = FINISHED;
+                loopStartNS = NOT_IN_A_LOOP;
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
@@ -292,8 +291,8 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     continue;
 
                 runDaemonHandlers();
-                // reset the loop timeout.
-                loopStartNS = Long.MAX_VALUE;
+                // indicate the iteration is complete
+                loopStartNS = NOT_IN_A_LOOP;
                 pauser.pause();
             }
         }
@@ -622,7 +621,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             thread.interrupt();
 
             for (int i = 1; i <= 50; i++) {
-                if (loopStartNS == FINISHED)
+                if (!thread.isAlive())
                     break;
                 // we do this loop below to protect from Jvm.pause not pausing for as long as it should
                 waitUntilMs += i;
