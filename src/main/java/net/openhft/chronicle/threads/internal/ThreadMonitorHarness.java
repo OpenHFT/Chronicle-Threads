@@ -22,12 +22,23 @@ import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.threads.ThreadHolder;
 import net.openhft.chronicle.threads.ThreadMonitor;
 
+import java.util.function.LongSupplier;
+
+import static net.openhft.chronicle.threads.CoreEventLoop.NOT_IN_A_LOOP;
+
 public class ThreadMonitorHarness implements ThreadMonitor {
     private final ThreadHolder thread;
+    private final LongSupplier timeSupplier;
     private long lastActionCall = Long.MAX_VALUE;
+    private long lastStartedNS = NOT_IN_A_LOOP;
+
+    public ThreadMonitorHarness(ThreadHolder thread, LongSupplier timeSupplier) {
+        this.thread = thread;
+        this.timeSupplier = timeSupplier;
+    }
 
     public ThreadMonitorHarness(ThreadHolder thread) {
-        this.thread = thread;
+        this(thread, System::nanoTime);
     }
 
     @Override
@@ -37,15 +48,18 @@ public class ThreadMonitorHarness implements ThreadMonitor {
             throw new InvalidEventHandlerException();
         }
         long startedNS = thread.startedNS();
-        long nowNS = System.nanoTime();
+        long nowNS = timeSupplier.getAsLong();
 
         // Record lastActionCall time on every call to prevent false-positive "monitorThreadDelayed" reports
         long actionCallDelay = nowNS - this.lastActionCall;
         this.lastActionCall = nowNS;
 
-        if (startedNS == 0 || startedNS == Long.MAX_VALUE) {
-            thread.resetTimers();
+        if (startedNS == 0 || startedNS == NOT_IN_A_LOOP) {
             return false;
+        }
+        if (startedNS != lastStartedNS) {
+            thread.resetTimers();
+            lastStartedNS = startedNS;
         }
         if (actionCallDelay > thread.timingToleranceNS()) {
             if (thread.isAlive())
