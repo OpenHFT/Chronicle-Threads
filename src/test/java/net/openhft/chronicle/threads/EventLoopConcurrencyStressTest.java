@@ -30,9 +30,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.String.format;
 import static java.util.Collections.singleton;
 
 class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
@@ -312,6 +315,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
                     pauseMicros(ThreadLocalRandom.current().nextInt(100, 300));
                 }
                 stoppedAddingHandlers.release();
+                Jvm.startup().on(HandlerAdder.class, "Stopped adding handlers");
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -337,10 +341,20 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         public boolean allHandlersAreStopped() {
             return addedHandlers.stream().allMatch(ControllableHandler::isComplete);
         }
+
+        public String summary() {
+            return addedHandlers.size() + " handlers added, "
+                    + addedHandlers.stream().filter(ControllableHandler::isRunning).count() + " running, "
+                    + addedHandlers.stream().filter(ControllableHandler::isComplete).count() + " complete\n"
+                    + addedHandlers.stream().map(h -> format("\t%s - running: %s,  complete: %s%n", h, h.isRunning(), h.isComplete())).collect(Collectors.joining());
+        }
     }
 
     static final class ControllableHandler implements AutoCloseable, EventHandler {
 
+        private static final AtomicInteger COUNTER = new AtomicInteger();
+
+        final int id;
         final HandlerPriority priority;
         final int endOnIteration;
         int iteration = 0;
@@ -359,6 +373,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
 
         public ControllableHandler(HandlerPriority priority, int endOnIteration) {
+            this.id = COUNTER.getAndIncrement();
             this.priority = priority;
             this.endOnIteration = endOnIteration;
         }
@@ -402,6 +417,17 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         @Override
         public @NotNull HandlerPriority priority() {
             return priority;
+        }
+
+        @Override
+        public String toString() {
+            return "ControllableHandler{" +
+                    "id=" + id +
+                    ", priority=" + priority +
+                    ", loopFinished=" + loopFinished +
+                    ", loopStarted=" + loopStarted +
+                    ", closed=" + closed +
+                    '}';
         }
     }
 

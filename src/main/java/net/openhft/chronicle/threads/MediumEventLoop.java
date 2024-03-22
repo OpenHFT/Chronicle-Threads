@@ -51,10 +51,11 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     public static final int NO_CPU = -1;
 
     protected static final EventHandler[] NO_EVENT_HANDLERS = {};
-
+    /**
+     * This ensures only a single non-event-loop thread can add a handler at a time
+     */
+    private final transient Object addHandlerMutex = new Object();
     private final transient Object startStopMutex = new Object();
-    private final transient Object setHighHandlerMutex = new Object();
-    private final transient Object copyMediumArrayMutex = new Object();
 
     @Nullable
     protected transient final EventLoop parent;
@@ -193,13 +194,48 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             }
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
         }
+        addHandlerInternal(handler);
+    }
 
-        if (thread == null || thread == Thread.currentThread()) {
+    /**
+     * Add a handler in the appropriate way given the thread adding the handler and the state of the loop
+     */
+    protected void addHandlerInternal(@NotNull EventHandler handler) {
+        if (thread == null) {
+            if (!addHandlerBeforeStart(handler)) {
+                addHandlerAfterStart(handler);
+            }
+        } else if (thread == Thread.currentThread()) {
+            // The event loop thread adding a handler to itself
             addNewHandler(handler);
-            return;
+        } else {
+            addHandlerAfterStart(handler);
         }
+    }
+
+    /**
+     * This is the code used when any thread tries to add an event handler before a loop is started
+     */
+    private boolean addHandlerBeforeStart(@NotNull EventHandler handler) {
+        synchronized (addHandlerMutex) {
+            if (thread != null) {
+                // The loop started since the initial check, fall back to after-start behaviour
+                return false;
+            }
+            addNewHandler(handler);
+        }
+        return true;
+    }
+
+    /**
+     * This is the code executed when a non-event-loop thread wants to add a handler on a started loop
+     */
+    private void addHandlerAfterStart(@NotNull EventHandler handler) {
         do {
             if (isStopped()) {
+                if (Jvm.isDebugEnabled(MediumEventLoop.class)) {
+                    Jvm.debug().on(MediumEventLoop.class, "Aborted adding handler because event loop was stopped, handler=" + handler);
+                }
                 return;
             }
             pauser.unpause();
@@ -223,10 +259,13 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     public void run() {
         try {
             try (AffinityLock lock = AffinityLock.acquireLock(binding)) {
-                thread = Thread.currentThread();
-                if (thread == null)
-                    throw new NullPointerException();
-                loopStartedAllHandlers();
+                // Make sure nobody's adding a handler while we do this
+                synchronized (addHandlerMutex) {
+                    thread = Thread.currentThread();
+                    if (thread == null)
+                        throw new NullPointerException();
+                    loopStartedAllHandlers();
+                }
                 runLoop();
             } catch (ClosedIllegalStateException e) {
                 if (!isClosing()) {
@@ -463,9 +502,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * <a href="https://github.com/OpenHFT/Chronicle-Threads/issues/106">Chronicle-Threads/issues/106</a>
      */
     protected void updateMediumHandlersArray() {
-        synchronized (copyMediumArrayMutex) {
-            this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
-        }
+        this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
     }
 
     @HotMethod
@@ -513,7 +550,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
-        if (thread != null)
+        if (thread == Thread.currentThread())
             handler.loopStarted();
     }
 
@@ -521,14 +558,12 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * This check/assignment needs to be atomic
      */
     protected boolean updateHighHandler(@NotNull EventHandler handler) {
-        synchronized (setHighHandlerMutex) {
-            if (highHandler == EventHandlers.NOOP || highHandler == handler) {
-                handler.eventLoop(parent != null ? parent : this);
-                highHandler = handler;
-                return true;
-            }
-            return false;
+        if (highHandler == EventHandlers.NOOP || highHandler == handler) {
+            handler.eventLoop(parent != null ? parent : this);
+            highHandler = handler;
+            return true;
         }
+        return false;
     }
 
     @Override
