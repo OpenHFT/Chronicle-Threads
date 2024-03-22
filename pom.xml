@@ -189,7 +189,6 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <compilerArgument>-Xlint:deprecation,-options</compilerArgument>
-                    <release>8</release>
                     <source>8</source>
                     <target>8</target>
                     <encoding>UTF-8</encoding>
@@ -248,6 +247,15 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>java11-release8</id>
+            <activation>
+                <jdk>[11,</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
+            </properties>
+        </profile>
         <profile>
             <id>sonar</id>
             <build>
