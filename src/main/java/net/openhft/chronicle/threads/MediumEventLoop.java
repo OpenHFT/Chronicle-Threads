@@ -263,6 +263,14 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             Jvm.error().on(HandlerChainingWrapper.class, "Should never be run");
             throw new InvalidEventHandlerException("Should never be run");
         }
+
+        @Override
+        public String toString() {
+            return "HandlerChainingWrapper{" +
+                    "left=" + left +
+                    ", right=" + right +
+                    '}';
+        }
     }
 
     void checkInterruptedAddingNewHandler() {
@@ -538,15 +546,19 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     private boolean acceptNewHandlers() {
         final EventHandler handler = newHandler.getAndSet(null);
         if (handler != null) {
-            if (handler instanceof HandlerChainingWrapper) {
-                addNewHandler(((HandlerChainingWrapper) handler).left);
-                addNewHandler(((HandlerChainingWrapper) handler).right);
-            } else {
-                addNewHandler(handler);
-            }
+            acceptNewHandler(handler);
             return true;
         }
         return false;
+    }
+
+    private void acceptNewHandler(EventHandler handler) {
+        if (handler instanceof HandlerChainingWrapper) {
+            acceptNewHandler(((HandlerChainingWrapper) handler).left);
+            acceptNewHandler(((HandlerChainingWrapper) handler).right);
+        } else {
+            addNewHandler(handler);
+        }
     }
 
     protected void addNewHandler(@NotNull final EventHandler handler) {
