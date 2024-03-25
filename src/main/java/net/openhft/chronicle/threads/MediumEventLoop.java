@@ -230,6 +230,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * This is the code executed when a non-event-loop thread wants to add a handler on a started loop
      */
     private void addHandlerAfterStart(@NotNull EventHandler handler) {
+        EventHandler prevNewHandler;
         do {
             if (isStopped()) {
                 if (Jvm.isDebugEnabled(MediumEventLoop.class)) {
@@ -240,7 +241,28 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             pauser.unpause();
 
             checkInterruptedAddingNewHandler();
-        } while (!newHandler.compareAndSet(null, handler));
+
+            prevNewHandler = newHandler.get();
+        } while (!newHandler.compareAndSet(prevNewHandler, prevNewHandler == null ? handler :
+                new HandlerChainingWrapper(prevNewHandler, handler)));
+    }
+
+    private class HandlerChainingWrapper implements EventHandler {
+        @NotNull
+        final EventHandler left;
+        @NotNull
+        final EventHandler right;
+
+        public HandlerChainingWrapper(@NotNull EventHandler left, @NotNull EventHandler right) {
+            this.left = left;
+            this.right = right;
+        }
+
+        @Override
+        public boolean action() throws InvalidEventHandlerException {
+            Jvm.error().on(HandlerChainingWrapper.class, "Should never be run");
+            throw new InvalidEventHandlerException("Should never be run");
+        }
     }
 
     void checkInterruptedAddingNewHandler() {
@@ -516,7 +538,12 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     private boolean acceptNewHandlers() {
         final EventHandler handler = newHandler.getAndSet(null);
         if (handler != null) {
-            addNewHandler(handler);
+            if (handler instanceof HandlerChainingWrapper) {
+                addNewHandler(((HandlerChainingWrapper) handler).left);
+                addNewHandler(((HandlerChainingWrapper) handler).right);
+            } else {
+                addNewHandler(handler);
+            }
             return true;
         }
         return false;
