@@ -18,8 +18,11 @@
 
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.io.InvalidMarshallableException;
 import net.openhft.chronicle.core.threads.EventHandler;
+import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.testframework.ExecutorServiceUtil;
+import net.openhft.chronicle.testframework.Waiters;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.*;
@@ -27,7 +30,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class MediumEventLoopTest extends ThreadsTest {
+public class MediumEventLoopTest extends ThreadsTestCommon {
 
     @Test
     public void testAddingTwoEventHandlersBeforeStartingLoopIsThreadSafe() {
@@ -45,6 +48,43 @@ public class MediumEventLoopTest extends ThreadsTest {
                             }
                         });
                 assertEquals(2, eventLoop.mediumHandlersArray.length);
+            }
+        }
+    }
+
+    @Test
+    public void testAddingTwoEventHandlersWithBlockedMainLoopDoesNotHang() {
+        for (int i = 0; i < 10_000; i++) {
+            try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+                eventLoop.start();
+                CyclicBarrier barrier = new CyclicBarrier(3);
+                eventLoop.addHandler(new EventHandler() {
+                    @Override
+                    public boolean action() throws InvalidEventHandlerException, InvalidMarshallableException {
+                        try {
+                            barrier.await();
+                            return false;
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new InvalidEventHandlerException();
+                        } catch (BrokenBarrierException e) {
+                            throw new InvalidEventHandlerException();
+                        }
+                    }
+                });
+                IntStream.range(0, 2).parallel()
+                        .forEach(ignored -> {
+                            try {
+                                EventHandler handler = new NoOpHandler();
+                                eventLoop.addHandler(handler);
+                                barrier.await();
+                            } catch (InterruptedException | BrokenBarrierException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+
+                Waiters.waitForCondition("Not all handlers arrived in the loop",
+                        () -> eventLoop.mediumHandlersArray.length == 3, 1000);
             }
         }
     }

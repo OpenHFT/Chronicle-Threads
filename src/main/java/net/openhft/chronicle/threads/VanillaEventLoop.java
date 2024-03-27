@@ -85,7 +85,7 @@ public class VanillaEventLoop extends MediumEventLoop {
                 ", mediumHandlers=" + mediumHandlers +
                 ", timerHandlers=" + timerHandlers +
                 ", daemonHandlers=" + daemonHandlers +
-                ", newHandler=" + newHandler +
+                ", newHandlers=" + newHandlers +
                 ", pauser=" + pauser +
                 '}';
     }
