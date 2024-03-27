@@ -233,16 +233,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             return;
         }
 
-        pauser.unpause();
-
-        checkInterruptedAddingNewHandler();
-
         newHandlers.offer(handler);
-    }
 
-    void checkInterruptedAddingNewHandler() {
-        if (Thread.currentThread().isInterrupted())
-            throw new IllegalStateException(hasBeen("interrupted. Handler in newHandler was not accepted before."));
+        pauser.unpause();
     }
 
     @Override
