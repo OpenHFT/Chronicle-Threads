@@ -279,7 +279,7 @@
         <connection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git
         </developerConnection>
-        <tag>ea</tag>
+        <tag>chronicle-threads-2.25ea6</tag>
     </scm>
 
 </project>
