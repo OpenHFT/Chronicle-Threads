@@ -76,7 +76,7 @@ public class EventGroup
     private final Pauser replicationPauser;
     private VanillaEventLoop replication;
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"this-escape", "deprecation"})
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
                       final Pauser replicationPauser,

@@ -150,6 +150,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         }
     }
 
+    @SuppressWarnings("fallthrough")
     @Override
     protected void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
