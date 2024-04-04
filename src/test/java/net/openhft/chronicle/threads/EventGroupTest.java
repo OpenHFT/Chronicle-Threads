@@ -118,7 +118,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.start();
         eventGroup.addHandler(new PausingBlockingEventHandler());
-        eventGroup.close();
+        close(eventGroup);
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -128,7 +128,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     public void testCloseAwaitTermination() {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.start();
-        eventGroup.close();
+        close(eventGroup);
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -139,7 +139,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.start();
         eventGroup.stop();
-        eventGroup.close();
+        close(eventGroup);
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -151,7 +151,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         eventGroup.start();
         eventGroup.stop();
         eventGroup.stop();
-        eventGroup.close();
+        close(eventGroup);
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -160,7 +160,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Test
     public void testCloseAwaitTerminationWithoutStarting() {
         final EventLoop eventGroup = EventGroup.builder().build();
-        eventGroup.close();
+        close(eventGroup);
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -313,7 +313,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Test
     public void testCloseAddHandler() {
         try (final EventLoop eventGroup = EventGroup.builder().build()) {
-            eventGroup.close();
+            close(eventGroup);
             for (HandlerPriority hp : HandlerPriority.values()) {
                 final TestHandler handler = new TestHandler(hp);
                 try {
@@ -325,6 +325,10 @@ public class EventGroupTest extends ThreadsTestCommon {
             }
             handlers.clear();
         }
+    }
+
+    private static void close(EventLoop eventGroup) {
+        eventGroup.close();
     }
 
     @Timeout(5)
