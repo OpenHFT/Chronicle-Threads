@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * </ul>
  * See {@link EventLoopLifecycle} for details of the life-cycle
  */
+@SuppressWarnings("this-escape")
 public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
 
     /**
