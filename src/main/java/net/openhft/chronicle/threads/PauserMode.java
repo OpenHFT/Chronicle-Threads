@@ -21,7 +21,7 @@ import java.util.function.Supplier;
 
 /**
  * This class contains factory methods for Pausers.
- *
+ * <p>
  * Because {@link Pauser} is not an enum, and implementations are not Marshallable, this makes Pausers more yaml friendly
  * <p>
  * The various Pauser modes and their properties can be seen here:
