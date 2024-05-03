@@ -119,7 +119,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.start();
         eventGroup.addHandler(new PausingBlockingEventHandler());
-        closeQuietly(eventGroup); // Direct call to close causes an unsuppressable warning in Java 21+
+        eventGroup.close();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -129,7 +129,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     public void testCloseAwaitTermination() {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.start();
-        closeQuietly(eventGroup); // Direct call to close causes an unsuppressable warning in Java 21+
+        eventGroup.close();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -140,7 +140,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.start();
         eventGroup.stop();
-        closeQuietly(eventGroup); // Direct lose causes an unsuppressable warning in Java 21+
+        eventGroup.close();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -152,7 +152,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         eventGroup.start();
         eventGroup.stop();
         eventGroup.stop();
-        closeQuietly(eventGroup); // Direct lose causes an unsuppressable warning in Java 21+
+        eventGroup.close();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -161,7 +161,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Test
     public void testCloseAwaitTerminationWithoutStarting() {
         final EventLoop eventGroup = EventGroup.builder().build();
-        closeQuietly(eventGroup); // Direct lose causes an unsuppressable warning in Java 21+
+        eventGroup.close();
         assertTrue(eventGroup.isClosed());
         assertTrue(eventGroup.isStopped());
     }
@@ -314,7 +314,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Test
     public void testCloseAddHandler() {
         try (final EventLoop eventGroup = EventGroup.builder().build()) {
-            closeQuietly(eventGroup); // Direct lose causes an unsuppressable warning in Java 21+
+            closeQuietly(eventGroup); // Direct call to close causes an unsuppressable warning in Java 21+
             for (HandlerPriority hp : HandlerPriority.values()) {
                 final TestHandler handler = new TestHandler(hp);
                 try {
