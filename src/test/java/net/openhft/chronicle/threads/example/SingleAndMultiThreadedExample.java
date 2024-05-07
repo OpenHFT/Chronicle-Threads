@@ -100,6 +100,4 @@ public class SingleAndMultiThreadedExample {
         finished.await();
         System.out.println("eventLoopExample=" + singleThreadedValue);
     }
-
 }
-
