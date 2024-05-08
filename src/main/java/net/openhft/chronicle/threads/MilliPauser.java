@@ -25,6 +25,10 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
+/**
+ * A {@link Pauser} implementation that provides precise control over thread pausing based on a specified duration in milliseconds.
+ * This pauser can operate both synchronously and asynchronously, providing flexibility in thread management.
+ */
 public class MilliPauser implements Pauser {
     private final AtomicBoolean pausing = new AtomicBoolean();
     private long pauseTimeMS;
@@ -35,19 +39,32 @@ public class MilliPauser implements Pauser {
     private transient volatile Thread thread = null;
 
     /**
-     * Pauses for a fixed time
+     * Constructs a new {@code MilliPauser} with a specified pause time in milliseconds.
      *
-     * @param pauseTimeMS the pause time for each loop.
+     * @param pauseTimeMS the pause time for each pause operation, in milliseconds
      */
     public MilliPauser(long pauseTimeMS) {
         this.pauseTimeMS = pauseTimeMS;
     }
 
+    /**
+     * Sets the pause time to a specified duration in milliseconds.
+     *
+     * @param pauseTimeMS the new pause time in milliseconds
+     * @return this {@code MilliPauser} instance for chaining
+     */
     public MilliPauser pauseTimeMS(long pauseTimeMS) {
         this.pauseTimeMS = pauseTimeMS;
         return this;
     }
 
+    /**
+     * Sets the pause time to the minimum of the current or specified duration in milliseconds.
+     * Ensures that the pause time does not drop below 1 millisecond.
+     *
+     * @param pauseTimeMS the proposed minimum pause time in milliseconds
+     * @return this {@code MilliPauser} instance for chaining
+     */
     public MilliPauser minPauseTimeMS(long pauseTimeMS) {
         this.pauseTimeMS = Math.min(this.pauseTimeMS, pauseTimeMS);
         if (this.pauseTimeMS < 1)
@@ -55,6 +72,11 @@ public class MilliPauser implements Pauser {
         return this;
     }
 
+    /**
+     * Retrieves the current pause time in milliseconds.
+     *
+     * @return the pause time in milliseconds
+     */
     public long pauseTimeMS() {
         return pauseTimeMS;
     }
@@ -64,26 +86,50 @@ public class MilliPauser implements Pauser {
         pauseUntilMS = 0;
     }
 
+    /**
+     * Pauses the current thread for the configured duration using millisecond precision.
+     */
     @Override
     public void pause() {
         doPauseMS(pauseTimeMS);
     }
 
+    /**
+     * Initiates an asynchronous pause that will last for the previously set pause duration.
+     * Does not block the caller but sets the pauser to be in a pausing state.
+     */
     @Override
     public void asyncPause() {
         pauseUntilMS = System.currentTimeMillis() + pauseTimeMS;
     }
 
+    /**
+     * Checks if the pauser is currently in an asynchronous pausing state.
+     *
+     * @return {@code true} if still in the pausing state, {@code false} otherwise
+     */
     @Override
     public boolean asyncPausing() {
         return pauseUntilMS > System.currentTimeMillis();
     }
 
+    /**
+     * Pauses the current thread for a specified duration in milliseconds.
+     *
+     * @param timeout  the maximum time to pause in the specified {@code timeUnit}
+     * @param timeUnit the unit of time for {@code timeout}
+     * @throws TimeoutException if the pause operation is not completed within the specified timeout
+     */
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
         doPauseMS(timeUnit.toMillis(timeout));
     }
 
+    /**
+     * Helper method to perform the actual pause operation in milliseconds.
+     *
+     * @param delayMS the delay in milliseconds to pause the thread
+     */
     void doPauseMS(long delayMS) {
         long start = System.nanoTime();
         thread = Thread.currentThread();
@@ -96,6 +142,9 @@ public class MilliPauser implements Pauser {
         countPaused++;
     }
 
+    /**
+     * Unpauses the currently paused thread if it is in a paused state.
+     */
     @Override
     public void unpause() {
         final Thread threadSnapshot = this.thread;
@@ -103,13 +152,35 @@ public class MilliPauser implements Pauser {
             LockSupport.unpark(threadSnapshot);
     }
 
+    /**
+     * Returns the total time that the thread has been paused, measured in milliseconds.
+     *
+     * @return the total paused time in milliseconds
+     */
     @Override
     public long timePaused() {
         return timePaused / 1_000_000;
     }
 
+    /**
+     * Returns the number of times this pauser has been activated to pause the thread.
+     *
+     * @return the total count of pauses
+     */
     @Override
     public long countPaused() {
         return countPaused;
+    }
+
+    /**
+     * Provides a string representation of this pauser, identifying the configured pause time.
+     *
+     * @return a string representation of this {@code MilliPauser}
+     */
+    @Override
+    public String toString() {
+        if (pauseTimeMS == 1)
+            return "PauserMode.milli";
+        return "Pauser.millis(" + pauseTimeMS + ')';
     }
 }

@@ -26,7 +26,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * See also {@link PauserMode} for a mechanism to capture these as serialisable configuration
+ * Provides a suite of factory methods for creating various {@link Pauser} objects, each offering different strategies for managing thread execution.
+ * The {@link Pauser} is designed to offer flexible pausing strategies depending on CPU availability and desired execution patterns.
+ *
+ * <p>This interface also defines the methods for managing pause states and conditions within an application's threading model. It includes methods to pause, unpause, reset, and other utilities that influence thread scheduling and execution behaviors.</p>
+ *
+ * <p>Refer to {@link PauserMode} for capturing these configurations in a serializable manner.</p>
  */
 public interface Pauser {
 
@@ -46,17 +51,24 @@ public interface Pauser {
         return procs < MIN_PROCESSORS;
     }
 
+    /**
+     * Returns a {@link Pauser} that either yields, pauses, or does not wait at all, based on system capabilities.
+     * It selects the most appropriate pauser based on CPU availability and specified minimal busyness.
+     *
+     * @param minBusy the minimal busyness period in microseconds before yielding or pausing
+     * @return the most appropriate {@link Pauser}
+     */
     static Pauser yielding(int minBusy) {
         SleepyWarning.warnSleepy();
         return SLEEPY ? sleepy()
                 : BALANCED ? balanced()
-                : new TimeoutPauser(minBusy);
+                : new YieldingPauser(minBusy);
     }
 
     /**
      * A sleepy pauser which yields for a millisecond, then sleeps for 1 to 20 ms
      *
-     * @return a sleepy pauser
+     * @return a {@link TimingPauser} implementing a sleepy strategy
      */
     static TimingPauser sleepy() {
         return new LongPauser(0, 50, 500, Jvm.isDebug() ? 500_000 : 20_000, TimeUnit.MICROSECONDS);
@@ -65,7 +77,7 @@ public interface Pauser {
     /**
      * A balanced pauser which tries to be busy for short bursts but backs off when idle.
      *
-     * @return a balanced pauser
+     * @return a {@link TimingPauser} implementing a balanced strategy
      */
     static TimingPauser balanced() {
         return balancedUpToMillis(20);
@@ -74,8 +86,8 @@ public interface Pauser {
     /**
      * A balanced pauser which tries to be busy for short bursts but backs off when idle with a limit of max back off.
      *
-     * @param millis maximum millis (unless in debug mode)
-     * @return a balanced pauser
+     * @param millis the maximum back-off period in milliseconds
+     * @return a {@link TimingPauser} implementing a balanced strategy with a maximum back-off limit
      */
     static TimingPauser balancedUpToMillis(int millis) {
         return SLEEPY ? sleepy()
@@ -83,37 +95,39 @@ public interface Pauser {
     }
 
     /**
-     * Wait a fixed time before running again unless woken
+     * Creates a {@link MilliPauser} that waits for a fixed duration before resuming execution.
      *
-     * @param millis to wait for
-     * @return a waiting pauser
+     * @param millis the fixed wait time in milliseconds
+     * @return a {@link MilliPauser}
      */
     static MilliPauser millis(int millis) {
         return new MilliPauser(millis);
     }
 
     /**
-     * A pauser which does not busy spin or yield, it just pauses with a backoff
+     * Creates a {@link Pauser} that pauses with a back-off strategy, starting at a minimum millisecond interval and potentially increasing to a maximum.
      *
-     * @param minMillis starting millis
-     * @param maxMillis maximum millis
-     * @return a balanced pauser
+     * @param minMillis the starting minimum pause duration in milliseconds
+     * @param maxMillis the maximum pause duration in milliseconds
+     * @return a {@link Pauser} with a back-off strategy
      */
     static Pauser millis(int minMillis, int maxMillis) {
         return new LongPauser(0, 0, minMillis, maxMillis, TimeUnit.MILLISECONDS);
     }
 
     /**
-     * Yielding pauser. simpler than LongPauser but slightly more friendly to other processes
+     * Provides a simple {@link Pauser} that is more process-friendly by yielding the thread execution.
+     *
+     * @return a yielding {@link Pauser}
      */
     static Pauser yielding() {
         return yielding(2);
     }
 
     /**
-     * A busy pauser which never waits
+     * Creates a {@link Pauser} that actively keeps the thread busy and does not employ any waiting strategies.
      *
-     * @return a busy/non pauser
+     * @return a {@link Pauser} that never waits
      */
     @NotNull
     static Pauser busy() {
@@ -123,6 +137,11 @@ public interface Pauser {
                 : BusyPauser.INSTANCE;
     }
 
+    /**
+     * Creates a {@link TimingPauser} that keeps the thread busy but also incorporates timed waits.
+     *
+     * @return a {@link TimingPauser} that combines busy and timed wait strategies
+     */
     @NotNull
     static TimingPauser timedBusy() {
         return SLEEPY ? sleepy()
@@ -168,9 +187,9 @@ public interface Pauser {
     }
 
     /**
-     * Returns if this Pauser is still asynchronously pausing.
+     * Checks if the pauser is currently in an asynchronous pause state.
      *
-     * @return if this Pauser is still asynchronously pausing
+     * @return {@code true} if the pauser is still pausing asynchronously, {@code false} otherwise
      */
     default boolean asyncPausing() {
         return false;

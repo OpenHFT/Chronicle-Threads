@@ -26,12 +26,12 @@ import java.util.concurrent.TimeoutException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class TimeoutPauserTest extends ThreadsTestCommon {
+public class YieldingPauserTest extends ThreadsTestCommon {
 
     @Test
     public void pause() {
         final int pauseTimeMillis = 100;
-        final TimeoutPauser tp = new TimeoutPauser(pauseTimeMillis);
+        final YieldingPauser tp = new YieldingPauser(pauseTimeMillis);
         for (int i = 0; i < 10; i++) {
             final long start = System.currentTimeMillis();
             while (true) {
