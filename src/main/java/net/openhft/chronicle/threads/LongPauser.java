@@ -26,6 +26,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
+import static net.openhft.chronicle.threads.LongPauser.ToStringHelper.*;
+
 /**
  * A {@link Pauser} that implements a pausing strategy with phases of busy waiting, yielding, and sleeping,
  * with each phase increasing in duration up to a configured limit. It is designed for scenarios where a gradual
@@ -35,6 +37,7 @@ import java.util.concurrent.locks.LockSupport;
  * progressively increasing the pause time from a minimum to a specified maximum duration.
  */
 public class LongPauser implements Pauser, TimingPauser {
+    private static final long MAX_FACTOR = Jvm.isDebug() ? 100 : 1;
     private static final String SHOW_PAUSES = Jvm.getProperty("pauses.show");
     private final long minPauseTimeNS;
     private final long maxPauseTimeNS;
@@ -65,7 +68,7 @@ public class LongPauser implements Pauser, TimingPauser {
         this.minBusyNS = timeUnit.toNanos(minBusy);
         this.minYieldNS = timeUnit.toNanos(minYield);
         this.minPauseTimeNS = timeUnit.toNanos(minTime);
-        this.maxPauseTimeNS = timeUnit.toNanos(maxTime);
+        this.maxPauseTimeNS = timeUnit.toNanos(maxTime) * MAX_FACTOR;
         pauseTimeNS = minPauseTimeNS;
     }
 
@@ -213,6 +216,7 @@ public class LongPauser implements Pauser, TimingPauser {
 
     /**
      * Returns the total number of pauses that have been initiated.
+     *
      * @return the total count of pauses.
      */
     @Override
@@ -227,22 +231,38 @@ public class LongPauser implements Pauser, TimingPauser {
      */
     @Override
     public String toString() {
-        if (minBusyNS == 10000000 && minYieldNS == 800000 && minPauseTimeNS == 200000) {
-            if (maxPauseTimeNS == 20000000) {
+        if (minBusyNS == balancedSample.minBusyNS
+                && minYieldNS == balancedSample.minYieldNS
+                && minPauseTimeNS == balancedSample.minPauseTimeNS) {
+            if (maxPauseTimeNS == balancedSample.maxPauseTimeNS) {
                 return "PauserMode.balanced";
             } else {
-                return "Pauser.balancedUpToMillis(" + maxPauseTimeNS / 1_000_000 + ")";
+                return "Pauser.balancedUpToMillis(" + maxPauseTimeNS / MAX_FACTOR / 1_000_000 + ")";
             }
         }
-        if (minBusyNS == 0 && minYieldNS == 0 && minPauseTimeNS >= 1_000_000 && maxPauseTimeNS >= 1_000_000)
-            return "Pauser.milli(" + minPauseTimeNS / 1_000_000 + ", " + maxPauseTimeNS / 1_000_000 + ")";
-        if (minBusyNS == 0 && minYieldNS == 50_000 && minPauseTimeNS == 500000 && maxPauseTimeNS == 20000000)
+        if (minBusyNS == millisSample.minBusyNS
+                && minYieldNS == millisSample.minYieldNS
+                && minPauseTimeNS >= millisSample.minPauseTimeNS
+                && maxPauseTimeNS >= millisSample.maxPauseTimeNS)
+            return "Pauser.milli(" + minPauseTimeNS / 1_000_000 + ", " + maxPauseTimeNS / MAX_FACTOR / 1_000_000 + ")";
+
+        if (minBusyNS == sleepySample.minBusyNS
+                && minYieldNS == sleepySample.minYieldNS
+                && minPauseTimeNS == sleepySample.minPauseTimeNS
+                && maxPauseTimeNS == sleepySample.maxPauseTimeNS)
             return "PauserMode.sleepy";
+
         return "LongPauser{" +
                 "minBusyNS=" + minBusyNS +
                 ", minYieldNS=" + minYieldNS +
                 ", minPauseTimeNS=" + minPauseTimeNS +
                 ", maxPauseTimeNS=" + maxPauseTimeNS +
                 '}';
+    }
+
+    static class ToStringHelper {
+        static final LongPauser sleepySample = (LongPauser) Pauser.sleepy();
+        static final LongPauser balancedSample = (LongPauser) Pauser.balanced();
+        static final LongPauser millisSample = (LongPauser) Pauser.millis(1, 1);
     }
 }

@@ -71,7 +71,7 @@ public interface Pauser {
      * @return a {@link TimingPauser} implementing a sleepy strategy
      */
     static TimingPauser sleepy() {
-        return new LongPauser(0, 50, 500, Jvm.isDebug() ? 500_000 : 20_000, TimeUnit.MICROSECONDS);
+        return new LongPauser(0, 50, 500, 20_000, TimeUnit.MICROSECONDS);
     }
 
     /**
@@ -91,7 +91,7 @@ public interface Pauser {
      */
     static TimingPauser balancedUpToMillis(int millis) {
         return SLEEPY ? sleepy()
-                : new LongPauser(MIN_BUSY, 800, 200, Jvm.isDebug() ? 500_000 : millis * 1_000L, TimeUnit.MICROSECONDS);
+                : new LongPauser(MIN_BUSY, 800, 200, millis * 1000L, TimeUnit.MICROSECONDS);
     }
 
     /**
