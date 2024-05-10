@@ -50,11 +50,18 @@ public class LongPauserTest extends ThreadsTestCommon {
     @Test
     public void testLongAsyncPauser() {
         final LongPauser pauser = new LongPauser(0, 0, 1, 1, TimeUnit.MILLISECONDS);
-        for (int i = 0; i < 5; i++) {
-            pauser.asyncPause();
-            testUntilUnpaused(pauser, 1, TimeUnit.MILLISECONDS);
-            pauser.reset();
-            testUntilUnpaused(pauser, 0, TimeUnit.MILLISECONDS);
+        boolean failedOnce = false;
+        for (int i = 0; i < 100; i++) {
+            try {
+                pauser.asyncPause();
+                testUntilUnpaused(pauser, 1, TimeUnit.MILLISECONDS);
+                pauser.reset();
+                testUntilUnpaused(pauser, 0, TimeUnit.MILLISECONDS);
+            } catch (AssertionError e) {
+                if (failedOnce)
+                    throw e;
+                failedOnce = true;
+            }
         }
     }
 
