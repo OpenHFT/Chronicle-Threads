@@ -37,7 +37,6 @@ import static net.openhft.chronicle.threads.LongPauser.ToStringHelper.*;
  * progressively increasing the pause time from a minimum to a specified maximum duration.
  */
 public class LongPauser implements Pauser, TimingPauser {
-    private static final long MAX_FACTOR = Jvm.isDebug() ? 100 : 1;
     private static final String SHOW_PAUSES = Jvm.getProperty("pauses.show");
     private final long minPauseTimeNS;
     private final long maxPauseTimeNS;
@@ -68,7 +67,7 @@ public class LongPauser implements Pauser, TimingPauser {
         this.minBusyNS = timeUnit.toNanos(minBusy);
         this.minYieldNS = timeUnit.toNanos(minYield);
         this.minPauseTimeNS = timeUnit.toNanos(minTime);
-        this.maxPauseTimeNS = timeUnit.toNanos(maxTime) * MAX_FACTOR;
+        this.maxPauseTimeNS = timeUnit.toNanos(maxTime);
         pauseTimeNS = minPauseTimeNS;
     }
 
@@ -237,14 +236,14 @@ public class LongPauser implements Pauser, TimingPauser {
             if (maxPauseTimeNS == balancedSample.maxPauseTimeNS) {
                 return "PauserMode.balanced";
             } else {
-                return "Pauser.balancedUpToMillis(" + maxPauseTimeNS / MAX_FACTOR / 1_000_000 + ")";
+                return "Pauser.balancedUpToMillis(" + maxPauseTimeNS / 1_000_000 + ")";
             }
         }
         if (minBusyNS == millisSample.minBusyNS
                 && minYieldNS == millisSample.minYieldNS
                 && minPauseTimeNS >= millisSample.minPauseTimeNS
                 && maxPauseTimeNS >= millisSample.maxPauseTimeNS)
-            return "Pauser.milli(" + minPauseTimeNS / 1_000_000 + ", " + maxPauseTimeNS / MAX_FACTOR / 1_000_000 + ")";
+            return "Pauser.milli(" + minPauseTimeNS / 1_000_000 + ", " + maxPauseTimeNS / 1_000_000 + ")";
 
         if (minBusyNS == sleepySample.minBusyNS
                 && minYieldNS == sleepySample.minYieldNS
