@@ -30,13 +30,12 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
             Pauser.balanced(),
             Pauser.sleepy(),
             new BusyTimedPauser(),
-            new TimeoutPauser(0),
+            new YieldingPauser(0),
             new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS),
 //            new MilliPauser(1)
     };
     Pauser[] pausersDontSupportTimeout = {
-            BusyPauser.INSTANCE,
-            new YieldingPauser(0)};
+            BusyPauser.INSTANCE};
 
     @Test
     public void pausersSupportTimeout() {

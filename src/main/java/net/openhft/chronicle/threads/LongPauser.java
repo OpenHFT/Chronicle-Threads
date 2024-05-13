@@ -26,6 +26,16 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
+import static net.openhft.chronicle.threads.LongPauser.ToStringHelper.*;
+
+/**
+ * A {@link Pauser} that implements a pausing strategy with phases of busy waiting, yielding, and sleeping,
+ * with each phase increasing in duration up to a configured limit. It is designed for scenarios where a gradual
+ * back-off is needed from active to more passive waiting states.
+ * <p>
+ * The pausing behavior begins with busy waiting, transitions to yielding, and ultimately moves to sleeping,
+ * progressively increasing the pause time from a minimum to a specified maximum duration.
+ */
 public class LongPauser implements Pauser, TimingPauser {
     private static final String SHOW_PAUSES = Jvm.getProperty("pauses.show");
     private final long minPauseTimeNS;
@@ -38,7 +48,7 @@ public class LongPauser implements Pauser, TimingPauser {
     private long timePaused = 0;
     private long countPaused = 0;
     @Nullable
-    private volatile Thread thread = null;
+    private transient volatile Thread thread = null;
     private long yieldStart = 0;
     private long pauseUntilNS = 0;
 
@@ -74,6 +84,9 @@ public class LongPauser implements Pauser, TimingPauser {
         firstPauseNS = Long.MAX_VALUE;
     }
 
+    /**
+     * Pauses the current thread according to the phased pausing strategy.
+     */
     @Override
     public void pause() {
         try {
@@ -82,12 +95,20 @@ public class LongPauser implements Pauser, TimingPauser {
         }
     }
 
+    /**
+     * Initiates an asynchronous pause that will last for the current phase's duration.
+     */
     @Override
     public void asyncPause() {
         pauseUntilNS = System.nanoTime() + pauseTimeNS;
         increasePauseTimeNS();
     }
 
+    /**
+     * Checks if the pauser is currently in an asynchronous pausing state.
+     *
+     * @return {@code true} if still in the pausing state, {@code false} otherwise
+     */
     @Override
     public boolean asyncPausing() {
         return pauseUntilNS > System.nanoTime();
@@ -132,9 +153,8 @@ public class LongPauser implements Pauser, TimingPauser {
         }
 
         // If a finite timeout is given, check if it's exceeded and throw a TimeoutException if it is
-        if (timeout < Long.MAX_VALUE) {
-            if (firstPauseNS + timeUnit.toNanos(timeout) - now < 0)
-                throw new TimeoutException();
+        if (timeout < Long.MAX_VALUE && (firstPauseNS + timeUnit.toNanos(timeout) - now < 0)) {
+            throw new TimeoutException();
         }
 
         // Check the yield time to determine whether to continue yielding or to move to the next pause strategy
@@ -183,13 +203,65 @@ public class LongPauser implements Pauser, TimingPauser {
             LockSupport.unpark(threadSnapshot);
     }
 
+    /**
+     * Returns the total time that the thread has been paused, in milliseconds.
+     *
+     * @return total paused time in milliseconds.
+     */
     @Override
     public long timePaused() {
         return timePaused / 1_000_000;
     }
 
+    /**
+     * Returns the total number of pauses that have been initiated.
+     *
+     * @return the total count of pauses.
+     */
     @Override
     public long countPaused() {
         return countPaused;
+    }
+
+    /**
+     * Provides a human-readable description of the pauser's configuration.
+     *
+     * @return a string representing the configured pause strategy.
+     */
+    @Override
+    public String toString() {
+        if (minBusyNS == balancedSample.minBusyNS
+                && minYieldNS == balancedSample.minYieldNS
+                && minPauseTimeNS == balancedSample.minPauseTimeNS) {
+            if (maxPauseTimeNS == balancedSample.maxPauseTimeNS) {
+                return "PauserMode.balanced";
+            } else {
+                return "Pauser.balancedUpToMillis(" + maxPauseTimeNS / 1_000_000 + ")";
+            }
+        }
+        if (minBusyNS == millisSample.minBusyNS
+                && minYieldNS == millisSample.minYieldNS
+                && minPauseTimeNS >= millisSample.minPauseTimeNS
+                && maxPauseTimeNS >= millisSample.maxPauseTimeNS)
+            return "Pauser.milli(" + minPauseTimeNS / 1_000_000 + ", " + maxPauseTimeNS / 1_000_000 + ")";
+
+        if (minBusyNS == sleepySample.minBusyNS
+                && minYieldNS == sleepySample.minYieldNS
+                && minPauseTimeNS == sleepySample.minPauseTimeNS
+                && maxPauseTimeNS == sleepySample.maxPauseTimeNS)
+            return "PauserMode.sleepy";
+
+        return "LongPauser{" +
+                "minBusyNS=" + minBusyNS +
+                ", minYieldNS=" + minYieldNS +
+                ", minPauseTimeNS=" + minPauseTimeNS +
+                ", maxPauseTimeNS=" + maxPauseTimeNS +
+                '}';
+    }
+
+    static class ToStringHelper {
+        static final LongPauser sleepySample = (LongPauser) Pauser.sleepy();
+        static final LongPauser balancedSample = (LongPauser) Pauser.balanced();
+        static final LongPauser millisSample = (LongPauser) Pauser.millis(1, 1);
     }
 }

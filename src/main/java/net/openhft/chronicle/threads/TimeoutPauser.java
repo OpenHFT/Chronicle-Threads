@@ -17,19 +17,8 @@
  */
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.Jvm;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-public class TimeoutPauser implements Pauser, TimingPauser {
-    private final int minBusy;
-    private int count = 0;
-    private long timePaused = 0;
-    private long countPaused = 0;
-    private long yieldStart = 0;
-    private long timeOutStart = Long.MAX_VALUE;
+@Deprecated(/* to be removed in x.27, use YieldingPauser */)
+public class TimeoutPauser extends YieldingPauser implements TimingPauser {
 
     /**
      * first it will busy wait, then it will yield.
@@ -37,71 +26,6 @@ public class TimeoutPauser implements Pauser, TimingPauser {
      * @param minBusy the min number of times it will go around doing nothing, after this is reached it will then start to yield
      */
     public TimeoutPauser(int minBusy) {
-        this.minBusy = minBusy;
-    }
-
-    @Override
-    public void reset() {
-        checkYieldTime();
-        count = 0;
-        timeOutStart = Long.MAX_VALUE;
-    }
-
-    @Override
-    public void pause() {
-        ++count;
-        if (count < minBusy) {
-            ++countPaused;
-            Jvm.nanoPause();
-            return;
-        }
-
-        yield0();
-        checkYieldTime();
-    }
-
-    @Override
-    public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
-        if (timeOutStart == Long.MAX_VALUE)
-            timeOutStart = System.nanoTime();
-
-        ++count;
-        if (count < minBusy)
-            return;
-        yield0();
-
-        if (timeOutStart + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
-            throw new TimeoutException();
-        checkYieldTime();
-    }
-
-    private void checkYieldTime() {
-        if (yieldStart > 0) {
-            long time = System.nanoTime() - yieldStart;
-            timePaused += time;
-            countPaused++;
-            yieldStart = 0;
-        }
-    }
-
-    private void yield0() {
-        if (yieldStart == 0)
-            yieldStart = System.nanoTime();
-        Thread.yield();
-    }
-
-    @Override
-    public void unpause() {
-        // Do nothing
-    }
-
-    @Override
-    public long timePaused() {
-        return timePaused / 1_000_000;
-    }
-
-    @Override
-    public long countPaused() {
-        return countPaused;
+        super(minBusy);
     }
 }

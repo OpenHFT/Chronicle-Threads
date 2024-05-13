@@ -30,6 +30,11 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
     private long time = Long.MAX_VALUE;
     private long countPaused = 0;
 
+    /**
+     * Always returns {@code true}, indicating that this pauser predominantly keeps the thread busy.
+     *
+     * @return {@code true}, as the primary operation is a busy wait
+     */
     @Override
     public boolean isBusy() {
         return true;
@@ -47,27 +52,59 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
         Jvm.nanoPause();
     }
 
+    /**
+     * Attempts to pause the thread with a specified timeout. If the pause exceeds the specified duration,
+     * a {@link TimeoutException} is thrown, indicating the timeout has elapsed without resumption of operations.
+     *
+     * @param timeout  the maximum time to wait before throwing an exception
+     * @param timeUnit the unit of time for the timeout parameter
+     * @throws TimeoutException if the wait exceeds the specified timeout duration
+     */
     @Override
     public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
         if (time == Long.MAX_VALUE)
             time = System.nanoTime();
-        if (time + timeUnit.toNanos(timeout) - System.nanoTime() < 0)
-            throw new TimeoutException();
+        if (System.nanoTime() - time > timeUnit.toNanos(timeout))
+            throw new TimeoutException("Pause timed out after " + timeout + " " + timeUnit);
         pause();
     }
 
+    /**
+     * Does nothing since this implementation has no state to unpause from. The method exists to fulfill the interface contract.
+     */
     @Override
     public void unpause() {
         // nothing to unpause.
     }
 
+    /**
+     * Always returns {@code 0} as this pauser does not actually track total pause time.
+     *
+     * @return {@code 0}, indicating no measurable pause duration
+     */
     @Override
     public long timePaused() {
         return 0;
     }
 
+    /**
+     * Returns the count of how many times the {@code pause()} method has been called.
+     *
+     * @return the number of pauses that have been initiated
+     */
     @Override
     public long countPaused() {
         return countPaused;
     }
+
+    /**
+     * Provides a string representation for this pauser, identifying it as "PauserMode.timedBusy".
+     *
+     * @return a string indicating the type of pauser
+     */
+    @Override
+    public String toString() {
+        return "PauserMode.timedBusy";
+    }
 }
+
