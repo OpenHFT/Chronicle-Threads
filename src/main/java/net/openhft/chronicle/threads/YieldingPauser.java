@@ -27,7 +27,6 @@ import java.util.concurrent.TimeoutException;
  * This pauser is designed for situations where short bursts of busyness are acceptable before yielding,
  * aiming to balance responsiveness with CPU usage. The transition from busy-waiting to yielding helps
  * to manage CPU resources more effectively while still allowing the thread to remain responsive.
- * </p>
  */
 public class YieldingPauser implements TimingPauser {
     final int minBusy;
