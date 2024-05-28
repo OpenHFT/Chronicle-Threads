@@ -25,4 +25,3 @@ public enum EventLoopUtil {
     public static final int ACCEPT_HANDLER_MOD_COUNT = Jvm.getInteger("eventloop.accept.mod", DEFAULT_ACCEPT_HANDLER_MOD_COUNT);
     public static final boolean IS_ACCEPT_HANDLER_MOD_COUNT = ACCEPT_HANDLER_MOD_COUNT > 0;
 }
-

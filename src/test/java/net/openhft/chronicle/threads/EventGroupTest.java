@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static java.util.Collections.singleton;
+import static net.openhft.chronicle.core.io.Closeable.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class EventGroupTest extends ThreadsTestCommon {
@@ -313,7 +314,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     @Test
     public void testCloseAddHandler() {
         try (final EventLoop eventGroup = EventGroup.builder().build()) {
-            eventGroup.close();
+            closeQuietly(eventGroup); // Direct call to close causes an unsuppressable warning in Java 21+
             for (HandlerPriority hp : HandlerPriority.values()) {
                 final TestHandler handler = new TestHandler(hp);
                 try {

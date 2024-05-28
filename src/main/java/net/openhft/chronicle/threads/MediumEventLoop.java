@@ -79,6 +79,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * @param daemon  is a demon thread
      * @param binding set affinity description, "any", "none", "1", "last-1"
      */
+    @SuppressWarnings("this-escape")
     public MediumEventLoop(@Nullable final EventLoop parent,
                            final String name,
                            final Pauser pauser,
@@ -245,6 +246,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     @Override
     @HotMethod
+    @SuppressWarnings("try")
     public void run() {
         try {
             try (AffinityLock lock = AffinityLock.acquireLock(binding)) {
@@ -344,6 +346,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         dumpRunningHandlers();
     }
 
+    @SuppressWarnings("fallthrough")
     private boolean runAllMediumHandler() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
@@ -399,6 +402,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     // NOTE The loop is unrolled to reduce megamorphic calls.
+    @SuppressWarnings("fallthrough")
     protected boolean runAllHandlers() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
@@ -512,6 +516,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         return result;
     }
 
+    @SuppressWarnings("fallthrough")
     protected void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {

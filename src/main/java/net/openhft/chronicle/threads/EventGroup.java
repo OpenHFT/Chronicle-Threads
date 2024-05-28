@@ -76,6 +76,7 @@ public class EventGroup
     private final Pauser replicationPauser;
     private VanillaEventLoop replication;
 
+    @SuppressWarnings({"this-escape", "deprecation"})
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
                       final Pauser replicationPauser,
@@ -137,6 +138,7 @@ public class EventGroup
         return EventGroupBuilder.builder();
     }
 
+    @SuppressWarnings("deprecation")
     private synchronized VanillaEventLoop getReplication() {
         if (replication == null) {
             final Pauser newReplicationPauser = replicationPauser != null ? replicationPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
@@ -157,6 +159,7 @@ public class EventGroup
                     TimeUnit.NANOSECONDS.convert(replicationMonitorIntervalMs, TimeUnit.MILLISECONDS), replication)));
     }
 
+    @SuppressWarnings("deprecation")
     private synchronized VanillaEventLoop getConcThread(int n) {
         VanillaEventLoop loop = concThreads.get(n);
         if (loop == null) {

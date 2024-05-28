@@ -32,7 +32,7 @@ import static net.openhft.chronicle.threads.EventGroup.REPLICATION_EVENT_PAUSE_T
 
 /**
  * Builder for {@link EventGroup}. Implements {@link Supplier} so we can provide this to configuration
- * that expects a Supplier<EventLoop> (e.g. QE, FIX)
+ * that expects a Supplier&lt;EventLoop&gt; (e.g. QE, FIX)
  */
 public class EventGroupBuilder implements Builder<EventLoop> {
 

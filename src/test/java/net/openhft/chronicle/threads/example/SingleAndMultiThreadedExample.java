@@ -42,8 +42,6 @@ public class SingleAndMultiThreadedExample {
     /**
      * The two examples in this code do the same thing, they both increment a shared counter from 0 to 500
      * one is written using java threads and the other uses the Chronicle Event Loop.
-     *
-     * @param args
      */
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         SingleAndMultiThreadedExample example = new SingleAndMultiThreadedExample();
@@ -102,6 +100,4 @@ public class SingleAndMultiThreadedExample {
         finished.await();
         System.out.println("eventLoopExample=" + singleThreadedValue);
     }
-
 }
-

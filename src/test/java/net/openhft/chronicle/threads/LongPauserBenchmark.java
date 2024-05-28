@@ -45,5 +45,4 @@ public final class LongPauserBenchmark {
         }
         thread.interrupt();
     }
-
 }
