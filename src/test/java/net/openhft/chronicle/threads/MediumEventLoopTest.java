@@ -29,6 +29,7 @@ import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class MediumEventLoopTest extends ThreadsTestCommon {
 
@@ -90,7 +91,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
     }
 
     @Test
-    void illegalStateExceptionsAreLoggedWhenThrownInLoopStarted() {
+    void illegalStateExceptionsAreLoggedWhenThrownInLoopStarted() throws InterruptedException {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
             class ThrowingHandler implements EventHandler {
 
@@ -103,10 +104,67 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
                 public boolean action() {
                     return false;
                 }
+
+                @Override
+                public void loopFinished() {
+                    throw new IllegalStateException("Something went wrong in loopFinished!!!");
+                }
             }
-            eventLoop.addHandler(new ThrowingHandler());
+
+            try {
+                // Add handler before loop has started. loopStarted not called yet.
+                eventLoop.addHandler(new ThrowingHandler());
+
+                // Start the loop. loopStarted called.
+                eventLoop.start();
+
+                while (!eventLoop.isStarted()) {
+                    Thread.sleep(100);
+                }
+
+                expectException("Something went wrong in loopStarted!!!");
+                expectException("Something went wrong in loopFinished!!!");
+            } catch (Throwable t) {
+                fail("Unexpected exception", t);
+            }
+        }
+    }
+
+    @Test
+    void throwableExceptionsAreLoggedWhenThrownInLoopStarted() throws InterruptedException {
+        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+            class ThrowingHandler implements EventHandler {
+
+                @Override
+                public void loopStarted() {
+                    throw new IllegalStateException("Something went wrong in loopStarted!!!");
+                }
+
+                @Override
+                public boolean action() {
+                    return false;
+                }
+
+                @Override
+                public void loopFinished() {
+                    System.out.println("finished");
+                }
+            }
             eventLoop.start();
+            while(!eventLoop.isStarted()) {
+                Thread.sleep(100);
+            }
+
+            // Add handler after loop has started
             expectException("Something went wrong in loopStarted!!!");
+            eventLoop.addHandler(new ThrowingHandler());
+
+            // Not ideal, but we need to wait for the exception to be thrown
+            Thread.sleep(1000);
+
+            if (eventLoop.isStopped()) {
+                fail("Event loop stopped unexpectedly");
+            }
         }
     }
 

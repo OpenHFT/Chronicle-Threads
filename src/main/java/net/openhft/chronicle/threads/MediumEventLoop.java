@@ -270,13 +270,16 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
+            stop();
         }
     }
 
     protected void loopStartedAllHandlers() {
         highHandler.loopStarted();
         if (!mediumHandlers.isEmpty())
-            mediumHandlers.forEach(EventHandler::loopStarted);
+            mediumHandlers.forEach(
+                    EventHandler::loopStarted
+            );
     }
 
     protected void loopFinishedAllHandlers() {
@@ -552,8 +555,13 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
-        if (thread == Thread.currentThread())
-            handler.loopStarted();
+        if (thread == Thread.currentThread()) {
+            try {
+                handler.loopStarted();
+            } catch (Throwable t) {
+                handleExceptionMediumHandler(handler, t);
+            }
+        }
     }
 
     /**
