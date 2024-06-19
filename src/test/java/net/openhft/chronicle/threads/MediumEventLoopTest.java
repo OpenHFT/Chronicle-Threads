@@ -268,6 +268,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
 
             // Wait for loop to start and handler to be removed.
             Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+            Waiters.waitForCondition("Handler should be closed", () -> (closeCalled.get() > 0), 5000);
             Waiters.waitForCondition("Handler should be removed", () -> (eventLoop.handlerCount() == 0), 5000);
 
             assertTrue(eventLoop.isAlive());
@@ -309,6 +310,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             eventLoop.addHandler(handler);
 
             // Wait for handler to be removed.
+            Waiters.waitForCondition("Handler should be closed", () -> (closeCalled.get() > 0), 5000);
             Waiters.waitForCondition("Handler should be removed", () -> (eventLoop.handlerCount() == 0), 5000);
 
             // Exceptions should be thrown.
@@ -418,6 +420,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
 
             // Wait for loop to start and handler to be removed.
             Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+            Waiters.waitForCondition("Handler should be closed", () -> (closeCalled.get() > 0), 5000);
             Waiters.waitForCondition("Handler should be removed", () -> (eventLoop.handlerCount() == 0), 5000);
 
             assertTrue(eventLoop.isAlive());
@@ -459,6 +462,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             eventLoop.addHandler(handler);
 
             // Wait for handler to be removed.
+            Waiters.waitForCondition("Handler should be closed", () -> (closeCalled.get() > 0), 5000);
             Waiters.waitForCondition("Handler should be removed", () -> (eventLoop.handlerCount() == 0), 5000);
 
             // Exceptions should be thrown.
