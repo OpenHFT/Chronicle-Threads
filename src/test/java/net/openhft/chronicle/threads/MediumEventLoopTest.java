@@ -72,13 +72,11 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
 
         @Override
         public void loopFinished() {
-            Thread.dumpStack();
             loopFinishedCalled.incrementAndGet();
         }
 
         @Override
         public void close() throws IOException {
-            Thread.dumpStack();
             closeCalled.incrementAndGet();
         }
     }
