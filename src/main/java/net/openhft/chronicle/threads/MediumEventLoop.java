@@ -584,16 +584,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         }
     }
 
-    private boolean performHandlerLoopFinished(@NotNull EventHandler handler) {
-        try {
-            handler.loopFinished();
-            return false;
-        } catch (Throwable t) {
-            Jvm.warn().on(getClass(), "EventHandler::loopFinished exception.", t);
-            return true;
-        }
-    }
-
     private boolean performHandlerLoopStarted(@NotNull EventHandler handler) {
         try {
             handler.loopStarted();
