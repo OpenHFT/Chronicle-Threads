@@ -219,7 +219,6 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             assertEquals(1, loopStartedCalled.get());
             assertEquals(1, loopFinishedCalled.get());
             assertEquals(0, closeCalled.get());
-            //assertNull(handler.eventLoop());
         }
 
         // Check the handler.
@@ -256,7 +255,6 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             assertEquals(1, loopStartedCalled.get());
             assertEquals(1, loopFinishedCalled.get());
             assertEquals(0, closeCalled.get());
-            //assertNull(handler.eventLoop());
         }
 
         // Check the handler.
@@ -295,7 +293,6 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             assertEquals(1, loopStartedCalled.get());
             assertEquals(1, loopFinishedCalled.get());
             assertEquals(1, closeCalled.get());
-            //assertNull(handler.eventLoop());
 
             // Handler has been removed.
             assertEquals(0, eventLoop.handlerCount());
@@ -334,7 +331,6 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             assertEquals(1, loopStartedCalled.get());
             assertEquals(1, loopFinishedCalled.get());
             assertEquals(1, closeCalled.get());
-            //assertNull(handler.eventLoop());
 
             // Handler has been removed.
             assertEquals(0, eventLoop.handlerCount());
@@ -351,7 +347,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
 
             // Add the handler.
-            GoodHandler handler = new GoodHighHandler();
+            GoodHighHandler handler = new GoodHighHandler();
             eventLoop.addHandler(handler);
 
             // Start the loop.
@@ -372,7 +368,6 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             assertEquals(1, loopStartedCalled.get());
             assertEquals(1, loopFinishedCalled.get());
             assertEquals(0, closeCalled.get());
-            //assertNull(handler.eventLoop());
         }
 
         // Check the handler.
@@ -390,7 +385,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
 
             // Add the handler.
-            GoodHandler handler = new GoodHandler();
+            GoodHighHandler handler = new GoodHighHandler();
             eventLoop.addHandler(handler);
 
             Waiters.waitForCondition("Loop started called",() -> (loopStartedCalled.get() > 0), 5000);
@@ -409,7 +404,6 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             assertEquals(1, loopStartedCalled.get());
             assertEquals(1, loopFinishedCalled.get());
             assertEquals(0, closeCalled.get());
-            //assertNull(handler.eventLoop());
         }
 
         // Check the handler.
@@ -449,7 +443,6 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             assertEquals(1, loopStartedCalled.get());
             assertEquals(1, loopFinishedCalled.get());
             assertEquals(1, closeCalled.get());
-            //assertNull(handler.eventLoop());
 
             // Handler has been removed.
             assertEquals(0, eventLoop.handlerCount());
@@ -488,7 +481,6 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             assertEquals(1, loopStartedCalled.get());
             assertEquals(1, loopFinishedCalled.get());
             assertEquals(1, closeCalled.get());
-            //assertNull(handler.eventLoop());
 
             // Handler has been removed.
             assertEquals(0, eventLoop.handlerCount());
