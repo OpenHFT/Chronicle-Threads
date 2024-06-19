@@ -111,14 +111,15 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     protected static void removeHandler(final EventHandler handler, @NotNull final List<EventHandler> handlers) {
+        // Close the handler before removing it from the list
+        loopFinishedQuietly(handler);
+        Closeable.closeQuietly(handler);
         try {
             handlers.remove(handler);
         } catch (ArrayIndexOutOfBoundsException e2) {
             if (!handlers.isEmpty())
                 throw e2;
         }
-        loopFinishedQuietly(handler);
-        Closeable.closeQuietly(handler);
     }
 
     @Override
