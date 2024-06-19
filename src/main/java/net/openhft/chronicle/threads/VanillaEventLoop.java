@@ -105,10 +105,30 @@ public class VanillaEventLoop extends MediumEventLoop {
     @Override
     protected void loopStartedAllHandlers() {
         super.loopStartedAllHandlers();
-        if (!timerHandlers.isEmpty())
-            timerHandlers.forEach(EventHandler::loopStarted);
-        if (!daemonHandlers.isEmpty())
-            daemonHandlers.forEach(EventHandler::loopStarted);
+
+        List<EventHandler> removeHandlers = new ArrayList<>();
+        for (EventHandler handler: timerHandlers) {
+            if (performHandlerLoopStarted(handler)) {
+                removeHandlers.add(handler);
+            }
+        }
+
+        // Remove handlers that had exception in loopStarted.
+        for (EventHandler handler : removeHandlers) {
+            removeHandler(handler, timerHandlers);
+        }
+
+        removeHandlers.clear();
+        for (EventHandler handler: daemonHandlers) {
+            if (performHandlerLoopStarted(handler)) {
+                removeHandlers.add(handler);
+            }
+        }
+
+        // Remove handlers that had exception in loopStarted.
+        for (EventHandler handler : removeHandlers) {
+            removeHandler(handler, daemonHandlers);
+        }
     }
 
     @Override
@@ -193,8 +213,20 @@ public class VanillaEventLoop extends MediumEventLoop {
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
 
-        if (thread != null)
-            handler.loopStarted();
+        if (thread != null) {
+            if (performHandlerLoopStarted(handler)) {
+                if (handler == this.highHandler) {
+                    removeHighHandler();
+                } else {
+                    if (mediumHandlers.contains(handler))
+                        removeHandler(handler, mediumHandlers);
+                    else if (timerHandlers.contains(handler))
+                        removeHandler(handler, timerHandlers);
+                    else if (daemonHandlers.contains(handler))
+                        removeHandler(handler, daemonHandlers);
+                }
+            }
+        }
     }
 
     @Override
