@@ -193,6 +193,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             // Start the loop.
             eventLoop.start();
             Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+            Waiters.waitForCondition("loop started called", () -> (loopStartedCalled.get() > 0), 5000);
 
             // Check the handler.
             assertEquals(1, loopStartedCalled.get());
@@ -344,6 +345,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             // Start the loop.
             eventLoop.start();
             Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+            Waiters.waitForCondition("loop started called", () -> (loopStartedCalled.get() > 0), 5000);
 
             // Check the handler.
             assertEquals(1, loopStartedCalled.get());
