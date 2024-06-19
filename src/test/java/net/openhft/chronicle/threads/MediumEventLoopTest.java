@@ -20,18 +20,121 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.io.InvalidMarshallableException;
 import net.openhft.chronicle.core.threads.EventHandler;
+import net.openhft.chronicle.core.threads.EventLoop;
+import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.testframework.ExecutorServiceUtil;
 import net.openhft.chronicle.testframework.Waiters;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class MediumEventLoopTest extends ThreadsTestCommon {
+
+    private static final String HANDLER_LOOP_STARTED_EXCEPTION_TXT = "Something went wrong in loopStarted!!!";
+    private static final String HANDLER_LOOP_FINISHED_EXCEPTION_TXT = "Something went wrong in loopFinished!!!";
+    private static final String HANDLER_CLOSE_EXCEPTION_TXT = "Something went wrong in close!!!";
+
+    final AtomicInteger loopStartedCalled = new AtomicInteger();
+    final AtomicInteger loopFinishedCalled = new AtomicInteger();
+    final AtomicInteger closeCalled = new AtomicInteger();
+
+    class GoodHandler implements EventHandler, Closeable {
+        private EventLoop eventLoop;
+
+        @Override
+        public void eventLoop(EventLoop eventLoop) {
+            this.eventLoop = eventLoop;
+        }
+
+        public EventLoop eventLoop() {
+            return eventLoop;
+        }
+
+        @Override
+        public void loopStarted() {
+            loopStartedCalled.incrementAndGet();
+        }
+
+        @Override
+        public boolean action() {
+            return false;
+        }
+
+        @Override
+        public void loopFinished() {
+            Thread.dumpStack();
+            loopFinishedCalled.incrementAndGet();
+        }
+
+        @Override
+        public void close() throws IOException {
+            Thread.dumpStack();
+            closeCalled.incrementAndGet();
+        }
+    }
+
+    class GoodHighHandler extends GoodHandler {
+        @Override
+        public @NotNull HandlerPriority priority() {
+            return HandlerPriority.HIGH;
+        }
+    }
+
+    class ThrowingHandler extends GoodHandler {
+
+        private EventLoop eventLoop;
+
+        @Override
+        public void eventLoop(EventLoop eventLoop) {
+            this.eventLoop = eventLoop;
+        }
+
+        public EventLoop eventLoop() {
+            return eventLoop;
+        }
+
+        @Override
+        public void loopStarted() {
+            super.loopStarted();
+            throw new IllegalStateException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+        }
+
+        @Override
+        public void loopFinished() {
+            super.loopFinished();
+            throw new IllegalStateException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+        }
+
+        @Override
+        public void close() throws IOException {
+            super.close();
+            throw new IllegalStateException(HANDLER_CLOSE_EXCEPTION_TXT);
+        }
+    }
+
+    class ThrowingHighHandler extends ThrowingHandler {
+        @Override
+        public @NotNull HandlerPriority priority() {
+            return HandlerPriority.HIGH;
+        }
+    }
+
+    @BeforeEach
+    public void beforeEach() {
+        loopStartedCalled.set(0);
+        loopFinishedCalled.set(0);
+        closeCalled.set(0);
+    }
 
     @Test
     public void testAddingTwoEventHandlersBeforeStartingLoopIsThreadSafe() {
@@ -90,82 +193,322 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
         }
     }
 
+    // MediumHandler tests
+
     @Test
-    void illegalStateExceptionsAreLoggedWhenThrownInLoopStarted() throws InterruptedException {
+    void addingHandlerBeforeStart() {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
-            class ThrowingHandler implements EventHandler {
 
-                @Override
-                public void loopStarted() {
-                    throw new IllegalStateException("Something went wrong in loopStarted!!!");
-                }
+            // Add the handler.
+            GoodHandler handler = new GoodHandler();
+            eventLoop.addHandler(handler);
 
-                @Override
-                public boolean action() {
-                    return false;
-                }
+            // Start the loop.
+            eventLoop.start();
+            Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
 
-                @Override
-                public void loopFinished() {
-                    throw new IllegalStateException("Something went wrong in loopFinished!!!");
-                }
-            }
+            // Check the handler.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(0, loopFinishedCalled.get());
+            assertEquals(0, closeCalled.get());
+            assertNotNull(handler.eventLoop());
 
-            try {
-                // Add handler before loop has started. loopStarted not called yet.
-                eventLoop.addHandler(new ThrowingHandler());
+            // Stop the loop.
+            eventLoop.stop();
+            Waiters.waitForCondition("Event loop stopped", eventLoop::isStopped, 5000);
 
-                // Start the loop. loopStarted called.
-                eventLoop.start();
+            // Check the handler.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(1, loopFinishedCalled.get());
+            assertEquals(0, closeCalled.get());
+            //assertNull(handler.eventLoop());
+        }
 
-                while (!eventLoop.isStarted()) {
-                    Thread.sleep(100);
-                }
+        // Check the handler.
+        assertEquals(1, loopStartedCalled.get());
+        assertEquals(1, loopFinishedCalled.get());
+        assertEquals(1, closeCalled.get());
+    }
 
-                expectException("Something went wrong in loopStarted!!!");
-                expectException("Something went wrong in loopFinished!!!");
-            } catch (Throwable t) {
-                fail("Unexpected exception", t);
-            }
+    @Test
+    void addingHandlerAfterStart() {
+        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+
+            // Start the loop.
+            eventLoop.start();
+            Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+
+            // Add the handler.
+            GoodHandler handler = new GoodHandler();
+            eventLoop.addHandler(handler);
+
+            Waiters.waitForCondition("Loop started called",() -> (loopStartedCalled.get() > 0), 5000);
+
+            // Check the handler.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(0, loopFinishedCalled.get());
+            assertEquals(0, closeCalled.get());
+            assertNotNull(handler.eventLoop());
+
+            // Stop the loop.
+            eventLoop.stop();
+            Waiters.waitForCondition("Event loop stopped", eventLoop::isStopped, 5000);
+
+            // Check the handler.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(1, loopFinishedCalled.get());
+            assertEquals(0, closeCalled.get());
+            //assertNull(handler.eventLoop());
+        }
+
+        // Check the handler.
+        assertEquals(1, loopStartedCalled.get());
+        assertEquals(1, loopFinishedCalled.get());
+        assertEquals(1, closeCalled.get());
+    }
+
+    @Test
+    void handlerRemovedAddingHandlerBeforeStart() {
+        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+            expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+            expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+            expectException(HANDLER_CLOSE_EXCEPTION_TXT);
+
+            // Add handler before loop has started. loopStarted not called yet.
+            ThrowingHandler handler = new ThrowingHandler();
+            eventLoop.addHandler(handler);
+
+            // Start the loop. loopStarted called and exception thrown. Expect handler to be removed.
+            eventLoop.start();
+
+            // Wait for loop to start and handler to be removed.
+            Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+            Waiters.waitForCondition("Handler should be removed", () -> (closeCalled.get() > 0), 5000);
+
+            assertTrue(eventLoop.isAlive());
+            assertTrue(eventLoop.newHandlers.isEmpty());
+
+            // Exceptions should be thrown.
+            assertExceptionThrown(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+            assertExceptionThrown(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+            assertExceptionThrown(HANDLER_CLOSE_EXCEPTION_TXT);
+
+            // Methods called once.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(1, loopFinishedCalled.get());
+            assertEquals(1, closeCalled.get());
+            //assertNull(handler.eventLoop());
+
+            // Handler has been removed.
+            assertEquals(0, eventLoop.handlerCount());
+
+            // Event loop is running.
+            checkEventLoopAlive(eventLoop);
         }
     }
 
     @Test
-    void throwableExceptionsAreLoggedWhenThrownInLoopStarted() throws InterruptedException {
+    void handlerRemovedAddingHandlerDuringEventLoop() {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
-            class ThrowingHandler implements EventHandler {
+            expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+            expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+            expectException(HANDLER_CLOSE_EXCEPTION_TXT);
 
-                @Override
-                public void loopStarted() {
-                    throw new IllegalStateException("Something went wrong in loopStarted!!!");
-                }
-
-                @Override
-                public boolean action() {
-                    return false;
-                }
-
-                @Override
-                public void loopFinished() {
-                    System.out.println("finished");
-                }
-            }
+            // start the event loop with no handlers.
             eventLoop.start();
-            while(!eventLoop.isStarted()) {
-                Thread.sleep(100);
-            }
 
-            // Add handler after loop has started
-            expectException("Something went wrong in loopStarted!!!");
-            eventLoop.addHandler(new ThrowingHandler());
+            // Wait for the handler to be started.
+            Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
 
-            // Not ideal, but we need to wait for the exception to be thrown
-            Thread.sleep(1000);
+            // Add the new handler. It should be picked up by the event loop and removed after exception in loopStarted.
+            ThrowingHandler handler = new ThrowingHandler();
+            eventLoop.addHandler(handler);
 
-            if (eventLoop.isStopped()) {
-                fail("Event loop stopped unexpectedly");
-            }
+            // Wait for handler to be removed.
+            Waiters.waitForCondition("Handler should be removed", () -> (closeCalled.get() > 0), 5000);
+
+            // Exceptions should be thrown.
+            assertExceptionThrown(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+            assertExceptionThrown(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+            assertExceptionThrown(HANDLER_CLOSE_EXCEPTION_TXT);
+
+            // Methods called once.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(1, loopFinishedCalled.get());
+            assertEquals(1, closeCalled.get());
+            //assertNull(handler.eventLoop());
+
+            // Handler has been removed.
+            assertEquals(0, eventLoop.handlerCount());
+
+            // Event loop is running.
+            checkEventLoopAlive(eventLoop);
         }
+    }
+
+    // High Handler test cases.
+
+    @Test
+    void addingHighHandlerBeforeStart() {
+        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+
+            // Add the handler.
+            GoodHandler handler = new GoodHighHandler();
+            eventLoop.addHandler(handler);
+
+            // Start the loop.
+            eventLoop.start();
+            Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+
+            // Check the handler.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(0, loopFinishedCalled.get());
+            assertEquals(0, closeCalled.get());
+            assertNotNull(handler.eventLoop());
+
+            // Stop the loop.
+            eventLoop.stop();
+            Waiters.waitForCondition("Event loop stopped", eventLoop::isStopped, 5000);
+
+            // Check the handler.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(1, loopFinishedCalled.get());
+            assertEquals(0, closeCalled.get());
+            //assertNull(handler.eventLoop());
+        }
+
+        // Check the handler.
+        assertEquals(1, loopStartedCalled.get());
+        assertEquals(1, loopFinishedCalled.get());
+        assertEquals(1, closeCalled.get());
+    }
+
+    @Test
+    void addingHighHandlerAfterStart() {
+        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+
+            // Start the loop.
+            eventLoop.start();
+            Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+
+            // Add the handler.
+            GoodHandler handler = new GoodHandler();
+            eventLoop.addHandler(handler);
+
+            Waiters.waitForCondition("Loop started called",() -> (loopStartedCalled.get() > 0), 5000);
+
+            // Check the handler.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(0, loopFinishedCalled.get());
+            assertEquals(0, closeCalled.get());
+            assertNotNull(handler.eventLoop());
+
+            // Stop the loop.
+            eventLoop.stop();
+            Waiters.waitForCondition("Event loop stopped", eventLoop::isStopped, 5000);
+
+            // Check the handler.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(1, loopFinishedCalled.get());
+            assertEquals(0, closeCalled.get());
+            //assertNull(handler.eventLoop());
+        }
+
+        // Check the handler.
+        assertEquals(1, loopStartedCalled.get());
+        assertEquals(1, loopFinishedCalled.get());
+        assertEquals(1, closeCalled.get());
+    }
+
+
+    @Test
+    void highHandlerRemovedAddingHandlerBeforeStart() {
+        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+            expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+            expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+            expectException(HANDLER_CLOSE_EXCEPTION_TXT);
+
+            // Add handler before loop has started. loopStarted not called yet.
+            ThrowingHandler handler = new ThrowingHighHandler();
+            eventLoop.addHandler(handler);
+
+            // Start the loop. loopStarted called and exception thrown. Expect handler to be removed.
+            eventLoop.start();
+
+            // Wait for loop to start and handler to be removed.
+            Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+            Waiters.waitForCondition("Handler should be removed", () -> (closeCalled.get() > 0), 5000);
+
+            assertTrue(eventLoop.isAlive());
+            assertTrue(eventLoop.newHandlers.isEmpty());
+
+            // Exceptions should be thrown.
+            assertExceptionThrown(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+            assertExceptionThrown(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+            assertExceptionThrown(HANDLER_CLOSE_EXCEPTION_TXT);
+
+            // Methods called once.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(1, loopFinishedCalled.get());
+            assertEquals(1, closeCalled.get());
+            //assertNull(handler.eventLoop());
+
+            // Handler has been removed.
+            assertEquals(0, eventLoop.handlerCount());
+
+            // Event loop is running.
+            checkEventLoopAlive(eventLoop);
+        }
+    }
+
+    @Test
+    void handlerRemovedUpdatingHighHandlerDuringEventLoop() {
+        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+            expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+            expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+            expectException(HANDLER_CLOSE_EXCEPTION_TXT);
+
+            // start the event loop with no handlers.
+            eventLoop.start();
+
+            // Wait for the handler to be started.
+            Waiters.waitForCondition("Event loop started", eventLoop::isStarted, 5000);
+
+            // Add the new handler. It should be picked up by the event loop and removed after exception in loopStarted.
+            ThrowingHandler handler = new ThrowingHighHandler();
+            eventLoop.addHandler(handler);
+
+            // Wait for handler to be removed.
+            Waiters.waitForCondition("Handler should be removed", () -> (closeCalled.get() > 0), 5000);
+
+            // Exceptions should be thrown.
+            assertExceptionThrown(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+            assertExceptionThrown(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+            assertExceptionThrown(HANDLER_CLOSE_EXCEPTION_TXT);
+
+            // Methods called once.
+            assertEquals(1, loopStartedCalled.get());
+            assertEquals(1, loopFinishedCalled.get());
+            assertEquals(1, closeCalled.get());
+            //assertNull(handler.eventLoop());
+
+            // Handler has been removed.
+            assertEquals(0, eventLoop.handlerCount());
+
+            // Event loop is running.
+            checkEventLoopAlive(eventLoop);
+        }
+    }
+
+
+    private void checkEventLoopAlive(MediumEventLoop eventLoop) {
+        // Expect the eventLoop to continue.
+        assertTrue(eventLoop.isStarted());
+        assertTrue(eventLoop.isAlive());
+        assertFalse(eventLoop.isStopped());
+        assertFalse(eventLoop.isClosing());
+        assertFalse(eventLoop.isClosed());
+        assertTrue(Objects.requireNonNull(eventLoop.thread()).isAlive());
     }
 
     @Test

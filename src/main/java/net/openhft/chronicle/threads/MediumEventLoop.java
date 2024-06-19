@@ -275,11 +275,23 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     protected void loopStartedAllHandlers() {
-        highHandler.loopStarted();
-        if (!mediumHandlers.isEmpty())
-            mediumHandlers.forEach(
-                    EventHandler::loopStarted
-            );
+        if (performHandlerLoopStarted(highHandler)) {
+            removeHighHandler();
+        }
+
+        List<EventHandler> removeHandlers = new ArrayList<>();
+        for (EventHandler handler : mediumHandlers) {
+            if (performHandlerLoopStarted(handler)) {
+                // iterator.remove() is not supported.
+                removeHandlers.add(handler);
+            }
+        }
+
+        // Remove handlers that had exception in loopStarted.
+        for (EventHandler handler : removeHandlers) {
+            removeHandler(handler, mediumHandlers);
+        }
+        updateMediumHandlersArray();
     }
 
     protected void loopFinishedAllHandlers() {
@@ -476,12 +488,16 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             return highHandler.action();
         } catch (Exception e) {
             if (handle(this, highHandler, e)) {
-                loopFinishedQuietly(highHandler);
-                Closeable.closeQuietly(highHandler);
-                highHandler = EventHandlers.NOOP;
+                removeHighHandler();
             }
         }
         return true;
+    }
+
+    private void removeHighHandler() {
+        Threads.loopFinishedQuietly(highHandler);
+        Closeable.closeQuietly(highHandler);
+        highHandler = EventHandlers.NOOP;
     }
 
     private void handleExceptionMediumHandler(EventHandler handler, Throwable t) {
@@ -555,12 +571,36 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
+
         if (thread == Thread.currentThread()) {
-            try {
-                handler.loopStarted();
-            } catch (Throwable t) {
-                handleExceptionMediumHandler(handler, t);
+            if (performHandlerLoopStarted(handler)) {
+                if (handler == this.highHandler) {
+                    removeHighHandler();
+                } else {
+                    removeHandler(handler, mediumHandlers);
+                    updateMediumHandlersArray();
+                }
             }
+        }
+    }
+
+    private boolean performHandlerLoopFinished(@NotNull EventHandler handler) {
+        try {
+            handler.loopFinished();
+            return false;
+        } catch (Throwable t) {
+            Jvm.warn().on(getClass(), "EventHandler::loopFinished exception.", t);
+            return true;
+        }
+    }
+
+    private boolean performHandlerLoopStarted(@NotNull EventHandler handler) {
+        try {
+            handler.loopStarted();
+            return false;
+        } catch (Throwable t) {
+            Jvm.warn().on(getClass(), "EventHandler::loopStarted exception. Removing handler", t);
+            return true;
         }
     }
 
