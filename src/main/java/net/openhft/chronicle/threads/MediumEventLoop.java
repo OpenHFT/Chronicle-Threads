@@ -495,9 +495,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     private void removeHighHandler() {
-        highHandler = EventHandlers.NOOP;
         Threads.loopFinishedQuietly(highHandler);
         Closeable.closeQuietly(highHandler);
+        highHandler = EventHandlers.NOOP;
     }
 
     private void handleExceptionMediumHandler(EventHandler handler, Throwable t) {
