@@ -250,12 +250,12 @@ public enum Threads {
         }
     }
 
-    static boolean loopStartedCall(Class<?> eventLoopClass, @NotNull EventHandler handler) {
+    static boolean loopStartedCall(EventLoop eventLoop, @NotNull EventHandler handler) {
         try {
             handler.loopStarted();
             return false;
         } catch (Throwable t) {
-            Jvm.warn().on(eventLoopClass, "EventHandler::loopStarted exception. Removing handler", t);
+            Jvm.warn().on(eventLoop.getClass(), "EventHandler::loopStarted exception. Removing handler", t);
             return true;
         }
     }

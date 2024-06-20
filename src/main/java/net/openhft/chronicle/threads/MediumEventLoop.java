@@ -38,8 +38,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.openhft.chronicle.threads.Threads.eventLoopQuietly;
-import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
+import static net.openhft.chronicle.threads.Threads.*;
 
 public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
@@ -277,7 +276,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     protected void loopStartedAllHandlers() {
-        if (performHandlerLoopStarted(highHandler)) {
+        if (loopStartedCall(this, highHandler)) {
             removeHighHandler();
         }
 
@@ -288,7 +287,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     protected void loopStartedForHandlerList(@NotNull List<EventHandler> eventHandlerList) {
         List<EventHandler> removeHandlers = new ArrayList<>();
         for (EventHandler handler : eventHandlerList) {
-            if (performHandlerLoopStarted(handler)) {
+            if (loopStartedCall(this, handler)) {
                 // iterator.remove() is not supported.
                 removeHandlers.add(handler);
             }
@@ -579,7 +578,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         }
 
         if (thread == Thread.currentThread()) {
-            if (performHandlerLoopStarted(handler)) {
+            if (loopStartedCall(this, handler)) {
                 if (handler == this.highHandler) {
                     removeHighHandler();
                 } else {
@@ -587,16 +586,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     updateMediumHandlersArray();
                 }
             }
-        }
-    }
-
-    protected boolean performHandlerLoopStarted(@NotNull EventHandler handler) {
-        try {
-            handler.loopStarted();
-            return false;
-        } catch (Throwable t) {
-            Jvm.warn().on(getClass(), "EventHandler::loopStarted exception. Removing handler", t);
-            return true;
         }
     }
 

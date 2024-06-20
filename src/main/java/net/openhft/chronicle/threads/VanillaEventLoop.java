@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static net.openhft.chronicle.threads.Threads.eventLoopQuietly;
+import static net.openhft.chronicle.threads.Threads.loopStartedCall;
 
 public class VanillaEventLoop extends MediumEventLoop {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
@@ -194,7 +195,7 @@ public class VanillaEventLoop extends MediumEventLoop {
         }
 
         if (thread == Thread.currentThread()) {
-            if (performHandlerLoopStarted(handler)) {
+            if (loopStartedCall(this, handler)) {
                 if (handler == this.highHandler) {
                     removeHighHandler();
                 } else {

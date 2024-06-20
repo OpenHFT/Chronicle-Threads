@@ -131,7 +131,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         for (int i = 0; i < handlers.size(); i++) {
             final EventHandler handler = handlers.get(i);
             try {
-                if (loopStartedCall(getClass(), handler)) {
+                if (loopStartedCall(this, handler)) {
                     removeHandler(i--);
                     continue;
                 }
