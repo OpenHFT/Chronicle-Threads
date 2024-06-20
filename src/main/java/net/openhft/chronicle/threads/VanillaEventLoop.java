@@ -32,6 +32,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static net.openhft.chronicle.threads.Threads.eventLoopQuietly;
+import static net.openhft.chronicle.threads.Threads.loopStartedCall;
+
 public class VanillaEventLoop extends MediumEventLoop {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
@@ -85,7 +88,7 @@ public class VanillaEventLoop extends MediumEventLoop {
                 ", mediumHandlers=" + mediumHandlers +
                 ", timerHandlers=" + timerHandlers +
                 ", daemonHandlers=" + daemonHandlers +
-                ", newHandler=" + newHandler +
+                ", newHandlers=" + newHandlers +
                 ", pauser=" + pauser +
                 '}';
     }
@@ -105,10 +108,8 @@ public class VanillaEventLoop extends MediumEventLoop {
     @Override
     protected void loopStartedAllHandlers() {
         super.loopStartedAllHandlers();
-        if (!timerHandlers.isEmpty())
-            timerHandlers.forEach(EventHandler::loopStarted);
-        if (!daemonHandlers.isEmpty())
-            daemonHandlers.forEach(EventHandler::loopStarted);
+        loopStartedForHandlerList(timerHandlers);
+        loopStartedForHandlerList(daemonHandlers);
     }
 
     @Override
@@ -165,7 +166,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             case MEDIUM:
                 if (!mediumHandlers.contains(handler)) {
                     clearUsedByThread(handler);
-                    handler.eventLoop(parent != null ? parent : this);
+                    eventLoopQuietly(parent != null ? parent : this, handler);
                     mediumHandlers.add(handler);
                     mediumHandlers.sort(Comparator.comparing(EventHandler::priority).reversed());
                     updateMediumHandlersArray();
@@ -175,7 +176,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             case TIMER:
                 if (!timerHandlers.contains(handler)) {
                     clearUsedByThread(handler);
-                    handler.eventLoop(parent != null ? parent : this);
+                    eventLoopQuietly(parent != null ? parent : this, handler);
                     timerHandlers.add(handler);
                 }
                 break;
@@ -183,7 +184,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             case DAEMON:
                 if (!daemonHandlers.contains(handler)) {
                     clearUsedByThread(handler);
-                    handler.eventLoop(parent != null ? parent : this);
+                    eventLoopQuietly(parent != null ? parent : this, handler);
                     daemonHandlers.add(handler);
                 }
                 break;
@@ -192,8 +193,20 @@ public class VanillaEventLoop extends MediumEventLoop {
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
 
-        if (thread != null)
-            handler.loopStarted();
+        if (thread == Thread.currentThread()) {
+            if (loopStartedCall(this, handler)) {
+                if (handler == this.highHandler) {
+                    removeHighHandler();
+                } else {
+                    if (mediumHandlers.contains(handler))
+                        removeHandler(handler, mediumHandlers);
+                    else if (timerHandlers.contains(handler))
+                        removeHandler(handler, timerHandlers);
+                    else if (daemonHandlers.contains(handler))
+                        removeHandler(handler, daemonHandlers);
+                }
+            }
+        }
     }
 
     @Override
