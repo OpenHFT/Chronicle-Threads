@@ -33,10 +33,10 @@ import java.util.stream.IntStream;
 import static net.openhft.chronicle.threads.TestEventHandlers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class VanillaEventLoopTest extends ThreadsTestCommon {
+class VanillaEventLoopTest extends ThreadsTestCommon {
 
     @Test
-    public void testAddingTwoEventHandlersBeforeStartingLoopIsThreadSafe() {
+    void testAddingTwoEventHandlersBeforeStartingLoopIsThreadSafe() {
         for (int i = 0; i < 10_000; i++) {
             try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true,"", VanillaEventLoop.ALLOWED_PRIORITIES)) {
                 CyclicBarrier barrier = new CyclicBarrier(2);
@@ -56,7 +56,7 @@ public class VanillaEventLoopTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void testAddingTwoEventHandlersWithBlockedMainLoopDoesNotHang() {
+    void testAddingTwoEventHandlersWithBlockedMainLoopDoesNotHang() {
         for (int i = 0; i < 10_000; i++) {
             try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null, VanillaEventLoop.ALLOWED_PRIORITIES)) {
                 eventLoop.start();

@@ -24,7 +24,7 @@ import org.junit.jupiter.api.*;
 import static net.openhft.chronicle.threads.TestEventHandlers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class EventGroupHandlerTest extends ThreadsTestCommon {
+class EventGroupHandlerTest extends ThreadsTestCommon {
 
     @BeforeEach
     public void beforeAll() {
@@ -44,7 +44,7 @@ public class EventGroupHandlerTest extends ThreadsTestCommon {
         return EventGroup.builder().withName(EVENT_GROUP_NAME).withDaemon(true).build();
     }
 
-    public void addGoodHandlerBeforeStart(CountingHandler handler) {
+    void addGoodHandlerBeforeStart(CountingHandler handler) {
 
         try (final EventLoop eventGroup = createEventGroup()) {
             assertEquals(EVENT_GROUP_NAME, eventGroup.name());
@@ -81,7 +81,7 @@ public class EventGroupHandlerTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void testGoodHandlerAddedBeforeStart() {
+    void testGoodHandlerAddedBeforeStart() {
         for(HandlerPriority priority : HandlerPriority.values()) {
             addGoodHandlerBeforeStart(new CountingHandler(priority));
         }
@@ -123,7 +123,7 @@ public class EventGroupHandlerTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void testGoodHandlerAddedAfterStart() {
+    void testGoodHandlerAddedAfterStart() {
         for(HandlerPriority priority : HandlerPriority.values()) {
             addGoodHandlerAfterStart(new CountingHandler(priority));
         }
@@ -166,37 +166,37 @@ public class EventGroupHandlerTest extends ThreadsTestCommon {
     // ExpectException does not like looping through the test case. Using individual test cases.
 
     @Test
-    public void testThrowingHandlerAddedBeforeStartMonitor() {
+    void testThrowingHandlerAddedBeforeStartMonitor() {
         addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.MONITOR, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedBeforeStartHigh() {
+    void testThrowingHandlerAddedBeforeStartHigh() {
         addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.HIGH, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedBeforeStartMedium() {
+    void testThrowingHandlerAddedBeforeStartMedium() {
         addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.MEDIUM, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedBeforeStartTimer() {
+    void testThrowingHandlerAddedBeforeStartTimer() {
         addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.TIMER, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedBeforeStartDaemon() {
+    void testThrowingHandlerAddedBeforeStartDaemon() {
         addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.DAEMON, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedBeforeStartBlocking() {
+    void testThrowingHandlerAddedBeforeStartBlocking() {
         addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.BLOCKING, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedBeforeStartConcurrent() {
+    void testThrowingHandlerAddedBeforeStartConcurrent() {
         addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.CONCURRENT, false, false));
     }
 
@@ -227,37 +227,37 @@ public class EventGroupHandlerTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void testThrowingHandlerAddedAfterStartMonitor() {
+    void testThrowingHandlerAddedAfterStartMonitor() {
         addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.MONITOR, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedAfterStartHigh() {
+    void testThrowingHandlerAddedAfterStartHigh() {
         addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.HIGH, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedAfterStartMedium() {
+    void testThrowingHandlerAddedAfterStartMedium() {
         addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.MEDIUM, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedAfterStartTimer() {
+    void testThrowingHandlerAddedAfterStartTimer() {
         addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.TIMER, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedAfterStartDaemon() {
+    void testThrowingHandlerAddedAfterStartDaemon() {
         addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.DAEMON, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedAfterStartBlocking() {
+    void testThrowingHandlerAddedAfterStartBlocking() {
         addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.BLOCKING, false, false));
     }
 
     @Test
-    public void testThrowingHandlerAddedAfterStartConcurrent() {
+    void testThrowingHandlerAddedAfterStartConcurrent() {
         addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.CONCURRENT, false, false));
     }
 
@@ -298,37 +298,37 @@ public class EventGroupHandlerTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void testThrowingEventLoopAddedAfterStartMonitor() {
+    void testThrowingEventLoopAddedAfterStartMonitor() {
         addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.MONITOR, true, false));
     }
 
     @Test
-    public void testThrowingEventLoopAddedAfterStartHigh() {
+    void testThrowingEventLoopAddedAfterStartHigh() {
         addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.HIGH, true, false));
     }
 
     @Test
-    public void testThrowingEventLoopAddedAfterStartMedium() {
+    void testThrowingEventLoopAddedAfterStartMedium() {
         addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.MEDIUM, true, false));
     }
 
     @Test
-    public void testThrowingEventLoopAddedAfterStartTimer() {
+    void testThrowingEventLoopAddedAfterStartTimer() {
         addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.TIMER, true, false));
     }
 
     @Test
-    public void testThrowingEventLoopAddedAfterStartDaemon() {
+    void testThrowingEventLoopAddedAfterStartDaemon() {
         addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.DAEMON, true, false));
     }
 
     @Test
-    public void testThrowingEventLoopAddedAfterStartBlocking() {
+    void testThrowingEventLoopAddedAfterStartBlocking() {
         addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.BLOCKING, true, false));
     }
 
     @Test
-    public void testThrowingEventLoopAddedAfterStartConcurrent() {
+    void testThrowingEventLoopAddedAfterStartConcurrent() {
         addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.CONCURRENT, true, false));
     }
 
