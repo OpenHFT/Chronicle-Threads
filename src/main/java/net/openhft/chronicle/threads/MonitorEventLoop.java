@@ -32,6 +32,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static net.openhft.chronicle.threads.Threads.*;
+
 public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runnable, EventLoop {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
@@ -91,7 +93,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
-        handler.eventLoop(parent);
+        eventLoopQuietly(parent, handler);
         if (!handlers.contains(handler))
             handlers.add(new IdempotentLoopStartedEventHandler(handler));
     }
@@ -128,14 +130,16 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         boolean busy = false;
         for (int i = 0; i < handlers.size(); i++) {
             final EventHandler handler = handlers.get(i);
-            handler.loopStarted();
             try {
+                if (loopStartedCall(this, handler)) {
+                    removeHandler(i--);
+                    continue;
+                }
                 busy |= handler.action();
-
             } catch (InvalidEventHandlerException e) {
                 removeHandler(i--);
             } catch (Exception e) {
-                Jvm.warn().on(getClass(), "Loop terminated due to exception", e);
+                Jvm.warn().on(getClass(), "Exception thrown by handler " + handler, e);
                 removeHandler(i--);
             }
         }
@@ -145,7 +149,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     private synchronized void removeHandler(int handlerIndex) {
         try {
             EventHandler removedHandler = handlers.remove(handlerIndex);
-            removedHandler.loopFinished();
+            loopFinishedQuietly(removedHandler);
             Closeable.closeQuietly(removedHandler);
         } catch (ArrayIndexOutOfBoundsException e) {
             if (!handlers.isEmpty()) {
