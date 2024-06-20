@@ -31,8 +31,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Supplier;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
-import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
-import static net.openhft.chronicle.threads.Threads.unpark;
+import static net.openhft.chronicle.threads.Threads.*;
 
 /**
  * Event Loop for blocking tasks.
@@ -77,7 +76,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
             Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
-        handler.eventLoop(parent);
+        eventLoopQuietly(parent, handler);
         this.handlers.add(handler);
         if (isStarted())
             this.startHandler(handler);
