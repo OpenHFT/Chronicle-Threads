@@ -26,14 +26,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class EventGroupHandlerTest extends ThreadsTestCommon {
 
-    @BeforeAll
-    public static void beforeAll() {
+    @BeforeEach
+    public void beforeAll() {
+        ignoreException("Monitoring a task which has finished ");
         // Initial delay defaults to 10secs. Set to 10ms for testing.
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10;
     }
 
-    @AfterAll
-    public static void afterAll() {
+    @BeforeEach
+    public void afterAll() {
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
     }
 
