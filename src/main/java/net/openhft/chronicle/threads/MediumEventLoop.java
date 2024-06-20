@@ -38,7 +38,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
+import static net.openhft.chronicle.threads.Threads.*;
 
 public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
@@ -110,14 +110,15 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     protected static void removeHandler(final EventHandler handler, @NotNull final List<EventHandler> handlers) {
+        // Close the handler before removing it from the list
+        loopFinishedQuietly(handler);
+        Closeable.closeQuietly(handler);
         try {
             handlers.remove(handler);
         } catch (ArrayIndexOutOfBoundsException e2) {
             if (!handlers.isEmpty())
                 throw e2;
         }
-        loopFinishedQuietly(handler);
-        Closeable.closeQuietly(handler);
     }
 
     @Override
@@ -268,13 +269,32 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
+            stop();
         }
     }
 
     protected void loopStartedAllHandlers() {
-        highHandler.loopStarted();
-        if (!mediumHandlers.isEmpty())
-            mediumHandlers.forEach(EventHandler::loopStarted);
+        if (loopStartedCall(this, highHandler)) {
+            removeHighHandler();
+        }
+
+        loopStartedForHandlerList(mediumHandlers);
+        updateMediumHandlersArray();
+    }
+
+    protected void loopStartedForHandlerList(@NotNull List<EventHandler> eventHandlerList) {
+        List<EventHandler> removeHandlers = new ArrayList<>();
+        for (EventHandler handler : eventHandlerList) {
+            if (loopStartedCall(this, handler)) {
+                // iterator.remove() is not supported.
+                removeHandlers.add(handler);
+            }
+        }
+
+        // Remove handlers that had exception in loopStarted.
+        for (EventHandler handler : removeHandlers) {
+            removeHandler(handler, eventHandlerList);
+        }
     }
 
     protected void loopFinishedAllHandlers() {
@@ -469,12 +489,16 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             return highHandler.action();
         } catch (Exception e) {
             if (handle(this, highHandler, e)) {
-                loopFinishedQuietly(highHandler);
-                Closeable.closeQuietly(highHandler);
-                highHandler = EventHandlers.NOOP;
+                removeHighHandler();
             }
         }
         return true;
+    }
+
+   protected void removeHighHandler() {
+        Threads.loopFinishedQuietly(highHandler);
+        Closeable.closeQuietly(highHandler);
+        highHandler = EventHandlers.NOOP;
     }
 
     private void handleExceptionMediumHandler(EventHandler handler, Throwable t) {
@@ -547,8 +571,17 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
-        if (thread == Thread.currentThread())
-            handler.loopStarted();
+
+        if (thread == Thread.currentThread()) {
+            if (loopStartedCall(this, handler)) {
+                if (handler == this.highHandler) {
+                    removeHighHandler();
+                } else {
+                    removeHandler(handler, mediumHandlers);
+                    updateMediumHandlersArray();
+                }
+            }
+        }
     }
 
     /**
@@ -556,7 +589,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      */
     protected boolean updateHighHandler(@NotNull EventHandler handler) {
         if (highHandler == EventHandlers.NOOP || highHandler == handler) {
-            handler.eventLoop(parent != null ? parent : this);
+            eventLoopQuietly(parent != null ? parent : this, handler);
             highHandler = handler;
             return true;
         }
