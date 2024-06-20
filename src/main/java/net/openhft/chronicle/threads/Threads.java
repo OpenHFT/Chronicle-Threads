@@ -18,10 +18,9 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.annotation.ForceInline;
 import net.openhft.chronicle.core.threads.EventHandler;
+import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.util.ObjectUtils;
-import net.openhft.chronicle.core.util.ThrowingCallable;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.Thread.State;
@@ -241,6 +240,24 @@ public enum Threads {
             // We can't access the field, move on
         }
         return executorService;
+    }
+
+    static void eventLoopQuietly(EventLoop eventLoop, @NotNull EventHandler handler) {
+        try {
+            handler.eventLoop(eventLoop);
+        } catch (Throwable t) {
+            Jvm.warn().on(eventLoop.getClass(), "EventHandler::eventLoop exception", t);
+        }
+    }
+
+    static boolean loopStartedCall(Class<?> eventLoopClass, @NotNull EventHandler handler) {
+        try {
+            handler.loopStarted();
+            return false;
+        } catch (Throwable t) {
+            Jvm.warn().on(eventLoopClass, "EventHandler::loopStarted exception. Removing handler", t);
+            return true;
+        }
     }
 
     static void loopFinishedQuietly(EventHandler eventHandler) {

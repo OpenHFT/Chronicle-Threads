@@ -38,6 +38,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static net.openhft.chronicle.threads.Threads.eventLoopQuietly;
 import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 
 public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
@@ -600,7 +601,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      */
     protected boolean updateHighHandler(@NotNull EventHandler handler) {
         if (highHandler == EventHandlers.NOOP || highHandler == handler) {
-            handler.eventLoop(parent != null ? parent : this);
+            eventLoopQuietly(parent != null ? parent : this, handler);
             highHandler = handler;
             return true;
         }

@@ -32,6 +32,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static net.openhft.chronicle.threads.Threads.eventLoopQuietly;
+
 public class VanillaEventLoop extends MediumEventLoop {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
@@ -186,7 +188,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             case MEDIUM:
                 if (!mediumHandlers.contains(handler)) {
                     clearUsedByThread(handler);
-                    handler.eventLoop(parent != null ? parent : this);
+                    eventLoopQuietly(parent != null ? parent : this, handler);
                     mediumHandlers.add(handler);
                     mediumHandlers.sort(Comparator.comparing(EventHandler::priority).reversed());
                     updateMediumHandlersArray();
@@ -196,7 +198,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             case TIMER:
                 if (!timerHandlers.contains(handler)) {
                     clearUsedByThread(handler);
-                    handler.eventLoop(parent != null ? parent : this);
+                    eventLoopQuietly(parent != null ? parent : this, handler);
                     timerHandlers.add(handler);
                 }
                 break;
@@ -204,7 +206,7 @@ public class VanillaEventLoop extends MediumEventLoop {
             case DAEMON:
                 if (!daemonHandlers.contains(handler)) {
                     clearUsedByThread(handler);
-                    handler.eventLoop(parent != null ? parent : this);
+                    eventLoopQuietly(parent != null ? parent : this, handler);
                     daemonHandlers.add(handler);
                 }
                 break;
@@ -213,7 +215,7 @@ public class VanillaEventLoop extends MediumEventLoop {
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
 
-        if (thread != null) {
+        if (thread == Thread.currentThread()) {
             if (performHandlerLoopStarted(handler)) {
                 if (handler == this.highHandler) {
                     removeHighHandler();
