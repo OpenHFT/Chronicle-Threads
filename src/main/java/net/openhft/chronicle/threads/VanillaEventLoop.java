@@ -107,30 +107,8 @@ public class VanillaEventLoop extends MediumEventLoop {
     @Override
     protected void loopStartedAllHandlers() {
         super.loopStartedAllHandlers();
-
-        List<EventHandler> removeHandlers = new ArrayList<>();
-        for (EventHandler handler: timerHandlers) {
-            if (performHandlerLoopStarted(handler)) {
-                removeHandlers.add(handler);
-            }
-        }
-
-        // Remove handlers that had exception in loopStarted.
-        for (EventHandler handler : removeHandlers) {
-            removeHandler(handler, timerHandlers);
-        }
-
-        removeHandlers.clear();
-        for (EventHandler handler: daemonHandlers) {
-            if (performHandlerLoopStarted(handler)) {
-                removeHandlers.add(handler);
-            }
-        }
-
-        // Remove handlers that had exception in loopStarted.
-        for (EventHandler handler : removeHandlers) {
-            removeHandler(handler, daemonHandlers);
-        }
+        loopStartedForHandlerList(timerHandlers);
+        loopStartedForHandlerList(daemonHandlers);
     }
 
     @Override

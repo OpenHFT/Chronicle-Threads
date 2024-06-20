@@ -281,8 +281,13 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             removeHighHandler();
         }
 
+        loopStartedForHandlerList(mediumHandlers);
+        updateMediumHandlersArray();
+    }
+
+    protected void loopStartedForHandlerList(@NotNull List<EventHandler> eventHandlerList) {
         List<EventHandler> removeHandlers = new ArrayList<>();
-        for (EventHandler handler : mediumHandlers) {
+        for (EventHandler handler : eventHandlerList) {
             if (performHandlerLoopStarted(handler)) {
                 // iterator.remove() is not supported.
                 removeHandlers.add(handler);
@@ -291,9 +296,8 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
         // Remove handlers that had exception in loopStarted.
         for (EventHandler handler : removeHandlers) {
-            removeHandler(handler, mediumHandlers);
+            removeHandler(handler, eventHandlerList);
         }
-        updateMediumHandlersArray();
     }
 
     protected void loopFinishedAllHandlers() {
