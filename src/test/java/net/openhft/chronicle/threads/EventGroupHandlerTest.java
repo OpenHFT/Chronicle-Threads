@@ -33,8 +33,8 @@ public class EventGroupHandlerTest extends ThreadsTestCommon {
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10;
     }
 
-    @BeforeEach
-    public void afterAll() {
+    @AfterEach
+    public void afterEach() {
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
     }
 
