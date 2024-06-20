@@ -19,19 +19,22 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.*;
 import net.openhft.chronicle.testframework.Waiters;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
-import static net.openhft.chronicle.threads.MonitorEventLoop.MONITOR_INITIAL_DELAY;
 import static net.openhft.chronicle.threads.TestEventHandlers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class EventGroupThrowingHandlerTest extends ThreadsTestCommon {
+public class EventGroupHandlerTest extends ThreadsTestCommon {
 
-    @BeforeEach
-    public void handlersInit() {
+    @BeforeAll
+    public static void beforeAll() {
         // Initial delay defaults to 10secs. Set to 10ms for testing.
-        System.setProperty(MONITOR_INITIAL_DELAY, "10");
+        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10;
+    }
+
+    @AfterAll
+    public static void afterAll() {
+        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
     }
 
     private final String EVENT_GROUP_NAME = "test";
@@ -62,6 +65,7 @@ public class EventGroupThrowingHandlerTest extends ThreadsTestCommon {
             // Stop the loop.
             eventGroup.stop();
             Waiters.waitForCondition("Wait for eventGroup stopped", eventGroup::isStopped, 5000);
+            Waiters.waitForCondition("Wait for handler loopFinished called:" + handler.priority, () -> (handler.loopFinishedCalled() > 0), 5000);
 
             // Check the handler.
             assertEquals(1, handler.loopStartedCalled());
@@ -77,9 +81,6 @@ public class EventGroupThrowingHandlerTest extends ThreadsTestCommon {
 
     @Test
     public void testGoodHandlerAddedBeforeStart() {
-
-        //addGoodHandlerBeforeStart(new CountingHandler(HandlerPriority.MONITOR));
-
         for(HandlerPriority priority : HandlerPriority.values()) {
             addGoodHandlerBeforeStart(new CountingHandler(priority));
         }
@@ -106,6 +107,7 @@ public class EventGroupThrowingHandlerTest extends ThreadsTestCommon {
             // Stop the loop.
             eventGroup.stop();
             Waiters.waitForCondition("Wait for loop stopped:" + handler.priority, eventGroup::isStopped, 5000);
+            Waiters.waitForCondition("Wait for handler loopFinished called:" + handler.priority, () -> (handler.loopFinishedCalled() > 0), 5000);
 
             // Check the handler.
             assertEquals(1, handler.loopStartedCalled());
@@ -141,10 +143,6 @@ public class EventGroupThrowingHandlerTest extends ThreadsTestCommon {
             // Wait for loop to start and handler to be removed.
             Waiters.waitForCondition("Wait for loop started:" + handler.priority, eventGroup::isAlive, 5000);
             Waiters.waitForCondition("Wait for handler close called:" + handler.priority, () -> (handler.closeCalled() > 0), 5000);
-            //Waiters.waitForCondition("Handler should be removed", () -> (eventLoop.handlerCount() == 0), 5000);
-
-            assertTrue(eventGroup.isAlive());
-            //assertTrue(eventGroup.newHandlers.isEmpty());
 
             // Exceptions should be thrown.
             assertExceptionThrown(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
@@ -156,10 +154,6 @@ public class EventGroupThrowingHandlerTest extends ThreadsTestCommon {
             assertEquals(1, handler.loopFinishedCalled());
             assertEquals(1, handler.closeCalled());
 
-            // Handler has been removed.
-            //assertEquals(0, eventGroup.handlerCount());
-
-            // Event loop is running.
             // Expect the eventLoop to continue.
             assertTrue(eventGroup.isAlive());
             assertFalse(eventGroup.isStopped());
