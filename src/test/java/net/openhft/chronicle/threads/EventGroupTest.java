@@ -221,6 +221,7 @@ public class EventGroupTest extends ThreadsTestCommon {
             eventGroup.stop();
             handlers.forEach(testHandler -> assertFalse(testHandler.isClosing()));
         }
+        handlers.forEach(testHandler -> assertTrue(testHandler.isClosed()));
     }
 
     @Timeout(5)
