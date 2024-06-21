@@ -33,12 +33,12 @@ import java.util.stream.IntStream;
 import static net.openhft.chronicle.threads.TestEventHandlers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class MediumEventLoopTest extends ThreadsTestCommon {
+class VanillaEventLoopTest extends ThreadsTestCommon {
 
     @Test
     void testAddingTwoEventHandlersBeforeStartingLoopIsThreadSafe() {
         for (int i = 0; i < 10_000; i++) {
-            try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+            try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true,"", VanillaEventLoop.ALLOWED_PRIORITIES)) {
                 CyclicBarrier barrier = new CyclicBarrier(2);
                 IntStream.range(0, 2).parallel()
                         .forEach(ignored -> {
@@ -58,7 +58,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
     @Test
     void testAddingTwoEventHandlersWithBlockedMainLoopDoesNotHang() {
         for (int i = 0; i < 10_000; i++) {
-            try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+            try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null, VanillaEventLoop.ALLOWED_PRIORITIES)) {
                 eventLoop.start();
                 CyclicBarrier barrier = new CyclicBarrier(3);
                 eventLoop.addHandler(new EventHandler() {
@@ -93,7 +93,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
     }
 
     void addingHandlerBeforeStart(CountingHandler handler) {
-        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
 
             // Add the handler.
             eventLoop.addHandler(handler);
@@ -126,17 +126,17 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
     }
 
     @Test
-    void addingMediumHandlerBeforeStart() {
-        addingHandlerBeforeStart(new CountingHandler(HandlerPriority.MEDIUM));
+    void addingTimerHandlerBeforeStart() {
+        addingHandlerBeforeStart(new CountingHandler(HandlerPriority.TIMER));
     }
 
     @Test
-    void addingHighHandlerBeforeStart() {
-        addingHandlerBeforeStart(new CountingHandler(HandlerPriority.HIGH));
+    void addingDaemonHandlerBeforeStart() {
+        addingHandlerBeforeStart(new CountingHandler(HandlerPriority.DAEMON));
     }
 
     void addingHandlerAfterStart(CountingHandler handler) {
-        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
 
             // Start the loop.
             eventLoop.start();
@@ -170,18 +170,17 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
     }
 
     @Test
-    void addingMediumHandlerAfterStart() {
-        addingHandlerAfterStart(new CountingHandler(HandlerPriority.MEDIUM));
+    void addingTimerHandlerAfterStart() {
+        addingHandlerAfterStart(new CountingHandler(HandlerPriority.TIMER));
     }
 
     @Test
-    void addingHighHandlerAfterStart() {
-        addingHandlerAfterStart(new CountingHandler(HandlerPriority.HIGH));
+    void addingDaemonHandlerAfterStart() {
+        addingHandlerAfterStart(new CountingHandler(HandlerPriority.DAEMON));
     }
 
     void throwingHandlerAddedBeforeStart(ThrowingHandler handler) {
-
-        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
             expectException(HANDLER_CLOSE_EXCEPTION_TXT);
@@ -209,6 +208,7 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
             assertEquals(1, handler.loopStartedCalled());
             assertEquals(1, handler.loopFinishedCalled());
             assertEquals(1, handler.closeCalled());
+
             // Handler has been removed.
             assertEquals(0, eventLoop.handlerCount());
 
@@ -218,17 +218,17 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
     }
 
     @Test
-    void throwingMediumHandlerAddedBeforeStart() {
-        throwingHandlerAddedBeforeStart(new ThrowingHandler(HandlerPriority.MEDIUM, false, false));
+    void throwingTimerHandlerAddedBeforeStart() {
+        throwingHandlerAddedBeforeStart(new ThrowingHandler(HandlerPriority.TIMER, false, false));
     }
 
     @Test
-    void throwingHighHandlerAddedBeforeStart() {
-        throwingHandlerAddedBeforeStart(new ThrowingHandler(HandlerPriority.HIGH, false, false));
+    void throwingDaemonHandlerAddedBeforeStart() {
+        throwingHandlerAddedBeforeStart(new ThrowingHandler(HandlerPriority.DAEMON, false, false));
     }
 
     void throwingHandlerAddingAfterStart(ThrowingHandler handler) {
-        try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
+        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
             expectException(HANDLER_CLOSE_EXCEPTION_TXT);
@@ -265,16 +265,16 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
     }
 
     @Test
-    void testThrowingMediumHandlerAddedAfterStart() {
-        throwingHandlerAddingAfterStart(new ThrowingHandler(HandlerPriority.MEDIUM, false, false));
+    void testThrowingTimerHandlerAddedAfterStart() {
+        throwingHandlerAddingAfterStart(new ThrowingHandler(HandlerPriority.TIMER, false, false));
     }
 
     @Test
-    void testThrowingHighHandlerAddedAfterStart() {
-        throwingHandlerAddingAfterStart(new ThrowingHandler(HandlerPriority.HIGH, false, false));
+    void testThrowingDaemonHandlerAddedAfterStart() {
+        throwingHandlerAddingAfterStart(new ThrowingHandler(HandlerPriority.DAEMON, false, false));
     }
 
-    private void checkEventLoopAlive(MediumEventLoop eventLoop) {
+    private void checkEventLoopAlive(VanillaEventLoop eventLoop) {
         // Expect the eventLoop to continue.
         assertTrue(eventLoop.isStarted());
         assertTrue(eventLoop.isAlive());
@@ -288,9 +288,9 @@ public class MediumEventLoopTest extends ThreadsTestCommon {
     void concurrentStartStopDoesNoThrowError() throws ExecutionException, InterruptedException {
         ExecutorService es = Executors.newCachedThreadPool();
         for (int i = 0; i < 100; i++) {
-            try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "any")) {
-                final Future<?> starter = es.submit(mediumEventLoop::start);
-                final Future<?> stopper = es.submit(mediumEventLoop::stop);
+            try (VanillaEventLoop vanillaEventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
+                final Future<?> starter = es.submit(vanillaEventLoop::start);
+                final Future<?> stopper = es.submit(vanillaEventLoop::stop);
                 starter.get();
                 stopper.get();
             }

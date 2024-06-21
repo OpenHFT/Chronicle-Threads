@@ -31,17 +31,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
+import static net.openhft.chronicle.threads.Threads.*;
 
 public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
@@ -62,7 +58,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     @NotNull
     protected transient final ExecutorService service;
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
-    protected final AtomicReference<EventHandler> newHandler = new AtomicReference<>();
+    protected final ConcurrentLinkedQueue<EventHandler> newHandlers = new ConcurrentLinkedQueue<>();
     protected final Pauser pauser;
     protected final boolean daemon;
     private final String binding;
@@ -115,14 +111,15 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     protected static void removeHandler(final EventHandler handler, @NotNull final List<EventHandler> handlers) {
+        // Close the handler before removing it from the list
+        loopFinishedQuietly(handler);
+        Closeable.closeQuietly(handler);
         try {
             handlers.remove(handler);
         } catch (ArrayIndexOutOfBoundsException e2) {
             if (!handlers.isEmpty())
                 throw e2;
         }
-        loopFinishedQuietly(handler);
-        Closeable.closeQuietly(handler);
     }
 
     @Override
@@ -140,7 +137,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 ", service=" + service +
                 ", highHandler=" + highHandler +
                 ", mediumHandlers=" + mediumHandlers +
-                ", newHandler=" + newHandler +
+                ", newHandlers=" + newHandlers +
                 ", pauser=" + pauser +
                 '}';
     }
@@ -231,22 +228,16 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * This is the code executed when a non-event-loop thread wants to add a handler on a started loop
      */
     private void addHandlerAfterStart(@NotNull EventHandler handler) {
-        do {
-            if (isStopped()) {
-                if (Jvm.isDebugEnabled(MediumEventLoop.class)) {
-                    Jvm.debug().on(MediumEventLoop.class, "Aborted adding handler because event loop was stopped, handler=" + handler);
-                }
-                return;
+        if (isStopped()) {
+            if (Jvm.isDebugEnabled(MediumEventLoop.class)) {
+                Jvm.debug().on(MediumEventLoop.class, "Aborted adding handler because event loop was stopped, handler=" + handler);
             }
-            pauser.unpause();
+            return;
+        }
 
-            checkInterruptedAddingNewHandler();
-        } while (!newHandler.compareAndSet(null, handler));
-    }
+        newHandlers.offer(handler);
 
-    void checkInterruptedAddingNewHandler() {
-        if (Thread.currentThread().isInterrupted())
-            throw new IllegalStateException(hasBeen("interrupted. Handler in newHandler was not accepted before."));
+        pauser.unpause();
     }
 
     @Override
@@ -279,21 +270,39 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
+            stop();
         }
     }
 
     protected void loopStartedAllHandlers() {
-        highHandler.loopStarted();
-        if (!mediumHandlers.isEmpty())
-            mediumHandlers.forEach(EventHandler::loopStarted);
+        if (loopStartedCall(this, highHandler)) {
+            removeHighHandler();
+        }
+
+        loopStartedForHandlerList(mediumHandlers);
+        updateMediumHandlersArray();
+    }
+
+    protected void loopStartedForHandlerList(@NotNull List<EventHandler> eventHandlerList) {
+        List<EventHandler> removeHandlers = new ArrayList<>();
+        for (EventHandler handler : eventHandlerList) {
+            if (loopStartedCall(this, handler)) {
+                // iterator.remove() is not supported.
+                removeHandlers.add(handler);
+            }
+        }
+
+        // Remove handlers that had exception in loopStarted.
+        for (EventHandler handler : removeHandlers) {
+            removeHandler(handler, eventHandlerList);
+        }
     }
 
     protected void loopFinishedAllHandlers() {
         loopFinishedQuietly(highHandler);
         if (!mediumHandlers.isEmpty())
             mediumHandlers.forEach(Threads::loopFinishedQuietly);
-        Optional.ofNullable(newHandler.get())
-                .ifPresent(eventHandler -> {
+        newHandlers.forEach(eventHandler -> {
                     Jvm.startup().on(getClass(), "Handler in newHandler was not accepted before loop finished " + eventHandler);
                     loopFinishedQuietly(eventHandler);
                 });
@@ -481,12 +490,16 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             return highHandler.action();
         } catch (Exception e) {
             if (exceptionThrownByHandler.handle(this, highHandler, e)) {
-                loopFinishedQuietly(highHandler);
-                Closeable.closeQuietly(highHandler);
-                highHandler = EventHandlers.NOOP;
+                removeHighHandler();
             }
         }
         return true;
+    }
+
+   protected void removeHighHandler() {
+        Threads.loopFinishedQuietly(highHandler);
+        Closeable.closeQuietly(highHandler);
+        highHandler = EventHandlers.NOOP;
     }
 
     private void handleExceptionMediumHandler(EventHandler handler, Throwable t) {
@@ -507,12 +520,13 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     @HotMethod
     private boolean acceptNewHandlers() {
-        final EventHandler handler = newHandler.getAndSet(null);
-        if (handler != null) {
+        boolean result = false;
+        EventHandler handler;
+        while ((handler = newHandlers.poll()) != null) {
             addNewHandler(handler);
-            return true;
+            result = true;
         }
-        return false;
+        return result;
     }
 
     protected void addNewHandler(@NotNull final EventHandler handler) {
@@ -550,8 +564,17 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             default:
                 throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
-        if (thread == Thread.currentThread())
-            handler.loopStarted();
+
+        if (thread == Thread.currentThread()) {
+            if (loopStartedCall(this, handler)) {
+                if (handler == this.highHandler) {
+                    removeHighHandler();
+                } else {
+                    removeHandler(handler, mediumHandlers);
+                    updateMediumHandlersArray();
+                }
+            }
+        }
     }
 
     /**
@@ -559,7 +582,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      */
     protected boolean updateHighHandler(@NotNull EventHandler handler) {
         if (highHandler == EventHandlers.NOOP || highHandler == handler) {
-            handler.eventLoop(parent != null ? parent : this);
+            eventLoopQuietly(parent != null ? parent : this, handler);
             highHandler = handler;
             return true;
         }
@@ -599,8 +622,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     protected void closeAllHandlers() {
         Closeable.closeQuietly(highHandler);
         closeAll(mediumHandlers);
-        Optional.ofNullable(newHandler.get())
-                .ifPresent(eventHandler -> {
+        newHandlers.forEach(eventHandler -> {
                     Jvm.startup().on(getClass(), "Handler in newHandler was not accepted before close " + eventHandler);
                     Closeable.closeQuietly(eventHandler);
                 });
@@ -636,7 +658,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             highHandler = EventHandlers.NOOP;
             mediumHandlers.clear();
             updateMediumHandlersArray();
-            newHandler.set(null);
+            newHandlers.clear();
         }
     }
 
