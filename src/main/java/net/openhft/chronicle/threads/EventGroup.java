@@ -76,6 +76,7 @@ public class EventGroup
     private final Pauser replicationPauser;
     private VanillaEventLoop replication;
 
+    @Deprecated(/* Instead use EventGroupBuilder. TODO: make package-private and undeprecate in x.28, as only EventGroupBuilder should be using */)
     @SuppressWarnings({"this-escape", "deprecation"})
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
