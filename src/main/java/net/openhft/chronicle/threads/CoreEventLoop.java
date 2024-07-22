@@ -43,4 +43,6 @@ public interface CoreEventLoop extends EventLoop {
     long loopStartNS();
 
     void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck);
+
+    boolean isRunningOnThread(Thread thread);
 }

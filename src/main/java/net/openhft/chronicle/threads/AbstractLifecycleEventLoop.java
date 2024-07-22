@@ -20,6 +20,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
+import net.openhft.chronicle.core.io.ThreadingIllegalStateException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import org.jetbrains.annotations.NotNull;
@@ -122,6 +123,15 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     protected void performClose() {
         stop();
     }
+
+    @Override
+    protected void assertCloseable() {
+        if (isRunningOnThread(Thread.currentThread())) {
+            throw new ThreadingIllegalStateException("Attempting to close " + name + " from within!", null);
+        }
+    }
+
+    public abstract boolean isRunningOnThread(Thread thread);
 
     protected boolean isStarted() {
         return lifecycle.get() == EventLoopLifecycle.STARTED;
