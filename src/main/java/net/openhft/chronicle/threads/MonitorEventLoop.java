@@ -42,6 +42,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     private transient final EventLoop parent;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final Pauser pauser;
+    private volatile Thread thread = null;
 
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
@@ -104,6 +105,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         throwExceptionIfClosed();
 
         try {
+            thread = Thread.currentThread();
             // don't do any monitoring for the first MONITOR_INITIAL_DELAY_MS ms
             final long waitUntilMs = System.currentTimeMillis() + MONITOR_INITIAL_DELAY_MS;
             while (System.currentTimeMillis() < waitUntilMs && isStarted())
@@ -163,6 +165,11 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         super.performClose();
 
         net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
+    }
+
+    @Override
+    public boolean isRunningOnThread(Thread thread) {
+        return this.thread == thread;
     }
 
     /**

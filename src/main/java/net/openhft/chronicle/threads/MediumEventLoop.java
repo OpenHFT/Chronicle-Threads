@@ -701,6 +701,11 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     @Override
     public boolean runsInsideCoreLoop() {
-        return thread == Thread.currentThread(); // false if called before run()
+        return isRunningOnThread(Thread.currentThread()); // false if called before run()
+    }
+
+    @Override
+    public boolean isRunningOnThread(Thread thread) {
+        return this.thread == thread;
     }
 }

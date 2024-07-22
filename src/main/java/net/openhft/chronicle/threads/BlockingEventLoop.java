@@ -144,10 +144,21 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 '}';
     }
 
+    @Override
+    public boolean isRunningOnThread(Thread thread) {
+        for (int i=0; i < runners.size(); i++) {
+            if (thread == runners.get(i).thread()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private final class Runner implements Runnable {
         private final EventHandler handler;
         private final Pauser pauser;
         private boolean endedGracefully = false;
+        private volatile Thread thread = null;
 
         public Runner(final EventHandler handler, Pauser pauser) {
             this.handler = handler;
@@ -158,7 +169,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         public void run() {
             try {
                 throwExceptionIfClosed();
-
+                thread = Thread.currentThread();
                 handler.loopStarted();
 
                 while (isStarted()) {
@@ -193,6 +204,10 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
         public void unpause() {
             pauser.unpause();
+        }
+
+        public Thread thread() {
+            return thread;
         }
     }
 }
