@@ -42,7 +42,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     private transient final EventLoop parent;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final Pauser pauser;
-    private volatile Thread thread = null;
+    private transient volatile Thread thread = null;
 
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);

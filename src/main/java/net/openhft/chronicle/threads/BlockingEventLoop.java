@@ -158,7 +158,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         private final EventHandler handler;
         private final Pauser pauser;
         private boolean endedGracefully = false;
-        private volatile Thread thread = null;
+        private transient volatile Thread thread = null;
 
         public Runner(final EventHandler handler, Pauser pauser) {
             this.handler = handler;
