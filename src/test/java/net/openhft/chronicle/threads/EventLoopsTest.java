@@ -19,14 +19,23 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.InvalidMarshallableException;
+import net.openhft.chronicle.core.io.ThreadingIllegalStateException;
 import net.openhft.chronicle.core.onoes.ExceptionHandler;
+import net.openhft.chronicle.core.threads.EventHandler;
+import net.openhft.chronicle.core.threads.EventLoop;
+import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -86,5 +95,60 @@ public class EventLoopsTest extends ThreadsTestCommon {
             }
             Jvm.pause(1);
         }
+    }
+
+    public static Stream<EventLoop> eventLoopsToClose() {
+        return Stream.of(
+                new MediumEventLoop(null, "medium", Pauser.balanced(), false, null),
+                new BlockingEventLoop("blocking")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("eventLoopsToClose")
+    public void closeFromEventLoopThreadThrowsException(EventLoop el) {
+        try {
+            AtomicBoolean exceptionThrownInHandler = new AtomicBoolean();
+            AtomicBoolean eventHandlerFinished = new AtomicBoolean();
+
+            EventHandler closingEventHandler = new EventHandler() {
+                @Override
+                public boolean action() throws InvalidEventHandlerException, InvalidMarshallableException {
+                    try {
+                        el.close();
+                        return true;
+                    } catch (ThreadingIllegalStateException e) {
+                        exceptionThrownInHandler.set(true);
+                        throw InvalidEventHandlerException.reusable();
+                    }
+                }
+
+                @Override
+                public void loopFinished() {
+                    eventHandlerFinished.set(true);
+                }
+            };
+
+            el.addHandler(closingEventHandler);
+            el.start();
+
+            long timeoutTime = System.currentTimeMillis() + 500;
+            while (!exceptionThrownInHandler.get()) {
+                if (System.currentTimeMillis() > timeoutTime) {
+                    Assertions.fail("Event loop " + el.name() + " didn't " + (eventHandlerFinished.get() ? "throw an exception when attempting to close" : "run in this time"));
+                }
+                Jvm.pause(10);
+            }
+
+            assertTrue(el.isAlive());
+            assertFalse(el.isStopped());
+            assertFalse(el.isClosed());
+            assertFalse(el.isClosing());
+        } finally {
+            el.close();
+
+            assertTrue(el.isClosed());
+        }
+
     }
 }
