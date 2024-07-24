@@ -19,12 +19,17 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
+import net.openhft.chronicle.core.io.InvalidMarshallableException;
 import net.openhft.chronicle.core.io.SimpleCloseable;
+import net.openhft.chronicle.core.io.ThreadingIllegalStateException;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.Closeable;
 import java.util.*;
@@ -32,12 +37,14 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.Collections.singleton;
 import static org.junit.jupiter.api.Assertions.*;
@@ -426,6 +433,87 @@ public class EventGroupTest extends ThreadsTestCommon {
         handlers.forEach(handler -> assertNotEquals(handler.loopStartedNS.get(), 0, handler.priority + " was not loopStarted when loop started, priorities=" + priorities));
         eventGroup.close();
         handlers.forEach(handler -> assertNotEquals(handler.loopFinishedNS.get(), 0, handler.priority + " was not loopFinished when loop finished, priorities=" + priorities));
+    }
+
+    static Stream<List<HandlerPriority>> egCloseParams() {
+        return Stream.of(
+               Arrays.asList(HandlerPriority.MEDIUM),
+               Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.HIGH),
+               Arrays.asList(HandlerPriority.TIMER, HandlerPriority.HIGH),
+               Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER),
+               Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER, HandlerPriority.HIGH)
+        );
+    }
+
+    /**
+     * Run the event group and attempt to stop each of the inner event loops by handler priority
+     */
+    @ParameterizedTest()
+    @MethodSource("egCloseParams")
+    void closeEventGroupInWithinAndEventLoopThrowsException(List<HandlerPriority> priorities) {
+        EventGroup eg = EventGroupBuilder.builder().build();
+        try {
+            Map<HandlerPriority, AtomicBoolean> eventHandlerFinishedForPriority = new HashMap<>();
+            Map<HandlerPriority, AtomicBoolean> exceptionThrownInHandlerForPriority = new HashMap<>();
+
+            for (final HandlerPriority priority : priorities) {
+
+                if (exceptionThrownInHandlerForPriority.containsKey(priority)) {
+                    continue; // dont test overlapping priorities
+                }
+
+                AtomicBoolean eventHandlerFinished = eventHandlerFinishedForPriority.computeIfAbsent(priority, p -> new AtomicBoolean());
+                AtomicBoolean exceptionThrownInHandler = exceptionThrownInHandlerForPriority.computeIfAbsent(priority, p -> new AtomicBoolean());
+
+                EventHandler closingEventHandler = new EventHandler() {
+                    @Override
+                    public boolean action() throws InvalidEventHandlerException, InvalidMarshallableException {
+                        try {
+                            eg.close();
+                            return true;
+                        } catch (ThreadingIllegalStateException e) {
+                            exceptionThrownInHandler.set(true);
+                            throw InvalidEventHandlerException.reusable();
+                        }
+                    }
+
+                    @Override
+                    public void loopFinished() {
+                        eventHandlerFinished.set(true);
+                    }
+
+                    @Override
+                    public @NotNull HandlerPriority priority() {
+                        return priority;
+                    }
+                };
+
+                eg.addHandler(closingEventHandler);
+            }
+            eg.start();
+
+            long timeoutTime = System.currentTimeMillis() + 500;
+            while (!exceptionThrownInHandlerForPriority.values().stream().allMatch(AtomicBoolean::get)) {
+                if (System.currentTimeMillis() > timeoutTime) {
+                    final List<HandlerPriority> handlerPrioritiesThatDidntFinish = eventHandlerFinishedForPriority.keySet().stream().filter(k -> !eventHandlerFinishedForPriority.get(k).get()).collect(Collectors.toList());
+                    if (handlerPrioritiesThatDidntFinish.isEmpty()) {
+                        Assertions.fail("Event group didn't throw an exception when attempting to close!");
+                    } else {
+                        Assertions.fail("Handlers for " + handlerPrioritiesThatDidntFinish + " didn't finish");
+                    }
+                }
+                Jvm.pause(10);
+            }
+
+            assertTrue(eg.isAlive());
+            assertFalse(eg.isStopped());
+            assertFalse(eg.isClosed());
+            assertFalse(eg.isClosing());
+        } finally {
+            eg.close();
+
+            assertTrue(eg.isClosed());
+        }
     }
 
     static class CloseableResource extends AbstractCloseable {

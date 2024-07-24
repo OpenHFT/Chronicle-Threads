@@ -59,7 +59,7 @@ public class EventGroup
     private static final long WAIT_TO_START_MS = Jvm.getInteger("eventGroup.wait.to.start.ms", 2_000);
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
-    private final EventLoop monitor;
+    private final MonitorEventLoop monitor;
     private final CoreEventLoop core;
     private final BlockingEventLoop blocking;
     @NotNull
@@ -347,5 +347,12 @@ public class EventGroup
     @Override
     public boolean runsInsideCoreLoop() {
         return core.runsInsideCoreLoop();
+    }
+
+    @Override
+    public boolean isRunningOnThread(Thread thread) {
+        return core != null && core.isRunningOnThread(thread) ||
+               blocking != null && blocking.isRunningOnThread(thread) ||
+               monitor.isRunningOnThread(thread);
     }
 }
