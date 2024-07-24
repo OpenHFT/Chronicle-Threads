@@ -27,7 +27,7 @@
     </parent>
 
     <artifactId>chronicle-threads</artifactId>
-    <version>2.26ea1</version>
+    <version>2.26ea2-SNAPSHOT</version>
     <name>OpenHFT/Chronicle-Threads</name>
     <description>Chronicle-Threads</description>
     <packaging>bundle</packaging>
@@ -268,7 +268,7 @@
         <connection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git
         </developerConnection>
-        <tag>chronicle-threads-2.26ea1</tag>
+        <tag>ea</tag>
     </scm>
 
 </project>
