@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.affinity.AffinityLock;
@@ -26,19 +27,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Provides a suite of factory methods for creating various {@link Pauser} objects, each offering different strategies for managing thread execution.
- * The {@link Pauser} is designed to offer flexible pausing strategies depending on CPU availability and desired execution patterns.
+ * The {@code Pauser} interface provides a set of factory methods and control mechanisms for managing thread pauses
+ * in a flexible and adaptable manner. It enables different pause strategies based on CPU availability, system
+ * performance requirements, and the specific needs of an application’s threading model.
  *
- * <p>This interface also defines the methods for managing pause states and conditions within an application's threading model. It includes methods to pause, unpause, reset, and other utilities that influence thread scheduling and execution behaviors.</p>
- *
- * <p>Refer to {@link PauserMode} for capturing these configurations in a serializable manner.</p>
+ * <p>Implementations can choose different strategies, such as busy spinning, yielding, timed sleeps, or back-off
+ * pausing. The {@link PauserMode} can be used to configure these settings in a serializable way.</p>
  */
 public interface Pauser {
 
     int MIN_PROCESSORS = Jvm.getInteger("pauser.minProcessors", 4);
 
-    boolean BALANCED = getBalanced(); // calculated once
-    boolean SLEEPY = getSleepy();  // calculated once
+    boolean BALANCED = getBalanced(); // True if a balanced pauser should be used based on processor count
+    boolean SLEEPY = getSleepy();  // True if a sleepy pauser should be used based on processor count
     int MIN_BUSY = Integer.getInteger("balances.minBusy", OS.isWindows() ? 100_000 : 10_000);
 
     static boolean getBalanced() {
@@ -66,7 +67,7 @@ public interface Pauser {
     }
 
     /**
-     * A sleepy pauser which yields for a millisecond, then sleeps for 1 to 20 ms
+     * Creates a "sleepy" pauser, which yields for short periods and gradually increases the wait time.
      *
      * @return a {@link TimingPauser} implementing a sleepy strategy
      */
@@ -75,7 +76,7 @@ public interface Pauser {
     }
 
     /**
-     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
+     * Creates a "balanced" pauser that attempts to balance between busy-waiting and backing off when idle.
      *
      * @return a {@link TimingPauser} implementing a balanced strategy
      */
@@ -84,10 +85,10 @@ public interface Pauser {
     }
 
     /**
-     * A balanced pauser which tries to be busy for short bursts but backs off when idle with a limit of max back off.
+     * Creates a "balanced" pauser with a maximum back-off period.
      *
      * @param millis the maximum back-off period in milliseconds
-     * @return a {@link TimingPauser} implementing a balanced strategy with a maximum back-off limit
+     * @return a {@link TimingPauser} with a balanced strategy and a maximum back-off
      */
     static TimingPauser balancedUpToMillis(int millis) {
         return SLEEPY ? sleepy()
@@ -95,7 +96,7 @@ public interface Pauser {
     }
 
     /**
-     * Creates a {@link MilliPauser} that waits for a fixed duration before resuming execution.
+     * Creates a fixed-duration {@link MilliPauser}.
      *
      * @param millis the fixed wait time in milliseconds
      * @return a {@link MilliPauser}
@@ -105,7 +106,7 @@ public interface Pauser {
     }
 
     /**
-     * Creates a {@link Pauser} that pauses with a back-off strategy, starting at a minimum millisecond interval and potentially increasing to a maximum.
+     * Creates a {@link Pauser} with a back-off strategy that adjusts between minimum and maximum pauses.
      *
      * @param minMillis the starting minimum pause duration in milliseconds
      * @param maxMillis the maximum pause duration in milliseconds
@@ -116,7 +117,7 @@ public interface Pauser {
     }
 
     /**
-     * Provides a simple {@link Pauser} that is more process-friendly by yielding the thread execution.
+     * Provides a simple yielding {@link Pauser}.
      *
      * @return a yielding {@link Pauser}
      */
@@ -125,7 +126,7 @@ public interface Pauser {
     }
 
     /**
-     * Creates a {@link Pauser} that actively keeps the thread busy and does not employ any waiting strategies.
+     * Creates a {@link Pauser} that keeps the thread busy, with no wait strategy.
      *
      * @return a {@link Pauser} that never waits
      */
@@ -138,9 +139,9 @@ public interface Pauser {
     }
 
     /**
-     * Creates a {@link TimingPauser} that keeps the thread busy but also incorporates timed waits.
+     * Creates a {@link TimingPauser} that combines busy waiting with timed pauses.
      *
-     * @return a {@link TimingPauser} that combines busy and timed wait strategies
+     * @return a {@link TimingPauser} with busy and timed wait strategies
      */
     @NotNull
     static TimingPauser timedBusy() {
@@ -206,7 +207,11 @@ public interface Pauser {
     void reset();
 
     /**
-     * use {@link TimingPauser#pause(long, TimeUnit)} instead
+     * Pauses the thread for a specified timeout.
+     *
+     * @param timeout  the maximum time to pause
+     * @param timeUnit the unit of time for the timeout
+     * @throws TimeoutException if the timeout is exceeded
      */
     default void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
         throw new UnsupportedOperationException(this + " is not stateful, use a " + TimingPauser.class.getSimpleName());
@@ -242,6 +247,9 @@ public interface Pauser {
         return false;
     }
 
+    /**
+     * Provides warnings regarding CPU usage and pausing strategy based on processor availability.
+     */
     enum SleepyWarning {
         ; // none
 

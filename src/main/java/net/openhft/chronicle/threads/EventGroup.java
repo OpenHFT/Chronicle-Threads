@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
@@ -40,11 +41,13 @@ import static java.lang.String.format;
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
 /**
- * Composes child event loops to support all {@link HandlerPriority} priorities. This class will delegate
- * any {@link EventHandler} that is installed on it (via {@link #addHandler(EventHandler)}) to a child
- * event loop appropriately. See also other implementations of {@link EventLoop} in this library.
- * <p>
- * Supports event loop monitoring - controlled by system property {@code MONITOR_INTERVAL_MS} and documented in README.adoc
+ * Manages a group of child event loops to support different {@link HandlerPriority} levels.
+ * This class delegates {@link EventHandler} installations (via {@link #addHandler(EventHandler)})
+ * to child event loops based on priority. It also supports event loop monitoring, configured
+ * by the system property {@code MONITOR_INTERVAL_MS}.
+ *
+ * <p>This class provides mechanisms for handling concurrent, blocking, and replication event loops,
+ * allowing for flexible event handling based on priority and type.
  */
 public class EventGroup
         extends AbstractLifecycleEventLoop
@@ -57,6 +60,7 @@ public class EventGroup
     static final Integer REPLICATION_EVENT_PAUSE_TIME = Jvm.getInteger("replicationEventPauseTime", 20);
     private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
     private static final long WAIT_TO_START_MS = Jvm.getInteger("eventGroup.wait.to.start.ms", 2_000);
+
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
     private final MonitorEventLoop monitor;
@@ -76,7 +80,22 @@ public class EventGroup
     private final Pauser replicationPauser;
     private VanillaEventLoop replication;
 
-    @Deprecated(/* Instead use EventGroupBuilder. TODO: make package-private and undeprecate in x.28, as only EventGroupBuilder should be using */)
+    /**
+     * Deprecated constructor; use {@link EventGroupBuilder} for instantiation.
+     *
+     * @param daemon               whether this event group operates as a daemon thread
+     * @param pauser               the main {@link Pauser} for core event loops
+     * @param replicationPauser    the pauser for replication event loops
+     * @param binding              binding identifier for the core event loop
+     * @param bindingReplication   binding identifier for the replication event loop
+     * @param name                 name of the event group
+     * @param concThreadsNum       number of concurrent threads
+     * @param concBinding          binding identifier for concurrent event loops
+     * @param concPauserSupplier   supplier for concurrent pauser instances
+     * @param priorities           set of {@link HandlerPriority} types supported by this event group
+     * @param blockingPauserSupplier supplier for blocking event loop pauser
+     */
+    @Deprecated
     @SuppressWarnings({"this-escape", "deprecation"})
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
@@ -131,14 +150,19 @@ public class EventGroup
     }
 
     /**
-     * Create an EventGroup builder
+     * Create an EventGroup builder.
      *
-     * @return A new {@link EventGroupBuilder}
+     * @return A new {@link EventGroupBuilder} for building instances of EventGroup.
      */
     public static EventGroupBuilder builder() {
         return EventGroupBuilder.builder();
     }
 
+    /**
+     * Retrieves or creates a replication event loop if it doesn't already exist.
+     *
+     * @return the {@link VanillaEventLoop} for replication purposes
+     */
     @SuppressWarnings("deprecation")
     private synchronized VanillaEventLoop getReplication() {
         if (replication == null) {
@@ -154,12 +178,24 @@ public class EventGroup
         return replication;
     }
 
+    /**
+     * Adds thread monitoring for a given replication interval.
+     *
+     * @param replicationMonitorIntervalMs the monitoring interval in milliseconds
+     * @param replication                  the {@link CoreEventLoop} instance to monitor
+     */
     private void addThreadMonitoring(long replicationMonitorIntervalMs, CoreEventLoop replication) {
         if (ENABLE_LOOP_BLOCK_MONITOR)
             monitor.addHandler(new ThreadMonitorHarness(new EventLoopThreadHolder(
                     TimeUnit.NANOSECONDS.convert(replicationMonitorIntervalMs, TimeUnit.MILLISECONDS), replication)));
     }
 
+    /**
+     * Retrieves or initializes a concurrent thread event loop based on the given index.
+     *
+     * @param n the index of the concurrent thread
+     * @return the {@link VanillaEventLoop} for the concurrent thread
+     */
     @SuppressWarnings("deprecation")
     private synchronized VanillaEventLoop getConcThread(int n) {
         VanillaEventLoop loop = concThreads.get(n);
@@ -175,6 +211,9 @@ public class EventGroup
         return loop;
     }
 
+    /**
+     * Unpauses the main pauser and any active replication threads.
+     */
     @Override
     public void unpause() {
         pauser.unpause();
@@ -231,6 +270,13 @@ public class EventGroup
         }
     }
 
+    /**
+     * Sets up a monitor for timing limits on the main event loop,
+     * primarily to avoid interruptions by exceptions.
+     *
+     * @param timeLimitNS the allowed time limit in nanoseconds
+     * @param timeOfStart supplier for the start time of the event loop
+     */
     public void setupTimeLimitMonitor(final long timeLimitNS, final LongSupplier timeOfStart) {
         throwExceptionIfClosed();
 
@@ -243,6 +289,14 @@ public class EventGroup
                 core::thread);
     }
 
+    /**
+     * Adds a timing monitor to the event loop.
+     *
+     * @param description   a descriptive name for the monitor
+     * @param timeLimitNS   the time limit in nanoseconds for the monitor
+     * @param timeSupplier  supplies the start time for the event loop
+     * @param threadSupplier supplies the thread on which the monitor operates
+     */
     public void addTimingMonitor(final String description,
                                  final long timeLimitNS,
                                  final LongSupplier timeSupplier,
@@ -251,8 +305,7 @@ public class EventGroup
     }
 
     /**
-     * Starts the event loop and waits for the core (or monitor) event loop thread to start before returning
-     * (or timing out)
+     * Starts the event loop and initiates monitoring for core or monitor event loop threads.
      */
     @Override
     protected void performStart() {
@@ -279,6 +332,11 @@ public class EventGroup
         waitToStart(this);
     }
 
+    /**
+     * Waits for the specified event loop to start, with a timeout for responsiveness.
+     *
+     * @param waitfor the event loop to wait for
+     */
     private void waitToStart(EventLoop waitfor) {
         // wait for core to start, We use a TimingPauser, previously we waited forever
         TimingPauser timeoutPauser = Pauser.sleepy();
@@ -302,6 +360,11 @@ public class EventGroup
         }
     }
 
+    /**
+     * Renders a thread dump at the current moment, useful for diagnostics.
+     *
+     * @return the thread dump as a string
+     */
     private static String renderThreadDump() {
         final Map<Thread, StackTraceElement[]> allStackTraces = Thread.getAllStackTraces();
         StringBuilder stringBuilder = new StringBuilder();
@@ -314,26 +377,43 @@ public class EventGroup
         return stringBuilder.toString();
     }
 
+    /**
+     * Stops the event loop by invoking {@link #performStop()}.
+     */
     @Override
     protected void performStopFromNew() {
         performStop();
     }
 
+    /**
+     * Stops the event loop by invoking {@link #performStop()}.
+     */
     @Override
     protected void performStopFromStarted() {
         performStop();
     }
 
+    /**
+     * Shuts down all event loop threads and clears resources.
+     */
     private void performStop() {
         monitor.stop();
         EventLoops.stopAll(concThreads, replication, core, blocking);
     }
 
+    /**
+     * Checks if the event loop is currently active.
+     *
+     * @return {@code true} if either core or monitor loop is alive, {@code false} otherwise
+     */
     @Override
     public boolean isAlive() {
         return (core == null ? monitor : core).isAlive();
     }
 
+    /**
+     * Closes the event loop and releases resources.
+     */
     @Override
     protected void performClose() {
         super.performClose();
@@ -348,11 +428,22 @@ public class EventGroup
         awaitTermination();
     }
 
+    /**
+     * Checks if the current thread is running inside the core event loop.
+     *
+     * @return {@code true} if running within the core loop, {@code false} otherwise
+     */
     @Override
     public boolean runsInsideCoreLoop() {
         return core.runsInsideCoreLoop();
     }
 
+    /**
+     * Determines if the specified thread is currently active in any part of the event group.
+     *
+     * @param thread the thread to check
+     * @return {@code true} if the thread is running on any event loop; {@code false} otherwise
+     */
     @Override
     public boolean isRunningOnThread(Thread thread) {
         return core != null && core.isRunningOnThread(thread) ||

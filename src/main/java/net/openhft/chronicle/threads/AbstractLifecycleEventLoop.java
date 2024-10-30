@@ -29,31 +29,51 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A parent class that:
+ * An abstract base class for managing the lifecycle of an {@link EventLoop}.
+ * <p>
+ * This class:
  * <ul>
- *     <li>Enforces the life-cycle of an EventLoop</li>
- *     <li>Implements idempotency for {@link #start()}, {@link #stop()}</li>
- *     <li>Ensures {@link #stop()} only returns when the EventLoop is stopped</li>
+ *     <li>Enforces the life-cycle stages of an EventLoop</li>
+ *     <li>Implements idempotency for {@link #start()} and {@link #stop()}</li>
+ *     <li>Ensures {@link #stop()} only returns once the EventLoop is stopped</li>
  * </ul>
- * See {@link EventLoopLifecycle} for details of the life-cycle
+ * For further details on the life-cycle, see {@link EventLoopLifecycle}.
  */
 @SuppressWarnings("this-escape")
 public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
 
     /**
-     * After this time, awaitTermination will log an error and return, this is really only so
-     * tests don't block forever. This time should be kept as "effectively forever".
+     * Maximum duration (in milliseconds) to wait in {@link #awaitTermination()} before logging an error.
+     * This timeout is designed to prevent indefinite blocking during tests.
      */
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
+
+    /**
+     * The current lifecycle state of the EventLoop.
+     */
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
+
+    /**
+     * Name of the event loop, used for identification and logging.
+     */
     protected final String name;
 
+    /**
+     * Constructs a new {@code AbstractLifecycleEventLoop} with the given name.
+     *
+     * @param name The name of the event loop, which will have trailing slashes removed.
+     */
     protected AbstractLifecycleEventLoop(@NotNull String name) {
         this.name = name.replaceAll("/$", "");
-
+        // Disables the single-threaded check for this instance.
         singleThreadedCheckDisabled(true);
     }
 
+    /**
+     * Returns the name with an appended slash.
+     *
+     * @return the name suffixed with a slash if non-empty
+     */
     protected String nameWithSlash() {
         return withSlash(name);
     }
@@ -62,6 +82,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     public final void start() {
         throwExceptionIfClosed();
 
+        // Transition to STARTED state if currently NEW and performs start actions.
         if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STARTED)) {
             performStart();
         }
@@ -73,13 +94,13 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     }
 
     /**
-     * Implement whatever this event loop needs to start, will only
-     * ever be called once
+     * Starts the event loop. This method should only be called once per instance.
      */
     protected abstract void performStart();
 
     @Override
     public final void stop() {
+        // Transitions from NEW or STARTED states to STOPPING and performs stop actions.
         if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STOPPING)) {
             performStopFromNew();
             lifecycle.set(EventLoopLifecycle.STOPPED);
@@ -92,18 +113,21 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     }
 
     /**
-     * Implement a stop from {@link EventLoopLifecycle#NEW} state, should block until all
-     * handlers have had {@link EventHandler#loopFinished()} called.
+     * Implements stopping behavior from the {@link EventLoopLifecycle#NEW} state.
+     * This method should ensure that all {@link EventHandler#loopFinished()} calls are completed.
      */
     protected abstract void performStopFromNew();
 
     /**
-     * Implement a stop from {@link EventLoopLifecycle#STARTED} state, should block until all
-     * handlers have completed their final iteration and had
-     * {@link EventHandler#loopFinished()} called.
+     * Implements stopping behavior from the {@link EventLoopLifecycle#STARTED} state.
+     * Ensures handlers finish their final iteration and call {@link EventHandler#loopFinished()}.
      */
     protected abstract void performStopFromStarted();
 
+    /**
+     * Waits until the EventLoop has stopped or a timeout occurs.
+     * If the timeout expires, logs an error message and returns.
+     */
     protected final void awaitTermination() {
         long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
         while (!Thread.currentThread().isInterrupted()) {
@@ -126,13 +150,25 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     @Override
     protected void assertCloseable() {
+        // Ensures the EventLoop is not closed from within its own thread.
         if (isRunningOnThread(Thread.currentThread())) {
             throw new ThreadingIllegalStateException("Attempting to close " + name + " from within!", null);
         }
     }
 
+    /**
+     * Checks if the EventLoop is running on the specified thread.
+     *
+     * @param thread The thread to check
+     * @return {@code true} if the EventLoop is running on the specified thread, {@code false} otherwise
+     */
     public abstract boolean isRunningOnThread(Thread thread);
 
+    /**
+     * Checks if the EventLoop is in the STARTED state.
+     *
+     * @return {@code true} if the EventLoop has started, {@code false} otherwise
+     */
     protected boolean isStarted() {
         return lifecycle.get() == EventLoopLifecycle.STARTED;
     }
@@ -142,6 +178,12 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         return lifecycle.get().isStopped();
     }
 
+    /**
+     * Appends a slash to the provided name if non-empty.
+     *
+     * @param n The string to append a slash to if not empty
+     * @return the modified string with a trailing slash
+     */
     static String withSlash(String n) {
         return n.isEmpty() ? n : n + "/";
     }

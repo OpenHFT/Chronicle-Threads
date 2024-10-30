@@ -36,6 +36,14 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
+/**
+ * The {@code Threads} utility class provides methods for managing and monitoring threads within {@link ExecutorService}s,
+ * including shutdown operations, thread state monitoring, and utility methods for working with event loops.
+ * It supports daemon and non-daemon shutdowns, thread tracing, and rendering stack traces for diagnostic purposes.
+ *
+ * <p>This class offers methods to acquire different types of {@link ExecutorService}s and {@link ScheduledExecutorService}s
+ * via an {@link ExecutorFactory}, allowing customized thread pool configurations.</p>
+ */
 public enum Threads {
     ; // none
 
@@ -56,18 +64,43 @@ public enum Threads {
         executorFactory = instance;
     }
 
+    /**
+     * Acquires an {@link ExecutorService} with the specified name, thread count, and daemon setting.
+     *
+     * @param name    the name of the executor service
+     * @param threads the number of threads in the pool
+     * @param daemon  whether the threads should be daemon threads
+     * @return the acquired {@link ExecutorService}
+     */
     public static ExecutorService acquireExecutorService(String name, int threads, boolean daemon) {
         return executorFactory.acquireExecutorService(name, threads, daemon);
     }
 
+    /**
+     * Acquires a {@link ScheduledExecutorService} with the specified name and daemon setting.
+     *
+     * @param name   the name of the scheduled executor service
+     * @param daemon whether the threads should be daemon threads
+     * @return the acquired {@link ScheduledExecutorService}
+     */
     public static ScheduledExecutorService acquireScheduledExecutorService(String name, boolean daemon) {
         return executorFactory.acquireScheduledExecutorService(name, daemon);
     }
 
+    /**
+     * Sets the {@link ExecutorFactory} used for acquiring executor services.
+     *
+     * @param executorFactory the executor factory to set
+     */
     public static void executorFactory(ExecutorFactory executorFactory) {
         Threads.executorFactory = executorFactory;
     }
 
+    /**
+     * Retrieves the thread group prefix of the current thread.
+     *
+     * @return the thread group prefix, ending with a "/"
+     */
     @NotNull
     public static String threadGroupPrefix() {
         String threadGroupName = Thread.currentThread().getThreadGroup().getName();
@@ -101,6 +134,12 @@ public enum Threads {
         }
     }
 
+    /**
+     * Shuts down an {@link ExecutorService} based on whether it is daemon or non-daemon.
+     *
+     * @param service the service to shut down
+     * @param daemon  indicates if the service should be treated as a daemon
+     */
     public static void shutdown(@NotNull ExecutorService service, boolean daemon) {
         if (daemon)
             shutdownDaemon(service);
@@ -137,6 +176,11 @@ public enum Threads {
         }
     }
 
+    /**
+     * Logs information about threads in the {@link ExecutorService} that did not terminate as expected.
+     *
+     * @param service the service with running threads
+     */
     private static void warnRunningThreads(@NotNull ExecutorService service) {
         Jvm.pause(100);
 
@@ -150,24 +194,40 @@ public enum Threads {
     }
 
     /**
-     * Render a stack trace
+     * Renders a stack trace to the provided {@link StringBuilder}.
      *
-     * @param stringBuilder      The string builder to render to
-     * @param stackTraceElements The array of stack-trace elements
+     * @param stringBuilder      the string builder to render the trace
+     * @param stackTraceElements the stack trace elements to include
      */
     public static void renderStackTrace(StringBuilder stringBuilder, StackTraceElement[] stackTraceElements) {
         for (StackTraceElement s : stackTraceElements)
             stringBuilder.append("  ").append(s).append("\n");
     }
 
+    /**
+     * Unparks threads in the specified {@link ExecutorService}.
+     *
+     * @param service the service containing the threads to unpark
+     */
     public static void unpark(ExecutorService service) {
         forEachThread(service, LockSupport::unpark);
     }
 
+    /**
+     * Interrupts threads in the specified {@link ExecutorService}.
+     *
+     * @param service the service containing the threads to interrupt
+     */
     public static void interrupt(ExecutorService service) {
         Threads.forEachThread(service, Thread::interrupt);
     }
 
+    /**
+     * Applies a consumer action to each thread in the specified {@link ExecutorService}.
+     *
+     * @param service  the service containing the threads
+     * @param consumer the action to apply to each thread
+     */
     static void forEachThread(ExecutorService service, Consumer<Thread> consumer) {
         try {
             if (!(service instanceof ThreadPoolExecutor))

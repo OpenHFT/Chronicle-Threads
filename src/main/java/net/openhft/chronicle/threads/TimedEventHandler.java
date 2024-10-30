@@ -22,9 +22,24 @@ import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * The {@code TimedEventHandler} abstract class provides a base implementation for event handlers
+ * that operate based on a timed interval. It schedules an action to be executed at specified intervals
+ * and calculates the next execution time based on the delay returned by {@link #timedAction()}.
+ *
+ * <p>This handler is configured with a {@link HandlerPriority} of {@code TIMER}.</p>
+ */
 public abstract class TimedEventHandler implements EventHandler {
     private long nextRunNS = 0;
 
+    /**
+     * Executes the scheduled action if the specified time interval has elapsed.
+     * The {@link #timedAction()} method is called to perform the handler's main operation
+     * and determine the next delay interval. If the delay is negative, the handler is re-scheduled immediately.
+     *
+     * @return {@code true} if the handler should be removed; {@code false} otherwise
+     * @throws InvalidEventHandlerException if an error occurs during execution
+     */
     @Override
     public boolean action() throws InvalidEventHandlerException {
         long now = System.nanoTime();
@@ -38,12 +53,19 @@ public abstract class TimedEventHandler implements EventHandler {
     }
 
     /**
-     * Perform an action
+     * The main operation to be executed by the handler. Implementations should define
+     * the specific action to be performed and return the desired delay interval before the next execution.
      *
-     * @return the delay in micro-seconds.
+     * @return the delay in microseconds before the next execution
+     * @throws InvalidEventHandlerException if an error occurs during execution
      */
     protected abstract long timedAction() throws InvalidEventHandlerException;
 
+    /**
+     * Specifies the priority of this handler as {@link HandlerPriority#TIMER}.
+     *
+     * @return the {@code TIMER} priority level
+     */
     @NotNull
     @Override
     public HandlerPriority priority() {

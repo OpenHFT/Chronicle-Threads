@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
@@ -34,19 +35,47 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.Threads.*;
 
 /**
- * Event Loop for blocking tasks.
+ * An implementation of {@link EventLoop} designed to handle blocking tasks, providing
+ * support for multiple {@link EventHandler}s to execute concurrently in separate threads.
  */
 public class BlockingEventLoop extends AbstractLifecycleEventLoop implements EventLoop {
 
     @NotNull
     private transient final EventLoop parent;
+
+    /**
+     * Executor service to handle task execution, initialized with a cached thread pool.
+     */
     @NotNull
     private transient final ExecutorService service;
+
+    /**
+     * A thread-safe list holding the event handlers assigned to this event loop.
+     */
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
+
+    /**
+     * A thread-safe list of runner instances managing individual event handler execution.
+     */
     private final List<Runner> runners = new CopyOnWriteArrayList<>();
+
+    /**
+     * Factory for naming and creating threads for the executor service.
+     */
     private final NamedThreadFactory threadFactory;
+
+    /**
+     * Supplier for creating a {@link Pauser} for managing handler pauses.
+     */
     private final Supplier<Pauser> pauserSupplier;
 
+    /**
+     * Constructs a BlockingEventLoop with a specified parent event loop, name, and pauser supplier.
+     *
+     * @param parent The parent event loop
+     * @param name   The name of the event loop
+     * @param pauser Supplier to create a Pauser for handler pause management
+     */
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name,
                              @NotNull final Supplier<Pauser> pauser) {
@@ -57,6 +86,12 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         this.pauserSupplier = pauser;
     }
 
+    /**
+     * Constructs a BlockingEventLoop with no parent, using itself as the parent event loop.
+     * The default {@link Pauser} supplier is used.
+     *
+     * @param name The name of the event loop
+     */
     public BlockingEventLoop(@NotNull final String name) {
         super(name);
         this.parent = this;
@@ -66,9 +101,9 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     }
 
     /**
-     * This can be called multiple times and each handler will be executed in its own thread
+     * Adds an {@link EventHandler} to the event loop. Each handler is executed in its own thread.
      *
-     * @param handler to execute
+     * @param handler The event handler to be added
      */
     @Override
     public synchronized void addHandler(@NotNull final EventHandler handler) {
@@ -76,6 +111,8 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
             Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
+
+        // Add handler to the parent event loop quietly and start if the loop is running
         eventLoopQuietly(parent, handler);
         this.handlers.add(handler);
         if (isStarted())
@@ -87,6 +124,11 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         handlers.forEach(this::startHandler);
     }
 
+    /**
+     * Initiates the execution of a handler in a separate thread managed by the executor service.
+     *
+     * @param handler The handler to start execution for
+     */
     private void startHandler(final EventHandler handler) {
         try {
             final Runner runner = new Runner(handler, pauserSupplier.get());
@@ -101,6 +143,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     @Override
     public void unpause() {
+        // Unpauses each runner in the event loop
         runners.forEach(Runner::unpause);
         unpark(service);
     }
@@ -115,6 +158,9 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         shutdownExecutorService();
     }
 
+    /**
+     * Shuts down the executor service immediately, interrupting all tasks.
+     */
     private void shutdownExecutorService() {
         /*
          * It's necessary for blocking handlers to be interrupted, so they abort what they're
@@ -146,6 +192,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     @Override
     public boolean isRunningOnThread(Thread thread) {
+        // Checks if the provided thread is associated with any runner in this loop
         for (int i=0; i < runners.size(); i++) {
             if (thread == runners.get(i).thread()) {
                 return true;
@@ -154,12 +201,21 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         return false;
     }
 
+    /**
+     * Internal runner class to manage individual handler execution.
+     */
     private final class Runner implements Runnable {
         private final EventHandler handler;
         private final Pauser pauser;
         private boolean endedGracefully = false;
         private transient volatile Thread thread = null;
 
+        /**
+         * Constructs a runner for the specified handler and pauser.
+         *
+         * @param handler The handler managed by this runner
+         * @param pauser  The pauser to control handler pauses
+         */
         public Runner(final EventHandler handler, Pauser pauser) {
             this.handler = handler;
             this.pauser = pauser;
@@ -172,6 +228,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 thread = Thread.currentThread();
                 handler.loopStarted();
 
+                // Executes handler actions, pausing or resetting the pauser based on action results
                 while (isStarted()) {
                     if (handler.action())
                         pauser.reset();
@@ -180,12 +237,13 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 }
                 endedGracefully = true;
             } catch (InvalidEventHandlerException e) {
-                // expected and logged below.
+                // Expected exception, no action needed
             } catch (Throwable t) {
                 if (!isClosed())
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw ", t);
 
             } finally {
+                // Cleanup after handler completes
                 if (Jvm.isDebugEnabled(handler.getClass()))
                     Jvm.debug().on(handler.getClass(), "handler " + asString(handler) + " done.");
                 loopFinishedQuietly(handler);
@@ -198,14 +256,28 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
             }
         }
 
+        /**
+         * Returns a string representation of the handler's memory identity hash code.
+         *
+         * @param handler The handler to represent
+         * @return The string representation of the handler
+         */
         private String asString(final Object handler) {
             return Integer.toHexString(System.identityHashCode(handler));
         }
 
+        /**
+         * Unpauses the associated pauser.
+         */
         public void unpause() {
             pauser.unpause();
         }
 
+        /**
+         * Retrieves the thread running this runner.
+         *
+         * @return The current thread
+         */
         public Thread thread() {
             return thread;
         }

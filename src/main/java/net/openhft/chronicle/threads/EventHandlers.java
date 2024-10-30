@@ -20,8 +20,22 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.EventHandler;
 
+/**
+ * A singleton implementation of {@link EventHandler} for a no-operation (NOOP) event handler.
+ * This handler can be used as a placeholder where an {@link EventHandler} is required but no action is needed.
+ */
 enum EventHandlers implements EventHandler {
+
+    /**
+     * A no-operation handler that performs no actions.
+     * Useful as a default or placeholder event handler.
+     */
     NOOP {
+        /**
+         * Defines the action to be taken by this handler, which is none.
+         *
+         * @return {@code false} indicating that no action was performed.
+         */
         @Override
         public boolean action() {
             return false;

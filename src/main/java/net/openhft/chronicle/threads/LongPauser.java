@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
@@ -29,39 +30,40 @@ import java.util.concurrent.locks.LockSupport;
 import static net.openhft.chronicle.threads.LongPauser.ToStringHelper.*;
 
 /**
- * A {@link Pauser} that implements a pausing strategy with phases of busy waiting, yielding, and sleeping,
- * with each phase increasing in duration up to a configured limit. It is designed for scenarios where a gradual
- * back-off is needed from active to more passive waiting states.
+ * A {@link Pauser} that implements a phased pausing strategy with stages of busy waiting, yielding,
+ * and sleeping. Each phase increases the duration of the pause up to a specified maximum time.
+ * This strategy is useful when a gradual back-off is required, shifting from active waiting
+ * to progressively more passive waiting states.
  * <p>
- * The pausing behavior begins with busy waiting, transitions to yielding, and ultimately moves to sleeping,
- * progressively increasing the pause time from a minimum to a specified maximum duration.
+ * The pause sequence starts with a busy-wait phase, proceeds to a yield phase, and eventually
+ * shifts to a sleep phase, where the sleep duration grows from a configured minimum to a maximum.
  */
 public class LongPauser implements Pauser, TimingPauser {
+
     private static final String SHOW_PAUSES = Jvm.getProperty("pauses.show");
-    private final long minPauseTimeNS;
-    private final long maxPauseTimeNS;
-    private final AtomicBoolean pausing = new AtomicBoolean();
-    private final long minBusyNS;
-    private final long minYieldNS;
-    private long firstPauseNS = Long.MAX_VALUE;
-    private long pauseTimeNS;
-    private long timePaused = 0;
-    private long countPaused = 0;
+    private final long minPauseTimeNS;  // Minimum duration of the sleep phase in nanoseconds
+    private final long maxPauseTimeNS;  // Maximum duration of the sleep phase in nanoseconds
+    private final AtomicBoolean pausing = new AtomicBoolean();  // Tracks if the thread is in a pausing state
+    private final long minBusyNS;  // Duration for the busy-wait phase in nanoseconds
+    private final long minYieldNS;  // Duration for the yield phase in nanoseconds
+    private long firstPauseNS = Long.MAX_VALUE;  // Timestamp of the first pause
+    private long pauseTimeNS;  // Current duration of the pause
+    private long timePaused = 0;  // Accumulated time spent in pauses
+    private long countPaused = 0;  // Count of pause invocations
     @Nullable
-    private transient volatile Thread thread = null;
-    private long yieldStart = 0;
-    private long pauseUntilNS = 0;
+    private transient volatile Thread thread = null;  // Thread associated with the pauser
+    private long yieldStart = 0;  // Start time of the yield phase
+    private long pauseUntilNS = 0;  // Time until which async pause is active
 
     /**
-     * first it will busy wait, then it will yield, then sleep for a small amount of time, then
-     * increases to a large amount of time.
+     * Constructs a {@code LongPauser} with a phased pausing strategy.
+     * Initially, the thread busy-waits, then yields, and finally sleeps with increasing durations.
      *
-     * @param minBusy  the length in timeUnit to go around doing nothing, after this is
-     *                 reached it will then start to yield
-     * @param minYield the length in timeUnit it will yield, before it starts to sleep
-     * @param minTime  the amount of time to sleep ( initially )
-     * @param maxTime  the amount of time subsequently to sleep
-     * @param timeUnit the unit of the {@code minTime}  and {@code maxTime}
+     * @param minBusy  the minimum busy-wait duration before yielding
+     * @param minYield the minimum yield duration before sleeping
+     * @param minTime  the initial sleep duration
+     * @param maxTime  the maximum sleep duration
+     * @param timeUnit the unit of time for {@code minBusy}, {@code minYield}, {@code minTime}, and {@code maxTime}
      */
     public LongPauser(int minBusy, int minYield, long minTime, long maxTime, @NotNull TimeUnit timeUnit) {
         this.minBusyNS = timeUnit.toNanos(minBusy);
@@ -71,6 +73,10 @@ public class LongPauser implements Pauser, TimingPauser {
         pauseTimeNS = minPauseTimeNS;
     }
 
+    /**
+     * Resets the pauser, clearing any accumulated time or yield state and resetting to the initial
+     * sleep duration.
+     */
     @Override
     public void reset() {
         if (yieldStart > 0) {
@@ -86,6 +92,7 @@ public class LongPauser implements Pauser, TimingPauser {
 
     /**
      * Pauses the current thread according to the phased pausing strategy.
+     * By default, pauses indefinitely unless a timeout is set.
      */
     @Override
     public void pause() {
@@ -96,7 +103,7 @@ public class LongPauser implements Pauser, TimingPauser {
     }
 
     /**
-     * Initiates an asynchronous pause that will last for the current phase's duration.
+     * Initiates an asynchronous pause that will last for the duration of the current phase.
      */
     @Override
     public void asyncPause() {
@@ -121,12 +128,11 @@ public class LongPauser implements Pauser, TimingPauser {
     }
 
     /**
-     * Implementation of the pause method for the LongPauser. This method introduces pauses of
-     * increasing duration up to a specified timeout. If the timeout is exceeded, a TimeoutException is thrown.
+     * Phased pausing implementation. The thread pauses progressively longer until a specified timeout.
      *
-     * @param timeout  The maximum time duration to wait before throwing a TimeoutException.
-     * @param timeUnit The unit of the timeout parameter.
-     * @throws TimeoutException If the pause exceeds the specified timeout.
+     * @param timeout  the maximum time to wait before throwing a {@link TimeoutException}
+     * @param timeUnit the unit of the timeout
+     * @throws TimeoutException if the pause exceeds the specified timeout
      */
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
@@ -185,6 +191,11 @@ public class LongPauser implements Pauser, TimingPauser {
         Thread.yield();
     }
 
+    /**
+     * Executes a pause for the specified delay in nanoseconds.
+     *
+     * @param delayNs the delay duration in nanoseconds
+     */
     void doPause(long delayNs) {
         long start = System.nanoTime();
         thread = Thread.currentThread();
@@ -196,6 +207,9 @@ public class LongPauser implements Pauser, TimingPauser {
         timePaused += time;
     }
 
+    /**
+     * Unpauses the thread if it is currently in a pausing state.
+     */
     @Override
     public void unpause() {
         final Thread threadSnapshot = this.thread;
@@ -259,6 +273,9 @@ public class LongPauser implements Pauser, TimingPauser {
                 '}';
     }
 
+    /**
+     * Helper class to provide sample configurations for various pause strategies.
+     */
     static class ToStringHelper {
         static final LongPauser sleepySample = (LongPauser) Pauser.sleepy();
         static final LongPauser balancedSample = (LongPauser) Pauser.balanced();

@@ -19,9 +19,9 @@
 package net.openhft.chronicle.threads;
 
 /**
- * The life-cycle of an event loop
- * <p>
- * possible transitions include:
+ * Defines the life-cycle stages of an event loop, including possible state transitions.
+ *
+ * <p>The transitions occur in the following order:
  * <pre>
  *      +-------------------------------------------------+
  *      |                                                 v
@@ -31,32 +31,43 @@ package net.openhft.chronicle.threads;
  * </pre>
  */
 public enum EventLoopLifecycle {
+
     /**
-     * The event loop has been created but not yet started
+     * The event loop has been created but has not yet started.
      */
     NEW(false),
 
     /**
-     * The event loop has been started but not yet stopped
+     * The event loop has been started but is not yet stopping.
      */
     STARTED(false),
 
     /**
-     * Stop has been called, but some handlers are yet to complete
+     * Indicates that stop has been called, but some event handlers are still processing.
      */
     STOPPING(true),
 
     /**
-     * The event loop has been stopped
+     * The event loop has fully stopped, with no handlers currently active.
      */
     STOPPED(true);
 
     private final boolean stopped;
 
+    /**
+     * Constructs an instance of {@link EventLoopLifecycle}.
+     *
+     * @param stopped {@code true} if the event loop is in a stopped or stopping state, {@code false} otherwise
+     */
     EventLoopLifecycle(boolean stopped) {
         this.stopped = stopped;
     }
 
+    /**
+     * Checks if the event loop is either in the stopping or stopped state.
+     *
+     * @return {@code true} if the event loop is stopping or stopped, {@code false} otherwise
+     */
     public boolean isStopped() {
         return stopped;
     }

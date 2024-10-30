@@ -27,11 +27,21 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Field;
 
 /**
- * This is a utility to render a verbose summary of the state of an {@link EventLoop}. Useful for debugging.
+ * Utility class that provides a detailed summary of the state of an {@link EventLoop}.
+ * Primarily used for debugging purposes, it captures essential details such as
+ * the event loop’s lifecycle, thread state, and stack trace if available.
  */
 public enum EventLoopStateRenderer {
     INSTANCE;
 
+    /**
+     * Renders the state of a given {@link EventLoop} with a detailed description
+     * including its lifecycle and any associated thread state.
+     *
+     * @param name      the name of the event loop for labeling purposes
+     * @param eventLoop the event loop whose state is being described
+     * @return a formatted string containing the state information of the event loop
+     */
     public String render(String name, @Nullable EventLoop eventLoop) {
         if (eventLoop == null) {
             return name + " event loop is null";
@@ -46,6 +56,13 @@ public enum EventLoopStateRenderer {
         return builder.toString();
     }
 
+    /**
+     * Adds detailed information specific to a {@link CoreEventLoop}, such as the
+     * current thread state and stack trace if available, to the provided builder.
+     *
+     * @param builder   the StringBuilder that accumulates the state description
+     * @param eventLoop the event loop to inspect for core-specific details
+     */
     private void addCoreEventLoopDetails(StringBuilder builder, EventLoop eventLoop) {
         if (eventLoop instanceof CoreEventLoop) {
             Thread t = ((CoreEventLoop) eventLoop).thread();
@@ -62,6 +79,13 @@ public enum EventLoopStateRenderer {
         }
     }
 
+    /**
+     * Adds lifecycle information to the builder if the event loop is an instance of
+     * {@link AbstractLifecycleEventLoop}, which exposes lifecycle state through reflection.
+     *
+     * @param builder   the StringBuilder that accumulates the lifecycle information
+     * @param eventLoop the event loop to inspect for lifecycle details
+     */
     private void addLifecycleDetails(StringBuilder builder, EventLoop eventLoop) {
         if (eventLoop instanceof AbstractLifecycleEventLoop) {
             try {

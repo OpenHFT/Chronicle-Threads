@@ -30,22 +30,34 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 
+/**
+ * Utility class for managing the stopping of multiple {@link EventLoop} instances concurrently.
+ * Provides methods to stop individual or grouped {@link EventLoop} instances, leveraging parallel
+ * processing with {@link ForkJoinPool#commonPool()}.
+ * <p>
+ * This class is non-instantiable, as its purpose is to provide static utility methods.
+ */
 public final class EventLoops {
 
-    // Suppresses default constructor, ensuring non-instantiability.
+    /**
+     * Private constructor to prevent instantiation.
+     */
     private EventLoops() {
     }
 
     /**
-     * Stop many {@link EventLoop}s concurrently using {@link ForkJoinPool#commonPool()}
-     * <p>
-     * Returns when all EventLoops are stopped, safe to pass nulls or collections containing nulls
+     * Stops multiple {@link EventLoop} instances concurrently using the {@link ForkJoinPool#commonPool()}.
+     * This method is designed to handle nested collections and safely ignores null elements.
      *
-     * @param eventLoops A list of EventLoops or collections of event loops
+     * <p>This method returns only once all provided {@link EventLoop} instances have stopped. Any errors
+     * or interruptions encountered during the stopping process are logged.
+     *
+     * @param eventLoops an array of {@link EventLoop} instances or collections containing {@link EventLoop} instances
      */
     public static void stopAll(Object... eventLoops) {
         List<Callable<Void>> eventLoopStoppers = new ArrayList<>();
         addAllEventLoopStoppers(Arrays.asList(eventLoops), eventLoopStoppers);
+
         for (Future<Void> voidFuture : ForkJoinPool.commonPool().invokeAll(eventLoopStoppers)) {
             try {
                 voidFuture.get();
@@ -58,6 +70,13 @@ public final class EventLoops {
         }
     }
 
+    /**
+     * Recursively adds stop tasks for each {@link EventLoop} instance within the specified collection.
+     * If the collection contains nested collections, this method will add tasks for each nested {@link EventLoop}.
+     *
+     * @param collection the collection of objects to be processed
+     * @param stoppers   the list to which stop tasks are added
+     */
     private static void addAllEventLoopStoppers(Collection<?> collection, List<Callable<Void>> stoppers) {
         for (Object o : collection) {
             if (o == null) {

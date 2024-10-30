@@ -19,9 +19,31 @@ package net.openhft.chronicle.threads.internal;
 
 import net.openhft.chronicle.core.Jvm;
 
+/**
+ * Utility class providing configuration constants for managing event loop behavior.
+ * <p>
+ * This utility defines parameters that control the frequency of handler acceptance
+ * within the event loop, based on a configurable modulation count.
+ */
 public enum EventLoopUtil {
-    ; // none
+    ; // Prevents instantiation
+
+    /**
+     * Default value for the acceptance handler modulation count.
+     * Controls how frequently handlers are accepted by the event loop.
+     */
     private static final int DEFAULT_ACCEPT_HANDLER_MOD_COUNT = 128;
+
+    /**
+     * Configurable modulation count used to determine the frequency of accepting new handlers.
+     * This value can be adjusted via the system property {@code eventloop.accept.mod}.
+     */
     public static final int ACCEPT_HANDLER_MOD_COUNT = Jvm.getInteger("eventloop.accept.mod", DEFAULT_ACCEPT_HANDLER_MOD_COUNT);
+
+    /**
+     * Boolean flag indicating whether handler acceptance modulation is enabled.
+     * <p>
+     * Modulation is considered enabled if the {@link #ACCEPT_HANDLER_MOD_COUNT} is set to a positive value.
+     */
     public static final boolean IS_ACCEPT_HANDLER_MOD_COUNT = ACCEPT_HANDLER_MOD_COUNT > 0;
 }

@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import org.jetbrains.annotations.NotNull;
@@ -26,22 +27,23 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 /**
- * A {@link Pauser} implementation that provides precise control over thread pausing based on a specified duration in milliseconds.
- * This pauser can operate both synchronously and asynchronously, providing flexibility in thread management.
+ * A {@link Pauser} implementation that provides precise control over thread pausing
+ * based on a specified duration in milliseconds. The {@code MilliPauser} supports both
+ * synchronous and asynchronous pausing, allowing flexible thread management strategies.
  */
 public class MilliPauser implements Pauser {
     private final AtomicBoolean pausing = new AtomicBoolean();
-    private long pauseTimeMS;
-    private long timePaused = 0;
-    private long countPaused = 0;
-    private long pauseUntilMS = 0;
+    private long pauseTimeMS;  // Configured pause duration in milliseconds
+    private long timePaused = 0;  // Total time spent in paused state
+    private long countPaused = 0;  // Number of pause operations initiated
+    private long pauseUntilMS = 0;  // Timestamp indicating end of asynchronous pause
     @Nullable
-    private transient volatile Thread thread = null;
+    private transient volatile Thread thread = null;  // Thread currently in paused state
 
     /**
      * Constructs a new {@code MilliPauser} with a specified pause time in milliseconds.
      *
-     * @param pauseTimeMS the pause time for each pause operation, in milliseconds
+     * @param pauseTimeMS the pause duration for each pause operation, in milliseconds
      */
     public MilliPauser(long pauseTimeMS) {
         this.pauseTimeMS = pauseTimeMS;
@@ -81,6 +83,9 @@ public class MilliPauser implements Pauser {
         return pauseTimeMS;
     }
 
+    /**
+     * Resets the pauser by clearing any pending asynchronous pause.
+     */
     @Override
     public void reset() {
         pauseUntilMS = 0;
@@ -95,8 +100,8 @@ public class MilliPauser implements Pauser {
     }
 
     /**
-     * Initiates an asynchronous pause that will last for the previously set pause duration.
-     * Does not block the caller but sets the pauser to be in a pausing state.
+     * Initiates an asynchronous pause for the configured duration, marking the pauser as
+     * being in a paused state without blocking the calling thread.
      */
     @Override
     public void asyncPause() {
@@ -106,7 +111,7 @@ public class MilliPauser implements Pauser {
     /**
      * Checks if the pauser is currently in an asynchronous pausing state.
      *
-     * @return {@code true} if still in the pausing state, {@code false} otherwise
+     * @return {@code true} if the pause is still in effect, {@code false} otherwise
      */
     @Override
     public boolean asyncPausing() {
@@ -114,11 +119,11 @@ public class MilliPauser implements Pauser {
     }
 
     /**
-     * Pauses the current thread for a specified duration in milliseconds.
+     * Pauses the current thread for a specified duration.
      *
      * @param timeout  the maximum time to pause in the specified {@code timeUnit}
      * @param timeUnit the unit of time for {@code timeout}
-     * @throws TimeoutException if the pause operation is not completed within the specified timeout
+     * @throws TimeoutException if the pause operation does not complete within the specified timeout
      */
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
@@ -126,7 +131,7 @@ public class MilliPauser implements Pauser {
     }
 
     /**
-     * Helper method to perform the actual pause operation in milliseconds.
+     * Helper method to perform the actual pause operation with millisecond precision.
      *
      * @param delayMS the delay in milliseconds to pause the thread
      */

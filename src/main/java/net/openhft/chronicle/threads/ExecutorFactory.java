@@ -15,13 +15,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
+/**
+ * A factory interface for acquiring instances of {@link ExecutorService} and {@link ScheduledExecutorService}.
+ * Allows customization of executor services with specified names, thread counts, and daemon status.
+ */
 public interface ExecutorFactory {
+
+    /**
+     * Acquires a new {@link ExecutorService} with the specified configuration.
+     *
+     * @param name    the name for the executor service, useful for identifying thread groups
+     * @param threads the number of threads in the executor service
+     * @param daemon  if {@code true}, the executor's threads are daemon threads; otherwise, they are user threads
+     * @return a configured {@link ExecutorService} instance
+     */
     ExecutorService acquireExecutorService(String name, int threads, boolean daemon);
 
+    /**
+     * Acquires a new {@link ScheduledExecutorService} with the specified configuration.
+     *
+     * @param name   the name for the scheduled executor service, useful for identifying thread groups
+     * @param daemon if {@code true}, the scheduled executor's threads are daemon threads; otherwise, they are user threads
+     * @return a configured {@link ScheduledExecutorService} instance
+     */
     ScheduledExecutorService acquireScheduledExecutorService(String name, boolean daemon);
 }

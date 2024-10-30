@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
@@ -35,6 +36,12 @@ import java.util.stream.Stream;
 import static net.openhft.chronicle.threads.Threads.eventLoopQuietly;
 import static net.openhft.chronicle.threads.Threads.loopStartedCall;
 
+/**
+ * The {@code VanillaEventLoop} class is an event loop implementation that supports
+ * multiple handler priorities, including {@code HIGH}, {@code MEDIUM}, {@code TIMER}, and {@code DAEMON}.
+ * This class extends {@link MediumEventLoop} and manages separate lists for timer and daemon handlers,
+ * allowing for flexible scheduling and management of tasks based on priority.
+ */
 public class VanillaEventLoop extends MediumEventLoop {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
@@ -48,12 +55,15 @@ public class VanillaEventLoop extends MediumEventLoop {
     private final Set<HandlerPriority> priorities;
 
     /**
-     * @param parent          the parent event loop
+     * Constructs a new {@code VanillaEventLoop} with the specified configurations.
+     *
+     * @param parent          the parent event loop, or {@code null} if there is no parent
      * @param name            the name of this event handler
-     * @param pauser          the pause strategy
-     * @param timerIntervalMS how long to pause, Long.MAX_VALUE = always check.
-     * @param daemon          is a demon thread
-     * @param binding         set affinity description, "any", "none", "1", "last-1"
+     * @param pauser          the pausing strategy used by this event loop
+     * @param timerIntervalMS the interval in milliseconds for timed actions; {@code Long.MAX_VALUE} to always check
+     * @param daemon          {@code true} if this event loop runs as a daemon thread, {@code false} otherwise
+     * @param binding         a description of the affinity binding, e.g., "any", "none", "1", "last-1"
+     * @param priorities      a set of handler priorities that this event loop will accept
      */
     public VanillaEventLoop(@Nullable final EventLoop parent,
                             final String name,
@@ -67,16 +77,32 @@ public class VanillaEventLoop extends MediumEventLoop {
         this.priorities = EnumSet.copyOf(priorities);
     }
 
+    /**
+     * Closes all event handlers in the specified list.
+     *
+     * @param handlers the list of handlers to be closed
+     */
     public static void closeAll(@NotNull final List<EventHandler> handlers) {
         // do not remove the handler here, remove all at end instead
         Closeable.closeQuietly(handlers);
     }
 
+    /**
+     * Clears any thread-specific associations on the given event handler.
+     *
+     * @param handler the event handler to clear
+     */
     private static void clearUsedByThread(@NotNull EventHandler handler) {
         if (handler instanceof AbstractCloseable)
             ((AbstractCloseable) handler).singleThreadedCheckReset();
     }
 
+    /**
+     * Returns a string representation of this {@code VanillaEventLoop} including the list of
+     * active handlers and associated settings.
+     *
+     * @return a string description of this event loop
+     */
     @NotNull
     @Override
     public String toString() {
@@ -93,6 +119,13 @@ public class VanillaEventLoop extends MediumEventLoop {
                 '}';
     }
 
+    /**
+     * Adds a handler to this event loop. The handler is categorized based on its priority.
+     * If the priority of the handler is not supported, an exception is thrown.
+     *
+     * @param handler the handler to add
+     * @throws IllegalStateException if the handler's priority is not allowed in this loop
+     */
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
@@ -105,6 +138,9 @@ public class VanillaEventLoop extends MediumEventLoop {
         addHandlerInternal(handler);
     }
 
+    /**
+     * Initializes all handlers in this loop, including medium-priority, timer, and daemon handlers.
+     */
     @Override
     protected void loopStartedAllHandlers() {
         super.loopStartedAllHandlers();
@@ -112,6 +148,9 @@ public class VanillaEventLoop extends MediumEventLoop {
         loopStartedForHandlerList(daemonHandlers);
     }
 
+    /**
+     * Cleans up all handlers at the end of the loop, ensuring proper shutdown of timer and daemon handlers.
+     */
     @Override
     protected void loopFinishedAllHandlers() {
         super.loopFinishedAllHandlers();
@@ -122,20 +161,41 @@ public class VanillaEventLoop extends MediumEventLoop {
     }
 
     @Override
+    /**
+     * Returns the interval, in milliseconds, at which the event loop should run timer handlers.
+     * The value is defined when the `VanillaEventLoop` is initialized.
+     *
+     * @return the interval in milliseconds for timer executions
+     */
     protected long timerIntervalMS() {
         return timerIntervalMS;
     }
 
     @Override
+    /**
+     * Iterates over all `TIMER`-priority handlers and executes their `action()` method.
+     * If a handler throws an `InvalidEventHandlerException`, it is removed from the list.
+     */
     protected void runTimerHandlers() {
         runAllHandlers(timerHandlers);
     }
 
     @Override
+    /**
+     * Executes all `DAEMON`-priority handlers in the event loop. If a handler throws an
+     * `InvalidEventHandlerException`, it is removed from the list.
+     */
     protected void runDaemonHandlers() {
         runAllHandlers(daemonHandlers);
     }
 
+    /**
+     * Helper method that iterates over a list of handlers and attempts to execute each
+     * handler's `action()` method. Removes any handlers that throw an `InvalidEventHandlerException`
+     * or other handled exceptions.
+     *
+     * @param handlers the list of `EventHandler` instances to execute
+     */
     private void runAllHandlers(List<EventHandler> handlers) {
         for (int i = 0; i < handlers.size(); i++) {
             EventHandler handler = null;
@@ -153,6 +213,14 @@ public class VanillaEventLoop extends MediumEventLoop {
 
     @SuppressWarnings("fallthrough")
     @Override
+    /**
+     * Adds a new handler to the appropriate list based on its priority level.
+     * Supports `HIGH`, `MEDIUM`, `TIMER`, and `DAEMON` priorities, allowing only one
+     * `HIGH`-priority handler at a time.
+     *
+     * @param handler the `EventHandler` instance to add
+     * @throws IllegalArgumentException if the handler has an unsupported priority
+     */
     protected void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
@@ -211,11 +279,21 @@ public class VanillaEventLoop extends MediumEventLoop {
     }
 
     @Override
+    /**
+     * Returns the total number of handlers currently registered with the event loop, including
+     * daemon and timer handlers.
+     *
+     * @return the count of all registered handlers
+     */
     public int handlerCount() {
         return nonDaemonHandlerCount() + daemonHandlers.size() + timerHandlers.size();
     }
 
     @Override
+    /**
+     * Performs a shutdown of the event loop, clearing daemon and timer handler lists after invoking
+     * the superclass's close method.
+     */
     protected void performClose() {
         try {
             super.performClose();
@@ -226,6 +304,10 @@ public class VanillaEventLoop extends MediumEventLoop {
     }
 
     @Override
+    /**
+     * Closes all registered daemon and timer handlers in addition to the handlers managed by
+     * the superclass.
+     */
     protected void closeAllHandlers() {
         closeAll(daemonHandlers);
         closeAll(timerHandlers);
@@ -233,6 +315,10 @@ public class VanillaEventLoop extends MediumEventLoop {
     }
 
     @Override
+    /**
+     * Provides debug output for any handlers that are still running after an attempted close.
+     * This method identifies lingering handlers to aid in debugging.
+     */
     public void dumpRunningHandlers() {
         final int handlerCount = handlerCount();
         if (handlerCount <= 0)

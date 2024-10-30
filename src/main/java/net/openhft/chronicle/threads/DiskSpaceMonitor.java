@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
@@ -35,7 +36,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Background thread to monitor disk space free.
+ * Singleton implementation of a disk space monitor that uses a background thread to track free disk space
+ * on specified file stores. Provides warnings and panic alerts when disk space runs low, and can be configured
+ * with various thresholds and behaviors via system properties.
  */
 public enum DiskSpaceMonitor implements Runnable, Closeable {
     INSTANCE;
@@ -44,13 +47,18 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     static final boolean WARN_DELETED = Jvm.getBoolean("disk.monitor.deleted.warning");
     private static final boolean DISABLED = Jvm.getBoolean("chronicle.disk.monitor.disable");
     public static final int TIME_TAKEN_WARN_THRESHOLD_US = Jvm.getInteger("chronicle.disk.monitor.warn.threshold.us", 250);
-    private final NotifyDiskLow notifyDiskLow;
-    final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
-    final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
-    final ScheduledExecutorService executor;
-    private int thresholdPercentage = Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 5);
-    private TimeProvider timeProvider = SystemTimeProvider.INSTANCE;
 
+    private final NotifyDiskLow notifyDiskLow;  // Handler for low disk space notifications
+    final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();  // Caches FileStores by path
+    final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();  // Maps FileStores to their attributes
+    final ScheduledExecutorService executor;
+    private int thresholdPercentage = Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 5);  // Disk space threshold percentage
+    private TimeProvider timeProvider = SystemTimeProvider.INSTANCE;  // Time provider for tracking time in tests and operations
+
+    /**
+     * Initializes the DiskSpaceMonitor, setting up the scheduled task for monitoring
+     * and loading any NotifyDiskLow services if present.
+     */
     DiskSpaceMonitor() {
         if (!Jvm.getBoolean("chronicle.disk.monitor.disable")) {
             executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
@@ -69,12 +77,20 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         }
     }
 
-    // used for testing purposes
+    /**
+     * Clears cached data. Used for testing purposes to reset monitor state.
+     */
     public void clear() {
         fileStoreCacheMap.clear();
         diskAttributesMap.clear();
     }
 
+    /**
+     * Polls disk space for the given file, tracking the time taken to perform the check
+     * and logging performance if the operation exceeds a warning threshold.
+     *
+     * @param file the {@link File} whose associated disk space is being monitored
+     */
     public void pollDiskSpace(File file) {
         if (DISABLED)
             return;
@@ -105,6 +121,10 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             Jvm.perf().on(getClass(), "Took " + tookUs / 1000.0 + " ms to pollDiskSpace for " + file.getAbsolutePath());
     }
 
+    /**
+     * The main run method for the scheduled executor, which iterates over each FileStore
+     * and updates their disk space attributes.
+     */
     @Override
     public void run() {
         for (Iterator<DiskAttributes> iterator = diskAttributesMap.values().iterator(); iterator.hasNext(); ) {
@@ -119,36 +139,62 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         }
     }
 
+    /**
+     * Retrieves the current disk space threshold percentage.
+     *
+     * @return the threshold percentage for triggering low disk space warnings
+     */
     public int getThresholdPercentage() {
         return thresholdPercentage;
     }
 
+    /**
+     * Sets the disk space threshold percentage for warnings.
+     *
+     * @param thresholdPercentage the new threshold percentage
+     */
     public void setThresholdPercentage(int thresholdPercentage) {
         this.thresholdPercentage = thresholdPercentage;
     }
 
+    /**
+     * Sets the time provider, mainly for testing purposes.
+     *
+     * @param timeProvider the new {@link TimeProvider}
+     */
     @VisibleForTesting
     protected void setTimeProvider(TimeProvider timeProvider) {
         this.timeProvider = timeProvider;
     }
 
+    /**
+     * Shuts down the executor service and releases any resources held by this monitor.
+     */
     @Override
     public void close() {
         if (executor != null)
             Threads.shutdown(executor);
     }
 
+    /**
+     * Represents disk space attributes and performs monitoring actions.
+     */
     final class DiskAttributes {
 
         private final FileStore fileStore;
-
-        long timeNextCheckedMS;
-        long totalSpace;
+        long timeNextCheckedMS;  // The next time this FileStore should be checked, in milliseconds
+        long totalSpace;  // Total space of the FileStore, set on first run
 
         DiskAttributes(FileStore fileStore) {
             this.fileStore = fileStore;
         }
 
+        /**
+         * Checks the disk space of the associated FileStore and issues warnings if thresholds
+         * are met. Updates the next check time based on the available free space.
+         *
+         * @throws IOException if an error occurs while accessing the FileStore
+         */
         void run() throws IOException {
             long now = timeProvider.currentTimeMillis();
             if (timeNextCheckedMS > now)
@@ -160,7 +206,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
 
             long unallocatedBytes = fileStore.getUnallocatedSpace();
             if (unallocatedBytes < (200 << 20)) {
-                // if less than 200 Megabytes
+                // Less than 200 MB free space
                 notifyDiskLow.panic(fileStore);
 
             } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage / 100) {
@@ -168,7 +214,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                 notifyDiskLow.warning(diskSpaceFull, fileStore);
 
             } else {
-                // wait 1 ms per MB or approx 1 sec per GB free.
+                // Wait 1 ms per MB or approx 1 sec per GB free
                 timeNextCheckedMS = now + (unallocatedBytes >> 20);
             }
             long time = System.nanoTime() - start;
@@ -177,6 +223,9 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         }
     }
 
+    /**
+     * Handles low disk space notifications by iterating through a list of notification handlers.
+     */
     private static class NotifyDiskLowIterator implements NotifyDiskLow {
         private final List<NotifyDiskLow> list;
 

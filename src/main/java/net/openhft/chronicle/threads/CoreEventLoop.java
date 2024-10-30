@@ -15,34 +15,57 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.EventLoop;
 import org.jetbrains.annotations.NotNull;
-
 import java.util.function.BooleanSupplier;
 
+/**
+ * Represents a core event loop interface extending {@link EventLoop} that provides additional
+ * functionality for managing the running state, loop execution time, and associated thread.
+ */
 public interface CoreEventLoop extends EventLoop {
 
     /**
-     * The value returned for {@link #loopStartNS()} when the event loop is not currently
-     * executing an iteration
+     * Constant indicating that the event loop is not currently executing an iteration.
+     * Used as the return value for {@link #loopStartNS()} when the event loop is idle.
      */
     long NOT_IN_A_LOOP = Long.MAX_VALUE;
 
     /**
-     * @return thread that the event loop is running on. Will be null if the event loop has not started
+     * Retrieves the thread on which the event loop is running.
+     *
+     * @return the {@link Thread} that the event loop is associated with, or {@code null} if
+     *         the event loop has not started.
      */
     Thread thread();
 
     /**
-     * Get the {@link System#nanoTime()} at which the currently executing loop iteration started
+     * Obtains the time, in nanoseconds, at which the currently executing loop iteration started.
+     * This time is derived from {@link System#nanoTime()}.
      *
-     * @return The time the current loop started, or {@link #NOT_IN_A_LOOP} if no iteration is executing
+     * @return the start time of the current loop iteration, or {@link #NOT_IN_A_LOOP} if the
+     *         event loop is not actively executing.
      */
     long loopStartNS();
 
+    /**
+     * Dumps the current running state of the event loop along with a provided message. A final check,
+     * supplied as a {@link BooleanSupplier}, can be used to conditionally verify the state.
+     *
+     * @param message    a custom message describing the context or reason for dumping the state
+     * @param finalCheck a {@link BooleanSupplier} that performs a final conditional check before dumping
+     */
     void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck);
 
+    /**
+     * Determines whether a specified thread is currently the one running the event loop.
+     *
+     * @param thread the {@link Thread} to check against the event loop's running thread
+     * @return {@code true} if the provided thread is the one running the event loop;
+     *         {@code false} otherwise.
+     */
     boolean isRunningOnThread(Thread thread);
 }

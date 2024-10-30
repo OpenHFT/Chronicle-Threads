@@ -22,7 +22,22 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * The {@code ThreadMonitor} interface extends {@link EventHandler} to represent a monitoring handler within
+ * an event loop. It is specifically designated with a {@link HandlerPriority} of {@code MONITOR}, allowing
+ * it to oversee thread operations and manage the lifecycle of monitored threads.
+ *
+ * <p>Classes implementing this interface can be used to observe and log the behavior of threads, detect
+ * delays or timing issues, and ensure that event loops are running as expected.</p>
+ */
 public interface ThreadMonitor extends EventHandler {
+
+    /**
+     * Specifies the priority of this handler as {@link HandlerPriority#MONITOR}.
+     * This priority level is typically used for monitoring tasks within an event loop.
+     *
+     * @return the {@code MONITOR} priority level
+     */
     @Override
     default @NotNull HandlerPriority priority() {
         return HandlerPriority.MONITOR;

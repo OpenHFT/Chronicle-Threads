@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
@@ -23,12 +24,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Similar to {@link BusyPauser} but also supporting {@link TimingPauser}
+ * A pauser implementation similar to {@link BusyPauser} that primarily keeps the thread busy
+ * while supporting timeout-based pausing through the {@link TimingPauser} interface.
  */
 public class BusyTimedPauser implements Pauser, TimingPauser {
 
-    private long time = Long.MAX_VALUE;
-    private long countPaused = 0;
+    private long time = Long.MAX_VALUE;  // Tracks the starting time for timing pauses
+    private long countPaused = 0;        // Counts the number of times the pause method is called
 
     /**
      * Always returns {@code true}, indicating that this pauser predominantly keeps the thread busy.
@@ -40,11 +42,18 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
         return true;
     }
 
+    /**
+     * Resets the internal timer, allowing a fresh timing period to begin upon the next pause.
+     */
     @Override
     public void reset() {
         time = Long.MAX_VALUE;
     }
 
+    /**
+     * Increments the pause counter and induces a busy wait. This method keeps the thread active
+     * rather than idling, with a brief pause implemented using {@link Jvm#nanoPause()}.
+     */
     @Override
     public void pause() {
         countPaused++;
@@ -62,11 +71,11 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
      */
     @Override
     public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
-        if (time == Long.MAX_VALUE)
+        if (time == Long.MAX_VALUE)  // Initialize the start time only once per timeout period
             time = System.nanoTime();
         if (System.nanoTime() - time > timeUnit.toNanos(timeout))
             throw new TimeoutException("Pause timed out after " + timeout + " " + timeUnit);
-        pause();
+        pause();  // Perform the actual pause
     }
 
     /**
@@ -107,4 +116,3 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
         return "PauserMode.timedBusy";
     }
 }
-

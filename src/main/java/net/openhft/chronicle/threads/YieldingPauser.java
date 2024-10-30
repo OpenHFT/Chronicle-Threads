@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
@@ -45,6 +46,10 @@ public class YieldingPauser implements TimingPauser {
         this.minBusy = minBusy;
     }
 
+    /**
+     * Resets the pauser to its initial state, allowing it to begin busy-waiting
+     * from the start on the next pause call.
+     */
     @Override
     public void reset() {
         checkYieldTime();
@@ -112,6 +117,11 @@ public class YieldingPauser implements TimingPauser {
         Thread.yield();
     }
 
+    /**
+     * Unpauses the pauser. For this implementation, the method does nothing as
+     * the yielding is handled through internal checks rather than an external
+     * trigger to stop the pause.
+     */
     @Override
     public void unpause() {
         // Do nothing

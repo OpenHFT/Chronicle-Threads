@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
@@ -34,20 +35,38 @@ import java.util.concurrent.Executors;
 
 import static net.openhft.chronicle.threads.Threads.*;
 
+/**
+ * The {@code MonitorEventLoop} class manages and monitors a set of {@link EventHandler}s, running them in a loop.
+ * This class uses a {@link Pauser} to handle pause and resume functionality and is designed to be run on a
+ * dedicated single-threaded executor service.
+ */
 public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runnable, EventLoop {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
-    private transient final ExecutorService service;
-    private transient final EventLoop parent;
-    private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
-    private final Pauser pauser;
-    private transient volatile Thread thread = null;
+    private transient final ExecutorService service;  // Single-threaded executor for running the loop
+    private transient final EventLoop parent;         // Optional parent event loop
+    private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();  // List of event handlers to monitor
+    private final Pauser pauser;  // Pauser for managing loop pausing and unpausing
+    private transient volatile Thread thread = null;  // Thread currently running the event loop
 
+    /**
+     * Constructs a new {@code MonitorEventLoop} with the specified parent and pauser.
+     *
+     * @param parent the parent event loop
+     * @param pauser the pauser to use for managing the event loop's pauses
+     */
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
     }
 
+    /**
+     * Constructs a new {@code MonitorEventLoop} with a specified parent, name, and pauser.
+     *
+     * @param parent the parent event loop
+     * @param name   the name of this event loop
+     * @param pauser the pauser to use for managing the event loop's pauses
+     */
     public MonitorEventLoop(final EventLoop parent, final String name, final Pauser pauser) {
         super(name + (withSlash(parent == null ? "" : parent.name())) + "event~loop~monitor");
         this.parent = parent;
@@ -56,16 +75,25 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
                 new NamedThreadFactory(name, true, null, true));
     }
 
+    /**
+     * Starts the event loop by submitting it to the executor service.
+     */
     @Override
     protected void performStart() {
         service.submit(this);
     }
 
+    /**
+     * Unpauses the event loop by signaling the pauser.
+     */
     @Override
     public void unpause() {
         pauser.unpause();
     }
 
+    /**
+     * Stops the event loop, shutting down the executor service.
+     */
     @Override
     protected void performStopFromNew() {
         performStop();
@@ -81,11 +109,21 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         Threads.shutdownDaemon(service);
     }
 
+    /**
+     * Checks if the event loop is currently alive.
+     *
+     * @return {@code true} if the event loop is started, {@code false} otherwise
+     */
     @Override
     public boolean isAlive() {
         return isStarted();
     }
 
+    /**
+     * Adds a new event handler to the loop, ensuring it is initialized to start once the loop begins.
+     *
+     * @param handler the handler to add
+     */
     @Override
     public synchronized void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
@@ -99,6 +137,9 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             handlers.add(new IdempotentLoopStartedEventHandler(handler));
     }
 
+    /**
+     * Runs the event loop, processing each handler repeatedly until the loop is stopped or interrupted.
+     */
     @Override
     @HotMethod
     public void run() {
@@ -106,14 +147,13 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
 
         try {
             thread = Thread.currentThread();
-            // don't do any monitoring for the first MONITOR_INITIAL_DELAY_MS ms
+            // Initial delay before starting monitoring
             final long waitUntilMs = System.currentTimeMillis() + MONITOR_INITIAL_DELAY_MS;
             while (System.currentTimeMillis() < waitUntilMs && isStarted())
                 pauser.pause();
             pauser.reset();
             while (isStarted() && !Thread.currentThread().isInterrupted()) {
-                boolean busy;
-                busy = runHandlers();
+                boolean busy = runHandlers();
                 pauser.pause();
                 if (busy)
                     pauser.reset();
@@ -127,6 +167,11 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         }
     }
 
+    /**
+     * Processes each handler in the loop, handling exceptions as necessary and removing any invalid handlers.
+     *
+     * @return {@code true} if any handler performed work, {@code false} otherwise
+     */
     @HotMethod
     private boolean runHandlers() {
         boolean busy = false;
@@ -148,6 +193,11 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         return busy;
     }
 
+    /**
+     * Removes a handler from the list, performing any necessary cleanup.
+     *
+     * @param handlerIndex the index of the handler to remove
+     */
     private synchronized void removeHandler(int handlerIndex) {
         try {
             EventHandler removedHandler = handlers.remove(handlerIndex);
@@ -160,23 +210,29 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         }
     }
 
+    /**
+     * Closes all handlers in the event loop.
+     */
     @Override
     protected void performClose() {
         super.performClose();
-
         net.openhft.chronicle.core.io.Closeable.closeQuietly(handlers);
     }
 
+    /**
+     * Checks if the specified thread is the event loop's running thread.
+     *
+     * @param thread the thread to check
+     * @return {@code true} if the specified thread is the event loop's thread, {@code false} otherwise
+     */
     @Override
     public boolean isRunningOnThread(Thread thread) {
         return this.thread == thread;
     }
 
     /**
-     * {@link EventHandler#loopStarted()} needs to be called once before the first call to
-     * {@link EventHandler#action()} and it must be called on the event loop thread. An
-     * easy way to achieve that is to wrap the handler in this idempotent decorator and
-     * call it at the start of every iteration.
+     * Decorator class that ensures {@link EventHandler#loopStarted()} is called only once for each handler
+     * before it starts executing in the event loop.
      */
     private static final class IdempotentLoopStartedEventHandler extends AbstractCloseable implements EventHandler {
 
@@ -240,6 +296,11 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         }
     }
 
+    /**
+     * Returns a string representation of the {@code MonitorEventLoop} with its properties.
+     *
+     * @return a string representing this {@code MonitorEventLoop}
+     */
     @Override
     public String toString() {
         return "MonitorEventLoop{" +
