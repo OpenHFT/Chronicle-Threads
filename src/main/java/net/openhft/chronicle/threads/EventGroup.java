@@ -112,7 +112,7 @@ public class EventGroup
                     Pauser.millis(Integer.getInteger("monitor.interval", 10)));
             closeable.add(monitor);
             if (core != null) {
-                monitor.addHandler(new PauserMonitor(pauser, nameWithSlash() + "core-pauser", 300));
+                monitor.addHandler(PauserMonitorFactory.load().pauserMonitor(pauser, nameWithSlash() + "core-pauser", 300));
                 long samplerMicros = Integer.getInteger("sampler.micros", 0);
                 if (pauser instanceof TimingPauser && samplerMicros > 0)
                     setupTimeLimitMonitor(samplerMicros * 1000, core::loopStartNS);
@@ -149,7 +149,7 @@ public class EventGroup
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, replication);
             if (isAlive())
                 replication.start();
-            monitor.addHandler(new PauserMonitor(newReplicationPauser, nameWithSlash() + "replication pauser", 300));
+            monitor.addHandler(PauserMonitorFactory.load().pauserMonitor(newReplicationPauser, nameWithSlash() + "replication pauser", 300));
         }
         return replication;
     }
@@ -170,7 +170,7 @@ public class EventGroup
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, loop);
             if (isAlive())
                 loop.start();
-            monitor.addHandler(new PauserMonitor(pauser, nameWithSlash() + "conc-event-loop-" + n + " pauser", 300));
+            monitor.addHandler(PauserMonitorFactory.load().pauserMonitor(pauser, nameWithSlash() + "conc-event-loop-" + n + " pauser", 300));
         }
         return loop;
     }
