@@ -31,6 +31,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Verifies that a handler in a {@link BlockingEventLoop} is interrupted when
+ * the loop is stopped while the calling thread continues unimpeded.
+ */
 public class BlockingEventLoopTest extends ThreadsTestCommon {
 
     @Test
