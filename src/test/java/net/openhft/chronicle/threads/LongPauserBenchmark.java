@@ -22,6 +22,14 @@ import net.openhft.chronicle.core.Jvm;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Benchmark used to gauge the overhead of waking a {@link LongPauser}.
+ *
+ * A helper thread loops calling {@link LongPauser#pause()} and then yields.
+ * The main thread repeatedly invokes {@link LongPauser#unpause()} a fixed
+ * number of times and measures the elapsed time. Dividing the total by the
+ * iteration count reveals the average cost of a single unpark operation.
+ */
 public final class LongPauserBenchmark {
 
     public static void main(String[] args) {
