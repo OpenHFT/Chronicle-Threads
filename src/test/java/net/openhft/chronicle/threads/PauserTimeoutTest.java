@@ -25,6 +25,15 @@ import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
+/**
+ * Exercises {@link Pauser#pause(long, java.util.concurrent.TimeUnit)} with a
+ * timeout across several implementations.  Pausers that support the timeout
+ * contract are called repeatedly until half the period has passed without a
+ * {@link TimeoutException}.  After the interval expires, the next call must
+ * throw a {@link TimeoutException}.  Pausers that do not implement this
+ * behaviour are expected to throw {@link UnsupportedOperationException} when a
+ * timeout is supplied.
+ */
 public class PauserTimeoutTest extends ThreadsTestCommon {
     Pauser[] pausersSupportTimeout = {
             Pauser.balanced(),
@@ -37,6 +46,12 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
     Pauser[] pausersDontSupportTimeout = {
             BusyPauser.INSTANCE};
 
+    /**
+     * Confirms that pausers honour the timeout parameter.  Each pauser is
+     * called in a loop until half the timeout has elapsed and should not throw.
+     * Once the timeout has expired the next call must raise
+     * {@link TimeoutException}.
+     */
     @Test
     public void pausersSupportTimeout() {
         int timeoutNS = 100_000_000;
@@ -57,6 +72,10 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
         }
     }
 
+    /**
+     * Checks that pausers without timeout capability throw
+     * {@link UnsupportedOperationException} when a timeout is supplied.
+     */
     @Test
     public void pausersDontSupportTimeout() throws TimeoutException {
         for (Pauser p : pausersDontSupportTimeout) {
