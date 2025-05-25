@@ -237,6 +237,8 @@ Event Loop Monitoring (AKA Loop Block Monitoring) is a very useful feature. This
 by the `EventGroup`. The `ThreadMonitorHarness` handler monitors fast event loop threads to make sure event handler latency remains within acceptable bounds. The `ThreadMonitorHarness` monitors latency by measuring the time the `action` method of the application event handlers takes to run. Whenever the method runs beyond an acceptable latency limit, `ThreadMonitorHarness` prints a stack trace for the event loop thread.
 This output can be processed with tools to help identify hotspots in your program.
 
+Each monitored thread is wrapped by a `ThreadMonitor` created via the `ThreadMonitors` helper. The monitor loop runs these handlers at a fixed interval and compares the time since the thread last started work with the configured limit. When the limit is exceeded a stack trace of the target thread is logged, allowing blocked threads to be detected without halting the system.
+
 Set the monitor event interval with system property `MONITOR_INTERVAL_MS`.
 
 Disable the monitor by setting the system property:
