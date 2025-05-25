@@ -19,6 +19,10 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+/**
+ * Spawns many event groups across several processes to check that a large
+ * number of event loops can be created and closed without exhausting the CPU.
+ */
 public class EventGroupStressTest extends ThreadsTestCommon {
 
     private static final int NUM_PROCESSES = 10;
