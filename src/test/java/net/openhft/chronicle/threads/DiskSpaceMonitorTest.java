@@ -49,6 +49,11 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
         DiskSpaceMonitor.INSTANCE.clear();
     }
 
+    /**
+     * Exercises disk monitoring when the threshold is raised from zero to 100 per cent.
+     * Exceptions are recorded and disk space is polled repeatedly to verify that
+     * roughly five warnings are reported. The test is skipped on Arm hardware.
+     */
     @Test
     public void pollDiskSpace() {
         // todo investigate why this fails on arm
