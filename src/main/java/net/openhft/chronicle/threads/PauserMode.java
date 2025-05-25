@@ -20,25 +20,23 @@ package net.openhft.chronicle.threads;
 import java.util.function.Supplier;
 
 /**
- * Provides factory methods for creating various types of {@link Pauser} objects.
- * This enum facilitates the creation of different pausing strategies that control thread execution based on CPU availability and desired pausing characteristics.
+ * Enumerates the built-in pausing strategies provided by {@link Pauser}.
  *
- * <p>Because {@link Pauser} is not an enum, and implementations are not Marshallable, using this enum helps in making configurations more YAML-friendly.</p>
+ * <p>{@code Pauser} implementations are not {@code enum}s and cannot easily be
+ * referred to from configuration files.  {@code PauserMode} gives each common
+ * strategy a serialisable name so that YAML and similar configuration formats
+ * can specify the desired pauser.</p>
  *
- * <p>For detailed descriptions of the different Pauser modes and their specific properties, see:
- * <a href="https://github.com/OpenHFT/Chronicle-Threads#pauser-modes">Pauser Mode features</a></p>
+ * <p>The README contains a table under the "PauserMode" section that summarises
+ * the latency and CPU characteristics for each mode.</p>
  */
 public enum PauserMode implements Supplier<Pauser> {
 
     /**
-     * Provides a {@link Pauser} that busy-waits (spins at 100% CPU) for short durations
-     * and then backs off when idle for longer periods.
-     * If there are not sufficient available processors, returns {@link #sleepy} depending on the system property "pauser.minProcessors".
-     * <p>
-     * This strategy is ideal for balancing responsiveness with CPU consumption.
-     *
-     * @see Pauser#balanced()
-     * @see Runtime#availableProcessors()
+     * Busy waits for a short time before yielding and eventually sleeping.
+     * Latency is moderate but CPU use is reduced compared to {@link #busy}.
+     * Typical choice for event loops dealing with bursty traffic.
+     * Can be monitored and does not need CPU isolation.
      */
     balanced {
         @Override
@@ -48,14 +46,9 @@ public enum PauserMode implements Supplier<Pauser> {
     },
 
     /**
-     * Returns a Supplier providing pausers this will busy wait (spin-wait at 100% CPU)
-     * if there are sufficient available processors. Otherwise, returns Supplier consistent with
-     * {@link #balanced } or even {@link #sleepy} depending on the system property "pauser.minProcessors".
-     * <p>
-     * This pauser is designed for scenarios requiring high responsiveness at the cost of higher CPU usage.
-     *
-     * @see Pauser#busy()
-     * @see Runtime#availableProcessors()
+     * Continuously busy spins to minimise jitter and give the lowest latency.
+     * Best used when a dedicated core is available.
+     * Not monitorable and prefers CPU isolation.
      */
     busy {
         @Override
@@ -75,11 +68,9 @@ public enum PauserMode implements Supplier<Pauser> {
     },
 
     /**
-     * Provides a {@link Pauser} that sleeps for one millisecond consistently, without any backing off.
-     * <p>
-     * Milli pausers have long latency times but require minimum CPU resources.
-     *
-     * @see Pauser#millis(int)
+     * Always sleeps for roughly one millisecond and never busy waits.
+     * Latency can be around one millisecond but CPU usage is very low.
+     * Useful for low priority polling where jitter is acceptable.
      */
     milli {
         @Override
@@ -89,11 +80,8 @@ public enum PauserMode implements Supplier<Pauser> {
     },
 
     /**
-     * Provides a {@link Pauser} that is less aggressive than {@link #balanced}, using sleep intervals to conserve CPU resources.
-     * <p>
-     * Suitable for lower-priority tasks where response time is less critical.
-     *
-     * @see Pauser#sleepy()
+     * Less aggressive than {@link #balanced}; mainly sleeps to conserve CPU.
+     * Offers high jitter and therefore suits background or diagnostic work.
      */
     sleepy {
         @Override
@@ -103,11 +91,9 @@ public enum PauserMode implements Supplier<Pauser> {
     },
 
     /**
-     * Similar to {@link #busy} but provides a {@link Pauser} supporting timed waits.
-     * <p>
-     * This pauser combines busy-waiting with timed pauses to optimize CPU usage during variable workload conditions.
-     *
-     * @see Pauser#timedBusy()
+     * Behaves like {@link #busy} but also supports timeout based pauses.
+     * Maintains minimal jitter while allowing a time limit to be enforced.
+     * Not monitorable and prefers CPU isolation.
      */
     timedBusy {
         @Override
@@ -119,13 +105,16 @@ public enum PauserMode implements Supplier<Pauser> {
         public boolean isolcpus() {
             return true;
         }
+
+        @Override
+        public boolean monitor() {
+            return false;
+        }
     },
     /**
-     * Provides a {@link Pauser} that yields thread execution if there are sufficient processors, otherwise it falls back to {@link #balanced} or {@link #sleepy} depending on the system property "pauser.minProcessors".
-     * <p>
-     * It is designed to maintain responsiveness without consuming excessive CPU resources in systems with sufficient processing power.
-     *
-     * @see Pauser#yielding()
+     * Briefly busy spins then yields the CPU.
+     * Latency is low and the pauser can be shared between threads.
+     * Suitable when threads share CPUs but responsiveness is still important.
      */
     yielding {
         @Override
