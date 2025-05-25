@@ -31,8 +31,20 @@ import java.util.function.Supplier;
 public enum ThreadMonitors {
     ; // none
 
-    public static ThreadMonitor forThread(String description, long timeLimit, LongSupplier timeSupplier, Supplier<Thread> threadSupplier) {
-        return new ThreadMonitorHarness(new ThreadsThreadHolder(description, timeLimit, timeSupplier, threadSupplier, () -> true, perfOn()));
+    /**
+     * Create a monitor for a single thread.
+     *
+     * @param description   text used in log messages
+     * @param timeLimit     threshold in nanoseconds before a stack trace is logged
+     * @param timeSupplier  supplies the current time, usually {@link System#nanoTime}
+     * @param threadSupplier returns the thread to observe
+     * @return a monitor handler for installation on a monitor loop
+     */
+    public static ThreadMonitor forThread(String description, long timeLimit,
+                                          LongSupplier timeSupplier,
+                                          Supplier<Thread> threadSupplier) {
+        return new ThreadMonitorHarness(new ThreadsThreadHolder(description,
+                timeLimit, timeSupplier, threadSupplier, () -> true, perfOn()));
     }
 
     @NotNull
@@ -40,15 +52,61 @@ public enum ThreadMonitors {
         return msg -> Jvm.perf().on(ThreadMonitor.class, msg);
     }
 
-    public static ThreadMonitor forThread(String description, long timeLimit, LongSupplier timeSupplier, Supplier<Thread> threadSupplier, BooleanSupplier logEnabled, Consumer<String> logConsumer) {
-        return new ThreadMonitorHarness(new ThreadsThreadHolder(description, timeLimit, timeSupplier, threadSupplier, logEnabled, logConsumer));
+    /**
+     * Variant of {@link #forThread(String, long, LongSupplier, Supplier)} that
+     * allows the caller to control logging.
+     *
+     * @param description    text used in log messages
+     * @param timeLimit      threshold in nanoseconds before a stack trace is logged
+     * @param timeSupplier   supplies the current time
+     * @param threadSupplier returns the thread to observe
+     * @param logEnabled     predicate controlling whether logging occurs
+     * @param logConsumer    receives the formatted log message
+     * @return a monitor handler for installation on a monitor loop
+     */
+    public static ThreadMonitor forThread(String description, long timeLimit,
+                                          LongSupplier timeSupplier,
+                                          Supplier<Thread> threadSupplier,
+                                          BooleanSupplier logEnabled,
+                                          Consumer<String> logConsumer) {
+        return new ThreadMonitorHarness(new ThreadsThreadHolder(description,
+                timeLimit, timeSupplier, threadSupplier, logEnabled, logConsumer));
     }
 
-    public static ThreadMonitor forServices(String description, long timeLimit, LongSupplier timeSupplier, Supplier<Thread> threadSupplier) {
-        return new ThreadMonitorHarness(new ThreadsThreadHolder(description, timeLimit, timeSupplier, threadSupplier, () -> true, perfOn()));
+    /**
+     * Create a monitor aimed at a service thread.
+     *
+     * @param description   text used in log messages
+     * @param timeLimit     threshold in nanoseconds before a stack trace is logged
+     * @param timeSupplier  supplies the current time
+     * @param threadSupplier returns the thread to observe
+     * @return a monitor handler for installation on a monitor loop
+     */
+    public static ThreadMonitor forServices(String description, long timeLimit,
+                                            LongSupplier timeSupplier,
+                                            Supplier<Thread> threadSupplier) {
+        return new ThreadMonitorHarness(new ThreadsThreadHolder(description,
+                timeLimit, timeSupplier, threadSupplier, () -> true, perfOn()));
     }
 
-    public static ThreadMonitor forServices(String description, long timeLimit, LongSupplier timeSupplier, Supplier<Thread> threadSupplier, BooleanSupplier logEnabled, Consumer<String> logConsumer) {
-        return new ThreadMonitorHarness(new ThreadsThreadHolder(description, timeLimit, timeSupplier, threadSupplier, logEnabled, logConsumer));
+    /**
+     * Variant of {@link #forServices(String, long, LongSupplier, Supplier)} with
+     * caller controlled logging.
+     *
+     * @param description    text used in log messages
+     * @param timeLimit      threshold in nanoseconds before a stack trace is logged
+     * @param timeSupplier   supplies the current time
+     * @param threadSupplier returns the thread to observe
+     * @param logEnabled     predicate controlling whether logging occurs
+     * @param logConsumer    receives the formatted log message
+     * @return a monitor handler for installation on a monitor loop
+     */
+    public static ThreadMonitor forServices(String description, long timeLimit,
+                                            LongSupplier timeSupplier,
+                                            Supplier<Thread> threadSupplier,
+                                            BooleanSupplier logEnabled,
+                                            Consumer<String> logConsumer) {
+        return new ThreadMonitorHarness(new ThreadsThreadHolder(description,
+                timeLimit, timeSupplier, threadSupplier, logEnabled, logConsumer));
     }
 }
