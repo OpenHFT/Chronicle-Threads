@@ -28,15 +28,40 @@ import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
+/**
+ * Helper used by {@link ThreadMonitorHarness} to monitor a service thread.
+ * <p>
+ * The harness polls the thread and the supplied time source. When the
+ * thread appears to be blocked for longer than the configured limit the
+ * stack trace is logged via {@link #logConsumer} if {@link #logEnabled} is
+ * true.
+ * </p>
+ */
 public class ThreadsThreadHolder implements ThreadHolder {
     private final String description;
     private final long timeLimitNS;
     private final LongSupplier timeSupplier;
     private final Supplier<Thread> threadSupplier;
+    /**
+     * Allows logging to be enabled or disabled at run time.
+     */
     private final BooleanSupplier logEnabled;
+    /**
+     * Receives formatted log messages.
+     */
     private final Consumer<String> logConsumer;
     private long lastTime = 0;
 
+    /**
+     * Create an instance configured to monitor the supplied thread.
+     *
+     * @param description   text appended to log messages
+     * @param timeLimitNS   threshold in nanoseconds before logging occurs
+     * @param timeSupplier  provides the current time
+     * @param threadSupplier supplies the thread to observe
+     * @param logEnabled    predicate controlling whether logging happens
+     * @param logConsumer   receives the formatted log message
+     */
     public ThreadsThreadHolder(String description, long timeLimitNS, LongSupplier timeSupplier, Supplier<Thread> threadSupplier, BooleanSupplier logEnabled, Consumer<String> logConsumer) {
         this.description = description;
         this.timeLimitNS = timeLimitNS;
