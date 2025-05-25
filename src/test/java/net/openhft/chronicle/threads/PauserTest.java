@@ -26,6 +26,16 @@ import java.util.concurrent.TimeoutException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests the behaviour of the various {@link Pauser} implementations.
+ * <p>
+ * The suite verifies that pause counters start at zero and increment with each
+ * call to {@link Pauser#pause()}. After {@link Pauser#unpause()} the test
+ * asserts whether {@link Pauser#isBusy()} matches the pauser type. The
+ * {@link BusyPauser} is additionally checked to confirm it does not record
+ * pause counts and rejects timed pauses.
+ */
+
 public class PauserTest extends ThreadsTestCommon {
 
     @Test
