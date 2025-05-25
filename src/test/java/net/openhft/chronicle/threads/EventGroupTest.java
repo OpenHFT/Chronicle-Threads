@@ -50,6 +50,18 @@ import static java.util.Collections.singleton;
 import static net.openhft.chronicle.core.io.Closeable.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests the start and stop behaviour of an {@link EventGroup}.
+ *
+ * <p>The suite ensures that:
+ * <ul>
+ * <li>closing a paused blocking loop stops the group;</li>
+ * <li>closing without starting marks the group as stopped;</li>
+ * <li>{@code stop()} can be called more than once;</li>
+ * <li>handlers remain active until the group is closed;</li>
+ * <li>no extra threads remain after {@code stop()}.</li>
+ * </ul>
+ */
 public class EventGroupTest extends ThreadsTestCommon {
     private static final RuntimeException RUNTIME_EXCEPTION = new RuntimeException("some random text");
     private final List<TestHandler> handlers = new ArrayList<>();
