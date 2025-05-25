@@ -23,10 +23,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Implementation of {@link Pauser} that employs a busy-wait strategy to keep the CPU actively engaged.
- * This pauser continuously executes a very short pause (nano-pause) to keep the thread active.
- *
- * <p>Because it never actually suspends the thread, most operations related to state management (like pausing, unpausing, and timeout handling) are unsupported or no-op.</p>
+ * Busy-spin implementation of {@link Pauser}.
+ * <p>
+ * The pauser repeatedly invokes {@link Jvm#nanoPause()} and never yields or
+ * sleeps. A thread using this pauser therefore consumes an entire CPU core
+ * while waiting. No state is kept, so most lifecycle methods are no-ops.
  */
 public enum BusyPauser implements Pauser {
     INSTANCE;
@@ -40,8 +41,8 @@ public enum BusyPauser implements Pauser {
     }
 
     /**
-     * Keeps the thread actively busy by executing a very short pause at the CPU level.
-     * This method is primarily used to prevent the thread from yielding execution entirely.
+     * Performs a single busy-spin step by calling {@link Jvm#nanoPause()}.
+     * The call neither yields nor sleeps and therefore burns CPU cycles.
      */
     @Override
     public void pause() {
@@ -49,10 +50,11 @@ public enum BusyPauser implements Pauser {
     }
 
     /**
-     * Throws {@link UnsupportedOperationException} as {@code BusyPauser} does not support pausing with a timeout.
+     * Unsupported operation as this pauser is stateless.
+     * Use {@link BusyTimedPauser} when a timeout is required.
      *
-     * @param timeout  the timeout duration
-     * @param timeUnit the unit of time for the timeout duration
+     * @param timeout  timeout duration (ignored)
+     * @param timeUnit unit of the timeout (ignored)
      * @throws TimeoutException never thrown
      */
     @Override
