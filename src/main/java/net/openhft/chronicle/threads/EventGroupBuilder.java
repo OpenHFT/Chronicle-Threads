@@ -20,7 +20,6 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.EventLoopLifecycle;
 import net.openhft.chronicle.core.util.Builder;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,8 +36,7 @@ import static net.openhft.chronicle.threads.EventGroup.REPLICATION_EVENT_PAUSE_T
  *
  * <p>The default builder creates daemon threads with balanced pausers, no CPU
  * binding and support for every {@link HandlerPriority}. The call to
- * {@link #build()} returns a new group in the
- * {@link EventLoopLifecycle#NEW} state.</p>
+ * {@link #build()} returns a new group</p>
  *
  * <p>Example usage:</p>
  * <pre>

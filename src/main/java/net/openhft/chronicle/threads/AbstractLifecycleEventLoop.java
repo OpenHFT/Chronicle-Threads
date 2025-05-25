@@ -31,8 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Base implementation that manages the life-cycle of an {@link EventLoop}.
  *
- * <p>It extends {@link AbstractCloseable}, which allows an optional JVM
- * shutdown hook via {@link #addShutdownHook(boolean)} and integrates with the
+ * <p>It extends {@link AbstractCloseable}, and integrates with the
  * closeable hierarchy.</p>
  *
  * <p>The life-cycle follows {@link EventLoopLifecycle}:</p>
