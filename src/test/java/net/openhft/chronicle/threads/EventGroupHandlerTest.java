@@ -24,6 +24,15 @@ import org.junit.jupiter.api.*;
 import static net.openhft.chronicle.threads.TestEventHandlers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests how an {@link EventGroup} registers and removes handlers.
+ *
+ * <p>Handlers may be added before the loop starts or while it is running.
+ * A well behaved handler should have {@code loopStarted},
+ * {@code loopFinished} and {@code close} invoked in order. If a handler throws
+ * during {@code loopStarted} or while being assigned an {@link EventLoop}
+ * the group discards it and continues running.
+ */
 class EventGroupHandlerTest extends ThreadsTestCommon {
 
     @BeforeEach
