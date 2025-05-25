@@ -26,6 +26,12 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Creates named threads within a dedicated group.  The first thread is named
+ * {@code groupName} and each subsequent one is suffixed with {@code -n} where
+ * {@code n} increments from one.  Every thread is a {@link CleaningThread} so
+ * that thread-local resources are cleared when it terminates.
+ */
 public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
     private final AtomicInteger id = new AtomicInteger();
     private final String nameShadow;
@@ -46,6 +52,14 @@ public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
         this(name, daemon, priority, false);
     }
 
+    /**
+     * Constructs a factory with the supplied options.
+     *
+     * @param name        prefix used for the thread group and thread names
+     * @param daemon      set to {@code true} if created threads should be daemons
+     * @param priority    priority to assign or {@code null} for the JVM default
+     * @param inEventLoop mark threads as part of an event loop for monitoring
+     */
     public NamedThreadFactory(String name, Boolean daemon, Integer priority, boolean inEventLoop) {
         super(name);
         this.nameShadow = name;
@@ -55,6 +69,12 @@ public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
         createdHere = Jvm.isResourceTracing() ? new StackTrace("NamedThreadFactory created here") : null;
     }
 
+    /**
+     * Returns a new {@link CleaningThread} executing the given task.  The
+     * thread name is formed by {@link Threads#threadGroupPrefix()} followed by
+     * the factory name.  Subsequent threads append {@code -n} where {@code n}
+     * is an incrementing number.
+     */
     @Override
     @NotNull
     public Thread newThread(@NotNull Runnable r) {
@@ -69,6 +89,10 @@ public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
         return t;
     }
 
+    /**
+     * Interrupts every thread currently in this group.  Threads that have
+     * already finished are ignored.
+     */
     public void interruptAll() {
         Thread[] list = new Thread[activeCount() + 1];
         super.enumerate(list);
