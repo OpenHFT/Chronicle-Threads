@@ -19,9 +19,12 @@
 package net.openhft.chronicle.threads;
 
 /**
- * The life-cycle of an event loop
+ * The life-cycle of an event loop. The state moves from {@link #NEW} to
+ * {@link #STARTED} when {@code start()} is invoked. A request to {@code stop()}
+ * moves the loop to {@link #STOPPING} and once all handlers have completed it
+ * becomes {@link #STOPPED}.
  * <p>
- * possible transitions include:
+ * Possible transitions include:
  * <pre>
  *      +-------------------------------------------------+
  *      |                                                 v
@@ -32,22 +35,25 @@ package net.openhft.chronicle.threads;
  */
 public enum EventLoopLifecycle {
     /**
-     * The event loop has been created but not yet started
+     * The event loop has been created but not yet started. Only
+     * {@code start()} or {@code stop()} are meaningful in this state.
      */
     NEW(false),
 
     /**
-     * The event loop has been started but not yet stopped
+     * The event loop is running. Calling {@code stop()} moves it to
+     * {@link #STOPPING}.
      */
     STARTED(false),
 
     /**
-     * Stop has been called, but some handlers are yet to complete
+     * {@code stop()} has been called and handlers are finishing. Further calls
+     * to {@code stop()} wait for completion.
      */
     STOPPING(true),
 
     /**
-     * The event loop has been stopped
+     * The event loop has been stopped and cannot be restarted.
      */
     STOPPED(true);
 
