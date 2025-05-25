@@ -39,6 +39,14 @@ import java.util.stream.Stream;
 import static java.lang.String.format;
 import static java.util.Collections.singleton;
 
+/**
+ * Stress tests that event loop implementations remain thread safe.
+ *
+ * <p>Each dynamic test starts or stops an event loop while several
+ * threads concurrently add or terminate handlers. This verifies that
+ * no deadlocks occur and that handler state is consistent even when
+ * start and stop operations race.
+ */
 class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
 
     private static final int NUM_EVENT_ADDERS = 3;
