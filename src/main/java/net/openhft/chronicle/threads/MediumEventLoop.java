@@ -40,6 +40,12 @@ import java.util.stream.Stream;
 
 import static net.openhft.chronicle.threads.Threads.*;
 
+/**
+ * Event loop for HIGH and MEDIUM priority handlers.
+ * <p>
+ * The main loop runs on one thread and repeatedly executes HIGH then MEDIUM
+ * handlers before pausing via the supplied {@link Pauser}.
+ */
 public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
@@ -73,11 +79,13 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     protected volatile Thread thread = null;
 
     /**
-     * @param parent  the parent event loop
-     * @param name    the name of this event handler
-     * @param pauser  the pause strategy
-     * @param daemon  is a demon thread
-     * @param binding set affinity description, "any", "none", "1", "last-1"
+     * Construct an event loop.
+     *
+     * @param parent  parent loop or {@code null} when standalone
+     * @param name    thread name for the worker
+     * @param pauser  waiting policy used when no handler is active
+     * @param daemon  true for a daemon thread
+     * @param binding CPU affinity description such as "any" or "last-1"
      */
     @SuppressWarnings("this-escape")
     public MediumEventLoop(@Nullable final EventLoop parent,
@@ -181,6 +189,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
+
+        // Thread-safe: external threads enqueue handlers while the loop
+        // thread holds {@code addHandlerMutex} during start-up.
 
         final HandlerPriority priority = handler.priority().alias();
         if (DEBUG_ADDING_HANDLERS)
@@ -309,6 +320,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 });
     }
 
+    /**
+     * Main loop that dispatches HIGH and MEDIUM handlers until stopped.
+     */
     private void runLoop() {
         int acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT;
         long lastTimerNS = 0;
@@ -366,6 +380,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         dumpRunningHandlers();
     }
 
+    // Unrolled to avoid megamorphic call chains.
     @SuppressWarnings("fallthrough")
     private boolean runAllMediumHandler() {
         boolean busy = false;
@@ -421,7 +436,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         return busy;
     }
 
-    // NOTE The loop is unrolled to reduce megamorphic calls.
+    // Unrolled to reduce megamorphic calls and keep the JIT hot.
     @SuppressWarnings("fallthrough")
     protected boolean runAllHandlers() {
         boolean busy = false;
