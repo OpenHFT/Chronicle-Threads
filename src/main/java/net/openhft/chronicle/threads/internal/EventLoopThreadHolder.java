@@ -21,11 +21,20 @@ package net.openhft.chronicle.threads.internal;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.threads.CoreEventLoop;
 import net.openhft.chronicle.threads.ThreadHolder;
+/**
+ * {@link ThreadHolder} implementation used to monitor a single event loop
+ * thread.  It keeps track of how long the loop has been running and requests a
+ * dump of the loop's state when the thread appears to have blocked for longer
+ * than the configured monitoring interval.  Each subsequent dump is spaced
+ * further apart to reduce log volume while the loop remains stuck.
+ */
 
 public class EventLoopThreadHolder implements ThreadHolder {
     private final CoreEventLoop eventLoop;
     private final long monitorIntervalNS;
+    // additional time added to the next logging threshold
     private long intervalToAddNS;
+    // nanoseconds before the next thread dump is logged
     private long printBlockTimeNS;
 
     public EventLoopThreadHolder(long monitorIntervalNS, CoreEventLoop eventLoop) {
