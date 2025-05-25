@@ -18,6 +18,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
+import net.openhft.chronicle.core.threads.EventLoopLifecycle;
 import net.openhft.chronicle.core.util.Builder;
 import org.jetbrains.annotations.NotNull;
 
