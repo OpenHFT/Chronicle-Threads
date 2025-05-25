@@ -35,7 +35,28 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Background thread to monitor disk space free.
+ * Monitors free space on the disks used by this JVM.
+ *
+ * <p>Paths are registered via {@link #pollDiskSpace(File)}. The first call
+ * obtains the {@link FileStore} for the supplied file and adds it to the
+ * internal maps. Each subsequent call merely updates the cached entry. This
+ * method is typically invoked when opening a queue or a memory-mapped file. A
+ * scheduled executor named {@value #DISK_SPACE_CHECKER_NAME} then runs
+ * the monitor once a second.</p>
+ *
+ * <p>The monitor may be disabled with the system property
+ * {@code chronicle.disk.monitor.disable}. The threshold that triggers a
+ * warning is controlled by {@code chronicle.disk.monitor.threshold.percent}.</p>
+ *
+ * <p>When the available space falls below these limits the monitor invokes a
+ * {@link NotifyDiskLow} service. Implementations are discovered with
+ * {@link java.util.ServiceLoader} and the default simply logs a warning.</p>
+ *
+ * <p>The {@link #run()} loop iterates over the tracked {@link DiskAttributes}
+ * entries. Each record stores a {@link FileStore}, the time for the next check
+ * and the total size. When the free space is less than two hundred megabytes a
+ * panic notification is sent. Otherwise the next check is delayed based on the
+ * amount of free space.</p>
  */
 public enum DiskSpaceMonitor implements Runnable, Closeable {
     INSTANCE;
