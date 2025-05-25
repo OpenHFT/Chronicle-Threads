@@ -40,6 +40,15 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Exercises the helper routines in {@link EventLoops} and the life-cycle
+ * checks in {@link EventLoop}.
+ * <p>
+ * The tests confirm that {@link EventLoops#stopAll(Object...)} accepts
+ * {@code null} values and waits for every loop to stop. They also verify
+ * that calling {@link EventLoop#close()} from the loop's own thread triggers
+ * a {@link ThreadingIllegalStateException}.
+ */
 public class EventLoopsTest extends ThreadsTestCommon {
 
     @Test
