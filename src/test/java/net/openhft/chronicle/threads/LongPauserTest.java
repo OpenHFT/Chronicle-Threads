@@ -26,6 +26,19 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests the pausing behaviour of {@link LongPauser}.
+ *
+ * <p>These tests ensure that:
+ * <ul>
+ *   <li>{@link LongPauser#unpause()} releases a thread blocked in
+ *       {@link LongPauser#pause()} promptly.</li>
+ *   <li>{@link LongPauser#asyncPause()} waits for roughly the configured
+ *       duration before clearing.</li>
+ *   <li>{@link LongPauser#reset()} cancels any pending asynchronous
+ *       pause.</li>
+ * </ul>
+ */
 public class LongPauserTest extends ThreadsTestCommon {
 
     @Test
