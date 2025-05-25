@@ -29,12 +29,11 @@ import java.util.concurrent.locks.LockSupport;
 import static net.openhft.chronicle.threads.LongPauser.ToStringHelper.*;
 
 /**
- * A {@link Pauser} that implements a pausing strategy with phases of busy waiting, yielding, and sleeping,
- * with each phase increasing in duration up to a configured limit. It is designed for scenarios where a gradual
- * back-off is needed from active to more passive waiting states.
- * <p>
- * The pausing behavior begins with busy waiting, transitions to yielding, and ultimately moves to sleeping,
- * progressively increasing the pause time from a minimum to a specified maximum duration.
+ * A {@link Pauser} that steps from busy spinning to yielding and finally to
+ * sleeping. Each phase increases in duration so that the thread backs off from
+ * active waiting in a controlled manner. The pauser busy spins for
+ * {@code minBusy}, then yields until {@code minYield} has elapsed and finally
+ * sleeps, starting at {@code minTime} and growing to {@code maxTime}.
  */
 public class LongPauser implements Pauser, TimingPauser {
     private static final String SHOW_PAUSES = Jvm.getProperty("pauses.show");
@@ -53,15 +52,13 @@ public class LongPauser implements Pauser, TimingPauser {
     private long pauseUntilNS = 0;
 
     /**
-     * first it will busy wait, then it will yield, then sleep for a small amount of time, then
-     * increases to a large amount of time.
+     * Creates a pauser that progressively backs off from busy work to sleep.
      *
-     * @param minBusy  the length in timeUnit to go around doing nothing, after this is
-     *                 reached it will then start to yield
-     * @param minYield the length in timeUnit it will yield, before it starts to sleep
-     * @param minTime  the amount of time to sleep ( initially )
-     * @param maxTime  the amount of time subsequently to sleep
-     * @param timeUnit the unit of the {@code minTime}  and {@code maxTime}
+     * @param minBusy  time to busy spin before yielding
+     * @param minYield time to yield before sleeping starts
+     * @param minTime  starting sleep period once yielding ends
+     * @param maxTime  upper bound for the sleep period
+     * @param timeUnit unit for all the time values
      */
     public LongPauser(int minBusy, int minYield, long minTime, long maxTime, @NotNull TimeUnit timeUnit) {
         this.minBusyNS = timeUnit.toNanos(minBusy);
@@ -71,6 +68,9 @@ public class LongPauser implements Pauser, TimingPauser {
         pauseTimeNS = minPauseTimeNS;
     }
 
+    /**
+     * Clears the pause state so the next call starts at the busy-spin phase.
+     */
     @Override
     public void reset() {
         if (yieldStart > 0) {
@@ -85,7 +85,9 @@ public class LongPauser implements Pauser, TimingPauser {
     }
 
     /**
-     * Pauses the current thread according to the phased pausing strategy.
+     * Pause using the next step in the busy-spin/yield/sleep sequence.
+     * This is a convenience for {@link #pause(long, TimeUnit)} with an
+     * effectively infinite timeout.
      */
     @Override
     public void pause() {
@@ -96,7 +98,9 @@ public class LongPauser implements Pauser, TimingPauser {
     }
 
     /**
-     * Initiates an asynchronous pause that will last for the current phase's duration.
+     * Begin a pause without blocking. The pause length follows the
+     * current phase of the strategy and {@link #asyncPausing()} can be used to
+     * query completion.
      */
     @Override
     public void asyncPause() {
@@ -105,9 +109,9 @@ public class LongPauser implements Pauser, TimingPauser {
     }
 
     /**
-     * Checks if the pauser is currently in an asynchronous pausing state.
+     * Determine whether the pause started by {@link #asyncPause()} has finished.
      *
-     * @return {@code true} if still in the pausing state, {@code false} otherwise
+     * @return {@code true} while the thread should remain paused
      */
     @Override
     public boolean asyncPausing() {
@@ -185,6 +189,11 @@ public class LongPauser implements Pauser, TimingPauser {
         Thread.yield();
     }
 
+    /**
+     * Sleep for the supplied time while recording pause statistics.
+     *
+     * @param delayNs pause duration in nanoseconds
+     */
     void doPause(long delayNs) {
         long start = System.nanoTime();
         thread = Thread.currentThread();
