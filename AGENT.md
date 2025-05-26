@@ -108,3 +108,28 @@ When using AI agents to assist with development, please adhere to the following 
 - **Focus on Clarity**: AI-generated documentation should be clear, concise, and add value beyond what is already present in the code or existing documentation.
 - **Avoid Redundancy**: Do not generate content that duplicates existing documentation or code comments unless it provides additional context or clarification.
 - **Review AI Outputs**: Always review AI-generated content for accuracy, relevance, and adherence to the project's documentation standards before committing it to the repository.
+ 
+## 10. Company Wide Tagging
+
+This section records **company-wide** decisions that apply to *all* Chronicle projects. All identifiers use the <Scope>-<Tag>-xxx prefix. The `xxx` are unique across in the same Scope even if the tags are different.  Component-specific decisions live in their own xxx-decision-log.adoc files.
+
+### Tag Taxonomy (Nine-Box Framework)
+
+To improve traceability we adopt the following Nine-Box taxonomy for requirement and decision identifiers.  These tags are used in addition to the existing ALL prefix, which remains reserved for decisions that are global across every project.
+
+.Adopt a Nine-Box Requirement Taxonomy
+[cols="1,2,3"]
+|===
+|Tag | Scope | Typical examples
+|FN        |Functional user-visible behaviour | Message routing, business rules
+|NF-P      |Non-functional - Performance      | Latency budgets, throughput targets
+|NF-S      |Non-functional - Security         | Authentication method, TLS version
+|NF-O      |Non-functional - Operability      | Logging, monitoring, health checks
+|TEST      |Test / QA obligations             | Chaos scenarios, benchmarking rigs
+|DOC       |Documentation obligations         | Sequence diagrams, user guides
+|OPS       |Operational / DevOps concerns     | Helm values, deployment checklist
+|UX        |Operator or end-user experience   | CLI ergonomics, dashboard layouts
+|RISK      |Compliance / risk controls        | GDPR retention, audit trail
+|===
+
+`ALL-*` stays global.  Case-exact tags.  Pick one primary tag if multiple apply.
