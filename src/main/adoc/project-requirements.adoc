@@ -35,9 +35,6 @@ ultra-low-latency, event-driven Java systems.
 |*Chronicle Affinity* |A library used for managing thread affinity, allowing threads to be pinned to specific CPU cores.
 |===
 
-// Chronicle Threads follows the company-wide Nine-Box tagging scheme.
-// See link:../../AGENT.md[AGENT.md] for the tag definitions and usage rules.
-
 == 3 Overall Architectural Goals
 
 * Minimise **end-to-end latency** and **jitter** for event processing.

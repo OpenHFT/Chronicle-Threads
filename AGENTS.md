@@ -1,7 +1,5 @@
-# AGENT.md
-Guidance for AI agents, bots, and humans contributing to Chronicle Software's OpenHFT projects.
+# Guidance for AI agents, bots, and humans contributing to Chronicle Software's OpenHFT projects.
 
-## 1  Purpose
 LLM-based agents can accelerate development only if they respect our house rules. This file tells you:
 
 * how to run and verify the build;
@@ -9,18 +7,14 @@ LLM-based agents can accelerate development only if they respect our house rules
 * what *not* to comment;
 * when to open pull requests.
 
----
-
-## 2  Language & character-set policy
+## Language & character-set policy
 | Requirement | Rationale |
 |-------------|-----------|
 | **British English** spelling (`organisation`, `licence`, *not* `organization`, `license`). | Keeps wording consistent with Chronicle's London HQ and existing docs. See the University of Oxford style guide for reference.  |
 | **ASCII-7 only** (code-points 0-127). Avoid smart quotes, non-breaking spaces and accented characters. | ASCII-7 survives every toolchain Chronicle uses, incl. low-latency binary wire formats that expect the 8th bit to be 0.  |
 | If you must show a symbol that does not exist in ASCII-7, spell it out (`micro-second`, `>=`, `alpha`) rather than inserting Unicode. | Extended or “8-bit ASCII” variants are *not* portable and are therefore disallowed. |
 
----
-
-## 3  Javadoc guidelines
+## Javadoc guidelines
 **Goal:** Every Javadoc block should add information you cannot glean from the
 method signature alone. Anything else is noise and slows readers down.
 
@@ -34,9 +28,7 @@ method signature alone. Anything else is noise and slows readers down.
 The principle that Javadoc should only explain what is *not* manifest from the
 signature is well-established in the wider Java community.
 
----
-
-## 4  Build & test commands
+## Build & test commands
 Agents must verify that the project still compiles and all unit tests pass
 before opening a PR:
 
@@ -45,9 +37,7 @@ before opening a PR:
 mvn -q verify
 ```
 
----
-
-## 5  Commit-message & PR etiquette
+## Commit-message & PR etiquette
 
 1. **Subject line ≤ 72 chars**, imperative mood: "Fix roll-cycle offset in `ExcerptAppender`".
 2. Reference the JIRA/GitHub issue if it exists.
@@ -56,22 +46,17 @@ mvn -q verify
    Use ASCII bullet points.
 4. **Run `mvn verify`** again after rebasing.
 
----
-
-## 6  What to ask the reviewers
+## What to ask the reviewers
 
 - *Is this asciidoc documentation precise enough for a clean-room re-implementation?*
 - Does the Javadoc explain the code's *why* and *how* that a junior developer would not be expected to work out?
 
----
+## Project requirements
 
-## 7  Project requirements
+See the [Decision Log](src/main/adoc/decision-log.adoc) for the latest project decisions.
+See the  [Project Requirements](src/main/adoc/project-requirements.adoc) for details on project requirements.
 
-see [Project Requirements](src/main/adoc/project-requirements.adoc) for details on project requirements.
-
----
-
-## 8 Elevating the Workflow with Real-Time Documentation
+## Elevating the Workflow with Real-Time Documentation
 
 Building upon our existing Iterative Workflow, the newest recommendation is to emphasise *real-time updates* to documentation.
 Ensure the relevant `.adoc` files are updated when features, requirements, implementation details, or tests change.
@@ -97,9 +82,7 @@ This tight loop informs the AI accurately and creates immediate clarity for all 
 - *Small Commits*: Each commit should ideally relate to a single requirement or coherent change, making reviews easier for humans and AI analysis tools.
 - *Team Buy-In*: Encourage everyone to review AI outputs critically and contribute to maintaining the synchronicity of all artefacts.
 
----
-
-## 9  AI Agent Guidelines
+## AI Agent Guidelines
 
 When using AI agents to assist with development, please adhere to the following guidelines:
 
@@ -108,7 +91,7 @@ Focus on Clarity: AI-generated documentation should be clear and concise and add
 - **Avoid Redundancy**: Do not generate content that duplicates existing documentation or code comments unless it provides additional context or clarification.
 - **Review AI Outputs**: Always review AI-generated content for accuracy, relevance, and adherence to the project's documentation standards before committing it to the repository.
 
-## 10. Company Wide Tagging
+## Company Wide Tagging
 
 This section records **company-wide** decisions that apply to *all* Chronicle projects. All identifiers use the <Scope>-<Tag>-xxx prefix. The `xxx` are unique across in the same Scope even if the tags are different. Component-specific decisions live in their xxx-decision-log.adoc files.
 
