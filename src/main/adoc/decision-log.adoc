@@ -1,0 +1,36 @@
+= Chronicle Threads Decision Log
+:revnumber: 1.0
+:revdate: 2025-05-25
+:toc:
+:source-highlighter: rouge
+:lang: en-GB
+
+This log summarises notable technical decisions taken for the Chronicle Threads component. Identifiers follow the Nine-Box taxonomy described in AGENTS.md.
+
+== THR-FN-001 Event Loops Are Single Threaded
+[Decision]
+Each `EventLoop` runs on a dedicated Java thread. Handlers scheduled on the same loop are executed serially, avoiding locks in the fast path.
+
+[Consequences]
+This simplifies handler implementation and aids predictable latency.
+
+== THR-NF-P-002 Busy-Spinning Pausers for Fast Threads
+[Decision]
+Fast threads default to a busy-spin `Pauser` to keep latency low. Alternate modes (e.g. timed busy, yielding, balanced) remain available via configuration.
+
+[Consequences]
+CPU usage rises but tail latency remains small for hot paths.
+
+== THR-OPS-003 Disk Space Monitoring
+[Decision]
+A background monitor watches disk usage for queues and logs. Warnings are produced when free space drops below a configurable percentage.
+
+[Consequences]
+Operations teams gain early insight into storage issues.
+
+== THR-DOC-004 Nine-Box Tagging Adopted
+[Decision]
+All requirements and decisions use `THR-<Tag>-nnn` identifiers. Tags come from the Nine-Box scheme. This improves traceability across projects.
+
+[Consequences]
+Documentation, tests and code cross-reference unique tags.
