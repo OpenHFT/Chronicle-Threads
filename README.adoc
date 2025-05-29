@@ -62,11 +62,11 @@ The `action()` method returns a boolean value signifying whether some work was d
 example is an event handler that tries to poll from a Chronicle Queue - the return value of the `action()` should
 indicate if the read succeeded and a message was processed.
 
-NOTE: The event loop considers this return value by using a heuristic: if the `action()` did some work, it is likely to do some more
-work next time, and so we should call it again as soon as we can. If it did not do some work, it is less likely
-to do work next time, so it may appropriate to yield or pause before calling again - see <<Pausers>>.
+NOTE: The event loop considers this return value by using a heuristic: if the `action()` did some work, it is likely to do some more work next time, and so we should call it again as soon as we can.
+If it did not do some work, it is less likely to do work next time, so it may appropriate to yield or pause before calling again - see <<Pausers>>.
 
-As a rule of thumb, an action handler should do a limited amount of work then return. If it knows for sure that there is remaining work to be done at the point of return then it should return `true`.
+As a rule of thumb, an action handler should do a limited amount of work then return.
+If it knows for sure that there is remaining work to be done at the point of return then it should return `true`.
 
 [source,java]
 ----
@@ -80,7 +80,7 @@ public final class ExampleEventHandler implements EventHandler {
 ----
 
 ==== Adding to event loop
-call the `addHandler` method of the event loop. See also <<Start event loop>>
+call the `addHandler` method of the event loop, see also <<Start event loop>>
 
 [source,java]
 ----
@@ -89,9 +89,9 @@ el.addHandler(eh0);
 
 ==== Removing an event handler from an eventLoop
 When an event handler wants to remove itself
-from the event loop, its `action()` method should throw `InvalidEventHandlerException`. The
-`InvalidEventHandlerException.reusable()` method returns a reusable, pre-created, `InvalidEventHandlerException` that is
-unmodifiable and contains no stack trace. The below event handler uninstalls itself after being called 30 times.
+from the event loop, its `action()` method should throw `InvalidEventHandlerException`.
+The `InvalidEventHandlerException.reusable()` method returns a reusable, pre-created, `InvalidEventHandlerException` that is unmodifiable and contains no stack trace.
+The below event handler uninstalls itself after being called 30 times.
 
 [source,java]
 ----
@@ -110,14 +110,14 @@ public final class UninstallingEventHandler implements EventHandler {
 
 === Event Loops
 
-Chronicle Threads contains a number of event loop implementations. These are aggregated together in the
-link:src/main/java/net/openhft/chronicle/threads/EventGroup.java[`EventGroup`], and the general recommendation
-is to make use of this, although the other implementations of `EventLoop` can of course by used, or the user can implement their own.
-The `EventGroup` also automatically enables <<Performance Monitoring>>.
+Chronicle Threads contains a number of event loop implementations.
+These are aggregated together in the link:src/main/java/net/openhft/chronicle/threads/EventGroup.java[`EventGroup`], and the general recommendation is to make use of this, although the other implementations of `EventLoop` can of course by used, or the user can implement their own.
+The `EventGroup` also automatically enables <<Performance Monitoring>>..
 
 ==== Creating event loop
 event group is created by calling the using the
-link:src/main/java/net/openhft/chronicle/threads/EventGroupBuilder.java[`EventGroupBuilder`]. Basic example shown below:
+link:src/main/java/net/openhft/chronicle/threads/EventGroupBuilder.java[`EventGroupBuilder`].
+Basic example shown below:
 
 [source,java]
 ----
@@ -129,8 +129,8 @@ EventLoop eg = EventGroupBuilder.builder()
 
 ==== Start event loop
 
-the `EventLoop.start()` method starts the event loop. Event handlers can be added before
-and after starting the event loop but will not be executed until `start()` has been called.
+the `EventLoop.start()` method starts the event loop.
+Event handlers can be added before and after starting the event loop but will not be executed until `start()` has been called.
 
 [source,java]
 ----
@@ -206,8 +206,8 @@ method is called, the `TimingPauser` will keep track of accumulated pause times 
 
 === PauserMode
 
-`PauserMode` contains factory methods for `Pauser` implementations. Because `Pauser` is not an enum, and implementations
-are not Marshallable, `PauserMode` can be used in yaml config files.
+`PauserMode` contains factory methods for `Pauser` implementations.
+Because `Pauser` is not an enum, and implementations are not Marshallable, `PauserMode` can be used in yaml config files.
 
 There are `PauserMode` for all `Pauser` factory methods.
 
@@ -223,8 +223,9 @@ There are `PauserMode` for all `Pauser` factory methods.
 | `sleepy` | Less aggressive version of `balanced` | Minimal CPU | High jitter | &#9989; |
 |===
 
-The `busy` pauser minimises jitter for best performance. However, it means that an entire core is consumed and care should be taken
-to ensure that there are enough cores for each busy thread. If not, the machine will perform worse.
+The `busy` pauser minimises jitter for best performance.
+However, it means that an entire core is consumed and care should be taken to ensure that there are enough cores for each busy thread.
+If not, the machine will perform worse.
 
 The graph below illustrates how each different type of `PauserMode` backs off over time:
 
@@ -233,11 +234,17 @@ image::docs/images/pauserModes.png[700,600]
 
 == Performance Monitoring
 
-Event Loop Monitoring (AKA Loop Block Monitoring) is a very useful feature. This is implemented by a handler which is installed on the `MonitorEventLoop`
-by the `EventGroup`. The `ThreadMonitorHarness` handler monitors fast event loop threads to make sure event handler latency remains within acceptable bounds. The `ThreadMonitorHarness` monitors latency by measuring the time the `action` method of the application event handlers takes to run. Whenever the method runs beyond an acceptable latency limit, `ThreadMonitorHarness` prints a stack trace for the event loop thread.
+Event Loop Monitoring (AKA Loop Block Monitoring) is a very useful feature.
+This is implemented by a handler which is installed on the `MonitorEventLoop`
+by the `EventGroup`.
+The `ThreadMonitorHarness` handler monitors fast event loop threads to make sure event handler latency remains within acceptable bounds.
+The `ThreadMonitorHarness` monitors latency by measuring the time the `action` method of the application event handlers takes to run.
+Whenever the method runs beyond an acceptable latency limit, `ThreadMonitorHarness` prints a stack trace for the event loop thread.
 This output can be processed with tools to help identify hotspots in your program.
 
-Each monitored thread is wrapped by a `ThreadMonitor` created via the `ThreadMonitors` helper. The monitor loop runs these handlers at a fixed interval and compares the time since the thread last started work with the configured limit. When the limit is exceeded a stack trace of the target thread is logged, allowing blocked threads to be detected without halting the system.
+Each monitored thread is wrapped by a `ThreadMonitor` created via the `ThreadMonitors` helper.
+The monitor loop runs these handlers at a fixed interval and compares the time since the thread last started work with the configured limit.
+When the limit is exceeded a stack trace of the target thread is logged, allowing blocked threads to be detected without halting the system.
 
 Set the monitor event interval with system property `MONITOR_INTERVAL_MS`.
 
@@ -252,5 +259,5 @@ You can use any stack trace information to improve the design for efficiency.
 
 === Recommendations:
 
-- Impose an interval of Xms for every event loop, and gradually decrease as blockages are found and fixed.
-- Consider adding `Jvm.safepoint` calls to help identify hotspots in the code.
+* Impose an interval of Xms for every event loop, and gradually decrease as blockages are found and fixed.
+* Consider adding `Jvm.safepoint` calls to help identify hotspots in the code.

@@ -113,28 +113,33 @@ ultra-low-latency, event-driven Java systems.
 *THR-NF-O-026* Chronicle Threads SHALL run on Java 11 LTS or newer. The library SHALL default to using platform threads. While aiming for compatibility with JDK Project Loom (virtual threads) for suitable use cases (e.g., blocking handlers not requiring core affinity), full support and affinity guarantees with virtual threads depend on JDK evolution and are subject to considerations detailed in Section 8 (Open Issues).
 
 == 5 Key Performance Targets
-These non-functional targets guide the design and optimization of Chronicle Threads for ultra-low-latency scenarios. They are primarily applicable when using performance-oriented pausers (e.g., `BUSY`) on suitably configured systems (e.g., with isolated cores).
+These non-functional targets guide the design and optimization of Chronicle Threads for ultra-low-latency scenarios.
+They are primarily applicable when using performance-oriented pausers (e.g., `BUSY`) on suitably configured systems (e.g., with isolated cores).
 
 *THR-NF-P-027* **Latency:** Single-hop message processing through an event handler SHALL target <= 10 us at the 99.99th percentile on commodity x86_64 hardware with a busy pauser and isolated cores.
 *THR-NF-P-028* **Jitter:** Peak-to-peak variation in handler execution time SHALL target <= 2 us under steady load conditions for well-behaved handlers.
 *THR-NF-P-029* **Throughput:** A single "fast core" `EventLoop` SHALL be capable of processing >= 5 million simple (e.g., 64-byte payload) events per second.
 *THR-NF-P-030* **Heap Allocation:** In the hot path of event processing (i.e., within the `EventLoop` and `EventHandler.action()` calls for common use cases), heap allocation SHALL target <= 0.1 Bytes per event on average. Pauser hot paths are covered by THR-NF-P-014.
 *THR-NF-P-031* **CPU Utilisation:**
-    * `PauserMode.BUSY` SHALL consume 100% of its assigned (and ideally isolated) CPU core.
-    * Adaptive pauser modes (e.g., `BALANCED`, `SLEEPY`) SHALL reduce CPU consumption significantly (e.g., target < 20%) when the event loop is idle.
+* `PauserMode.BUSY` SHALL consume 100% of its assigned (and ideally isolated) CPU core.
+* Adaptive pauser modes (e.g., `BALANCED`, `SLEEPY`) SHALL reduce CPU consumption significantly (e.g., target < 20%) when the event loop is idle.
 
 == 6 Use-Case Scenarios
 
 === 6.1 Matching Engine
 A financial matching engine processes incoming orders and market data.
 *Multiple* `EventHandler` instances (e.g., for order book management, risk checks, trade execution) share a `HIGH` priority `EventLoop` pinned to an isolated CPU core (Core 2). (Illustrates: THR-FN-005, THR-FN-006, THR-FN-015, THR-NF-P-027)
-A `MEDIUM` priority `EventLoop` on a separate core (Core 3) handles journalling of trades and significant events to Chronicle Queue. (Illustrates: THR-FN-005, THR-FN-015)
-A `MONITOR` loop, possibly on a non-isolated core, supervises both application loops. (Illustrates: THR-NF-O-018)
+A `MEDIUM` priority `EventLoop` on a separate core (Core 3) handles journalling of trades and significant events to Chronicle Queue.
+(Illustrates: THR-FN-005, THR-FN-015)
+A `MONITOR` loop, possibly on a non-isolated core, supervises both application loops.
+(Illustrates: THR-NF-O-018)
 
 === 6.2 Bursty Telemetry Ingestion
 An `EventLoop` configured with a `PauserMode.BALANCED` ingests UDP packets containing telemetry data.
 The `EventHandler` parses these packets (e.g., using Chronicle Wire) and forwards them to a Chronicle Queue for downstream processing.
-During off-peak hours, CPU usage for this loop drops significantly (e.g., below 5%) due to the pauser's adaptive back-off. During bursts, it processes events with low latency. (Illustrates: THR-FN-010, THR-FN-012, THR-NF-P-031)
+During off-peak hours, CPU usage for this loop drops significantly (e.g., below 5%) due to the pauser's adaptive back-off.
+During bursts, it processes events with low latency.
+(Illustrates: THR-FN-010, THR-FN-012, THR-NF-P-031)
 
 == 7 References
 * Chronicle Threads `README.adoc` (Provides overview, usage examples, and pauser details)
@@ -144,7 +149,8 @@ During off-peak hours, CPU usage for this loop drops significantly (e.g., below 
 * Chronicle Affinity library documentation (For details on CPU binding syntax and capabilities)
 
 == 8 Open Issues / Future Enhancements
-This section lists areas identified for potential future development or requiring further investigation. They are not committed functional requirements for the current version.
+This section lists areas identified for potential future development or requiring further investigation.
+They are not committed functional requirements for the current version.
 
 * Support for **carrier-thread reuse** with JDK virtual threads while retaining affinity guarantees where possible.
 * First-class asynchronous I/O helper components to better integrate frameworks like Netty or `java.nio.channels` directly with `EventLoop`s.
@@ -175,7 +181,8 @@ eg.close();
 ----
 
 === B System Properties Quick Reference
-This is a non-exhaustive list of key system properties. For a comprehensive list, refer to the `systemProperties.adoc` document.
+This is a non-exhaustive list of key system properties.
+For a comprehensive list, refer to the `systemProperties.adoc` document.
 
 [cols="1,3"]
 |===
