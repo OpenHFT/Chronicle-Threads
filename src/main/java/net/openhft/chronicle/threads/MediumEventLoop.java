@@ -115,6 +115,8 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         loopFinishedQuietly(handler);
         Closeable.closeQuietly(handler);
         try {
+            if (DEBUG_REMOVING_HANDLERS)
+                Jvm.perf().on(MediumEventLoop.class, "Removing " + handler.priority() + " " + handler);
             handlers.remove(handler);
         } catch (ArrayIndexOutOfBoundsException e2) {
             if (!handlers.isEmpty())
@@ -500,6 +502,8 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
    protected void removeHighHandler() {
+       if (DEBUG_REMOVING_HANDLERS)
+           Jvm.perf().on(getClass(), "Removing " + highHandler.priority() + " " + highHandler + " from " + this.name);
         Threads.loopFinishedQuietly(highHandler);
         Closeable.closeQuietly(highHandler);
         highHandler = EventHandlers.NOOP;

@@ -153,6 +153,8 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             EventHandler removedHandler = handlers.remove(handlerIndex);
             loopFinishedQuietly(removedHandler);
             Closeable.closeQuietly(removedHandler);
+            if (DEBUG_REMOVING_HANDLERS)
+                Jvm.perf().on(getClass(), "Removing " + removedHandler.priority() + " " + removedHandler + " from " + this.name);
         } catch (ArrayIndexOutOfBoundsException e) {
             if (!handlers.isEmpty()) {
                 Jvm.warn().on(MonitorEventLoop.class, "Error removing handler!");

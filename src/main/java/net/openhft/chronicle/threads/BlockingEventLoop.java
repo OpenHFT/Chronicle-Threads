@@ -191,6 +191,8 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 loopFinishedQuietly(handler);
                 if (!endedGracefully) {
                     // remove handler for clarity when debugging
+                    if (DEBUG_REMOVING_HANDLERS)
+                        Jvm.perf().on(getClass(), "Removing " + handler.priority() + " " + handler);
                     handlers.remove(handler);
                     closeQuietly(handler);
                 }
