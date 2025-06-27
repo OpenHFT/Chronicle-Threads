@@ -91,7 +91,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         throwExceptionIfClosed();
 
         if (DEBUG_ADDING_HANDLERS)
-            Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
+            Jvm.debug().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         eventLoopQuietly(parent, handler);

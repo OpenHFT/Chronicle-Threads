@@ -186,7 +186,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
         final HandlerPriority priority = handler.priority().alias();
         if (DEBUG_ADDING_HANDLERS)
-            Jvm.startup().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
+            Jvm.debug().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
         if (!ALLOWED_PRIORITIES.contains(priority)) {
             if (handler.priority() == HandlerPriority.MONITOR) {
                 Jvm.warn().on(getClass(), "Ignoring " + handler.getClass());
