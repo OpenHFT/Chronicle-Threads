@@ -109,7 +109,7 @@ public class VanillaEventLoop extends MediumEventLoop {
 
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
-            Jvm.startup().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
+            Jvm.debug().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
         if (!priorities.contains(priority))
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler + " allows " + priorities);
         addHandlerInternal(handler);

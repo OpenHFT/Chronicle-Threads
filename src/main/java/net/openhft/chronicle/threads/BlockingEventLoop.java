@@ -88,7 +88,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     @Override
     public synchronized void addHandler(@NotNull final EventHandler handler) {
         if (DEBUG_ADDING_HANDLERS)
-            Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
+            Jvm.debug().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         eventLoopQuietly(parent, handler);
@@ -206,6 +206,8 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 loopFinishedQuietly(handler);
                 if (!endedGracefully) {
                     // remove handler for clarity when debugging
+                    if (DEBUG_REMOVING_HANDLERS)
+                        Jvm.debug().on(getClass(), "Removing " + handler.priority() + " " + handler);
                     handlers.remove(handler);
                     closeQuietly(handler);
                 }

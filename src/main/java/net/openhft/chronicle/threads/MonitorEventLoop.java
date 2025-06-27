@@ -105,7 +105,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         throwExceptionIfClosed();
 
         if (DEBUG_ADDING_HANDLERS)
-            Jvm.startup().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
+            Jvm.debug().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
         eventLoopQuietly(parent, handler);
@@ -167,6 +167,8 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             EventHandler removedHandler = handlers.remove(handlerIndex);
             loopFinishedQuietly(removedHandler);
             Closeable.closeQuietly(removedHandler);
+            if (DEBUG_REMOVING_HANDLERS)
+                Jvm.debug().on(getClass(), "Removing " + removedHandler.priority() + " " + removedHandler + " from " + this.name);
         } catch (ArrayIndexOutOfBoundsException e) {
             if (!handlers.isEmpty()) {
                 Jvm.warn().on(MonitorEventLoop.class, "Error removing handler!");
