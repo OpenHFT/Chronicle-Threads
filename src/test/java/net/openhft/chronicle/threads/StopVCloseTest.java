@@ -92,7 +92,7 @@ public class StopVCloseTest extends ThreadsTestCommon {
                 });
 
             for (int i = 0; i < 100; i++)
-                if (!started.contains(HandlerPriority.MONITOR))
+                if (!started.equals(allPriorities))
                     Jvm.pause(1);
             eventGroup.stop();
             assertTrue(eventGroup.isStopped());
