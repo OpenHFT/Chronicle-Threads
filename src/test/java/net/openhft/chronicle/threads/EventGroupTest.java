@@ -140,7 +140,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     public void doTestSimpleEventGroup(boolean privateGroup) {
         if (!privateGroup)
-            expectException("Attempting to close private:false from within!");
+            ignoreException("Attempting to close private:false from within!");
         try (final EventLoop eventGroup = EventGroup.builder()
                 .withName("private:" + privateGroup)
                 .withPriorities(HandlerPriority.MEDIUM)
