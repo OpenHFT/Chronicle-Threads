@@ -45,4 +45,6 @@ public interface CoreEventLoop extends EventLoop {
     void dumpRunningState(@NotNull final String message, @NotNull final BooleanSupplier finalCheck);
 
     boolean isRunningOnThread(Thread thread);
+
+    void privateGroup(boolean privateGroup);
 }
