@@ -54,7 +54,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
     protected final String name;
-    private boolean privateGroup;
+    boolean privateGroup;
 
     /**
      * Create an instance with the supplied name.
