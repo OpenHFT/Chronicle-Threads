@@ -18,10 +18,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.io.AbstractCloseable;
-import net.openhft.chronicle.core.io.InvalidMarshallableException;
-import net.openhft.chronicle.core.io.SimpleCloseable;
-import net.openhft.chronicle.core.io.ThreadingIllegalStateException;
+import net.openhft.chronicle.core.io.*;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -31,7 +28,6 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.Closeable;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
@@ -117,6 +113,35 @@ public class EventGroupTest extends ThreadsTestCommon {
             assertFalse(t.isAlive());
         } finally {
             t.interrupt();
+        }
+    }
+
+    @Timeout(5)
+    @Test
+    public void testSimpleEventGroupPrivateGroup() {
+        doTestSimpleEventGroup(true);
+    }
+
+    @Timeout(5)
+    @Test
+    public void testSimpleEventGroupNonPrivateGroup() {
+        doTestSimpleEventGroup(false);
+    }
+
+    public void doTestSimpleEventGroup(boolean privateGroup) {
+        if (!privateGroup)
+            expectException("Attempting to close private:false from within!");
+        try (final EventLoop eventGroup = EventGroup.builder()
+                .withName("private:" + privateGroup)
+                .withPriorities(HandlerPriority.MEDIUM)
+                .withPrivateGroup(privateGroup)
+                .withPauser(Pauser.millis(10))
+                .build()) {
+            eventGroup.start();
+            eventGroup.addHandler(() -> {
+                closeQuietly(eventGroup);
+                return false;
+            });
         }
     }
 
@@ -438,11 +463,11 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     static Stream<List<HandlerPriority>> egCloseParams() {
         return Stream.of(
-               Arrays.asList(HandlerPriority.MEDIUM),
-               Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.HIGH),
-               Arrays.asList(HandlerPriority.TIMER, HandlerPriority.HIGH),
-               Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER),
-               Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER, HandlerPriority.HIGH)
+                Arrays.asList(HandlerPriority.MEDIUM),
+                Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.HIGH),
+                Arrays.asList(HandlerPriority.TIMER, HandlerPriority.HIGH),
+                Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER),
+                Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER, HandlerPriority.HIGH)
         );
     }
 

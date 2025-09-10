@@ -47,6 +47,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
     protected final String name;
+    private boolean privateGroup;
 
     protected AbstractLifecycleEventLoop(@NotNull String name) {
         this.name = name.replaceAll("/$", "");
@@ -126,8 +127,8 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     @Override
     protected void assertCloseable() {
-        if (isRunningOnThread(Thread.currentThread())) {
-            throw new ThreadingIllegalStateException("Attempting to close " + name + " from within!", null);
+        if (!privateGroup && isRunningOnThread(Thread.currentThread())) {
+            throw new ThreadingIllegalStateException(getClass() + ": Attempting to close " + name + " from within!", createdHere());
         }
     }
 
@@ -144,5 +145,9 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     static String withSlash(String n) {
         return n.isEmpty() ? n : n + "/";
+    }
+
+    public void privateGroup(boolean privateGroup) {
+        this.privateGroup = privateGroup;
     }
 }

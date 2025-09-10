@@ -50,6 +50,7 @@ public class EventGroupBuilder implements Builder<EventLoop> {
     private String defaultBinding = "none";
     @NotNull
     private Supplier<Pauser> blockingPauserSupplier = PauserMode.balanced;
+    private boolean privateGroup;
 
     public static EventGroupBuilder builder() {
         return new EventGroupBuilder();
@@ -61,7 +62,7 @@ public class EventGroupBuilder implements Builder<EventLoop> {
     @SuppressWarnings("deprecation")
     @Override
     public EventGroup build() {
-        return new EventGroup(daemon,
+        EventGroup eventGroup = new EventGroup(daemon,
                 pauserOrDefault(),
                 replicationPauser,
                 defaultBinding(binding),
@@ -72,6 +73,8 @@ public class EventGroupBuilder implements Builder<EventLoop> {
                 concurrentPauserSupplier,
                 priorities,
                 blockingPauserSupplier);
+        eventGroup.privateGroup(privateGroup);
+        return eventGroup;
     }
 
     @NotNull
@@ -150,5 +153,13 @@ public class EventGroupBuilder implements Builder<EventLoop> {
 
     public EventGroupBuilder withPriorities(HandlerPriority firstPriority, HandlerPriority... priorities) {
         return withPriorities(EnumSet.of(firstPriority, priorities));
+    }
+
+    /**
+     * Signifies this a private EventGroup, which will not be shared and can be shutdown independently.
+     */
+    public EventGroupBuilder withPrivateGroup(boolean privateGroup) {
+        this.privateGroup = privateGroup;
+        return this;
     }
 }
