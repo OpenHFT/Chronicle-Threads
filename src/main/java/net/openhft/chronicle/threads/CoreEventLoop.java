@@ -68,4 +68,6 @@ public interface CoreEventLoop extends EventLoop {
      * @return {@code true} if the loop is running on {@code thread}
      */
     boolean isRunningOnThread(Thread thread);
+
+    void privateGroup(boolean privateGroup);
 }

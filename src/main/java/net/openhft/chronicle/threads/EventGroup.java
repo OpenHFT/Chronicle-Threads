@@ -409,4 +409,12 @@ public class EventGroup
                blocking != null && blocking.isRunningOnThread(thread) ||
                monitor.isRunningOnThread(thread);
     }
+
+    @Override
+    public void privateGroup(boolean privateGroup) {
+        super.privateGroup(privateGroup);
+        if (core != null) {
+            core.privateGroup(privateGroup);
+        }
+    }
 }
