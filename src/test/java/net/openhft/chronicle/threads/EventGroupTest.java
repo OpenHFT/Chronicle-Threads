@@ -18,10 +18,7 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.io.AbstractCloseable;
-import net.openhft.chronicle.core.io.InvalidMarshallableException;
-import net.openhft.chronicle.core.io.SimpleCloseable;
-import net.openhft.chronicle.core.io.ThreadingIllegalStateException;
+import net.openhft.chronicle.core.io.*;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -31,7 +28,6 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.Closeable;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
@@ -143,7 +139,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                 .build()) {
             eventGroup.start();
             eventGroup.addHandler(() -> {
-                eventGroup.close();
+                closeQuietly(eventGroup);
                 return false;
             });
         }
