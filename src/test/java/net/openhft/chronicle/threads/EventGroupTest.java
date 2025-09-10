@@ -122,6 +122,35 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @Timeout(5)
     @Test
+    public void testSimpleEventGroupPrivateGroup() {
+        doTestSimpleEventGroup(true);
+    }
+
+    @Timeout(5)
+    @Test
+    public void testSimpleEventGroupNonPrivateGroup() {
+        doTestSimpleEventGroup(false);
+    }
+
+    public void doTestSimpleEventGroup(boolean privateGroup) {
+        if (!privateGroup)
+            expectException("Attempting to close private:false from within!");
+        try (final EventLoop eventGroup = EventGroup.builder()
+                .withName("private:" + privateGroup)
+                .withPriorities(HandlerPriority.MEDIUM)
+                .withPrivateGroup(privateGroup)
+                .withPauser(Pauser.millis(10))
+                .build()) {
+            eventGroup.start();
+            eventGroup.addHandler(() -> {
+                eventGroup.close();
+                return false;
+            });
+        }
+    }
+
+    @Timeout(5)
+    @Test
     public void testClosePausedBlockingEventLoop() {
         final EventLoop eventGroup = EventGroup.builder().build();
         eventGroup.start();
@@ -438,11 +467,11 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     static Stream<List<HandlerPriority>> egCloseParams() {
         return Stream.of(
-               Arrays.asList(HandlerPriority.MEDIUM),
-               Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.HIGH),
-               Arrays.asList(HandlerPriority.TIMER, HandlerPriority.HIGH),
-               Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER),
-               Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER, HandlerPriority.HIGH)
+                Arrays.asList(HandlerPriority.MEDIUM),
+                Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.HIGH),
+                Arrays.asList(HandlerPriority.TIMER, HandlerPriority.HIGH),
+                Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER),
+                Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER, HandlerPriority.HIGH)
         );
     }
 
