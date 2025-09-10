@@ -680,6 +680,11 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     private void shutdownService() {
         LockSupport.unpark(thread);
+        if (privateGroup) {
+            service.shutdownNow();
+            return;
+        }
+
         Threads.shutdown(service, daemon);
         if (thread != null && thread != Thread.currentThread()) {
             long startTimeMillis = System.currentTimeMillis();
