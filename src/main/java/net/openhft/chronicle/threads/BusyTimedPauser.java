@@ -62,6 +62,10 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
      */
     @Override
     public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
+        if (Jvm.isDebug()) {
+            Thread.yield();
+            return;
+        }
         if (time == Long.MAX_VALUE)
             time = System.nanoTime();
         if (System.nanoTime() - time > timeUnit.toNanos(timeout))

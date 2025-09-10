@@ -153,8 +153,8 @@ public class LongPauser implements Pauser, TimingPauser {
         }
 
         // If a finite timeout is given, check if it's exceeded and throw a TimeoutException if it is
-        if (timeout < Long.MAX_VALUE && (firstPauseNS + timeUnit.toNanos(timeout) - now < 0)) {
-            throw new TimeoutException();
+        if (timeout < Long.MAX_VALUE && (firstPauseNS + timeUnit.toNanos(timeout) - now < 0) && !Jvm.isDebug()) {
+            throw new TimeoutException("Pause timed out after " + timeout + " " + timeUnit);
         }
 
         // Check the yield time to determine whether to continue yielding or to move to the next pause strategy

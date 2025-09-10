@@ -86,8 +86,8 @@ public class YieldingPauser implements TimingPauser {
             return;
         yield0();
 
-        if (System.nanoTime() - timeOutStart > timeUnit.toNanos(timeout))
-            throw new TimeoutException();
+        if (System.nanoTime() - timeOutStart > timeUnit.toNanos(timeout) && !Jvm.isDebug())
+            throw new TimeoutException("Pause timed out after " + timeout + " " + timeUnit);
         checkYieldTime();
     }
 
