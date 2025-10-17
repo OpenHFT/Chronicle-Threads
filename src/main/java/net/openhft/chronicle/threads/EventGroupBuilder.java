@@ -18,7 +18,6 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
-import net.openhft.chronicle.core.threads.EventLoopLifecycle;
 import net.openhft.chronicle.core.util.Builder;
 import org.jetbrains.annotations.NotNull;
 
@@ -83,7 +82,7 @@ public class EventGroupBuilder implements Builder<EventLoop> {
     /**
      * Constructs the group using the current settings. The returned instance is
      * created but not started and is therefore in the
-     * {@link EventLoopLifecycle#NEW} state.
+     * {@link net.openhft.chronicle.threads.EventLoopLifecycle#NEW} state.
      */
     @SuppressWarnings("deprecation")
     @Override
