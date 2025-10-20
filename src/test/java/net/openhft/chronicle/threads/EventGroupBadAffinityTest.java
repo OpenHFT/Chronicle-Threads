@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2022 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +26,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class EventGroupBadAffinityTest extends ThreadsTestCommon {
 
+    /**
+     * Ensures that an invalid CPU affinity string fails fast so that
+     * misconfigured deployments do not run with unexpected processor binding.
+     */
     @Timeout(5_000)
     @Test
     public void testInvalidAffinity() {

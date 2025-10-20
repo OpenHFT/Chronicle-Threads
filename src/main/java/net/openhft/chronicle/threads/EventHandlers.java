@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2022 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +18,11 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.threads.EventHandler;
 
+/**
+ * Placeholder enum that holds simple {@link EventHandler} constants.
+ * The only entry is {@link #NOOP}, whose {@code action()} method always
+ * returns {@code false}.
+ */
 enum EventHandlers implements EventHandler {
     NOOP {
         @Override

@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2022 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +38,12 @@ import java.util.concurrent.locks.LockSupport;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Demonstrates how stopping and closing an {@link EventLoop} differ.
+ *
+ * <p>Stopping allows existing handlers to finish so the loop may be started
+ * again. Closing interrupts blocking work and frees the loop's resources.
+ */
 public class StopVCloseTest extends ThreadsTestCommon {
 
     @BeforeEach

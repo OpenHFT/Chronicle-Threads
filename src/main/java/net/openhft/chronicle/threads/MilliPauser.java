@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2020 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +24,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 /**
- * A {@link Pauser} implementation that provides precise control over thread pausing based on a specified duration in milliseconds.
- * This pauser can operate both synchronously and asynchronously, providing flexibility in thread management.
+ * Pauser that waits a fixed number of milliseconds.
+ * <p>
+ * The implementation parks the thread with {@link LockSupport#parkNanos(long)}
+ * so CPU usage stays low.  The delay is configured via {@link #pauseTimeMS(long)}
+ * and can be limited with {@link #minPauseTimeMS(long)}.
  */
 public class MilliPauser implements Pauser {
     private final AtomicBoolean pausing = new AtomicBoolean();
@@ -48,10 +49,10 @@ public class MilliPauser implements Pauser {
     }
 
     /**
-     * Sets the pause time to a specified duration in milliseconds.
+     * Sets the delay for future pauses.
      *
-     * @param pauseTimeMS the new pause time in milliseconds
-     * @return this {@code MilliPauser} instance for chaining
+     * @param pauseTimeMS pause duration in milliseconds
+     * @return this instance for chaining
      */
     public MilliPauser pauseTimeMS(long pauseTimeMS) {
         this.pauseTimeMS = pauseTimeMS;
@@ -59,11 +60,11 @@ public class MilliPauser implements Pauser {
     }
 
     /**
-     * Sets the pause time to the minimum of the current or specified duration in milliseconds.
-     * Ensures that the pause time does not drop below 1 millisecond.
+     * Reduces the delay if the supplied value is lower.
+     * Always enforces a minimum of one millisecond.
      *
-     * @param pauseTimeMS the proposed minimum pause time in milliseconds
-     * @return this {@code MilliPauser} instance for chaining
+     * @param pauseTimeMS proposed minimum pause in milliseconds
+     * @return this instance for chaining
      */
     public MilliPauser minPauseTimeMS(long pauseTimeMS) {
         this.pauseTimeMS = Math.min(this.pauseTimeMS, pauseTimeMS);
@@ -95,8 +96,8 @@ public class MilliPauser implements Pauser {
     }
 
     /**
-     * Initiates an asynchronous pause that will last for the previously set pause duration.
-     * Does not block the caller but sets the pauser to be in a pausing state.
+     * Start an asynchronous pause for the configured delay.
+     * The call returns at once and {@link #asyncPausing()} can be polled.
      */
     @Override
     public void asyncPause() {
@@ -104,9 +105,9 @@ public class MilliPauser implements Pauser {
     }
 
     /**
-     * Checks if the pauser is currently in an asynchronous pausing state.
+     * Test whether the asynchronous pause has expired.
      *
-     * @return {@code true} if still in the pausing state, {@code false} otherwise
+     * @return {@code true} while the pause should continue
      */
     @Override
     public boolean asyncPausing() {
@@ -126,9 +127,10 @@ public class MilliPauser implements Pauser {
     }
 
     /**
-     * Helper method to perform the actual pause operation in milliseconds.
+     * Perform the pause for the given delay.
+     * Uses {@link LockSupport#parkNanos(long)} so the CPU stays mostly idle.
      *
-     * @param delayMS the delay in milliseconds to pause the thread
+     * @param delayMS delay in milliseconds
      */
     void doPauseMS(long delayMS) {
         long start = System.nanoTime();

@@ -6,7 +6,24 @@ import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import java.util.Iterator;
 import java.util.ServiceLoader;
 
+/**
+ * Factory for {@link EventHandler} instances that observe a {@link Pauser}.
+ *
+ * <p>Implementations are discovered through Java's {@link ServiceLoader}
+ * mechanism.  When no implementation is found a no-op handler is returned.</p>
+ */
 public interface PauserMonitorFactory {
+
+    /**
+     * Create an event handler that records the behaviour of a {@code pauser}.
+     * Typical implementations will log the pause count or total time paused and
+     * may alert if the pauser has remained idle for longer than {@code seconds}.
+     *
+     * @param pauser       the {@link Pauser} to monitor
+     * @param description  label used in the monitor's {@code toString}
+     * @param seconds      threshold before reporting prolonged pauses
+     * @return an event handler suitable for a monitoring loop
+     */
     EventHandler pauserMonitor(Pauser pauser, String description, int seconds);
 
     static PauserMonitorFactory load() {

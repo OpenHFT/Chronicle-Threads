@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2020 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +32,15 @@ import java.util.concurrent.Executors;
 
 import static net.openhft.chronicle.threads.Threads.*;
 
+/**
+ * Event loop dedicated to low-frequency monitoring tasks. Handlers added to this loop are
+ * expected to use {@link HandlerPriority#MONITOR} so they do not interfere with application
+ * work. The provided {@link Pauser} determines how often the handlers are polled and is reset
+ * whenever a handler reports activity.
+ *
+ * <p>The loop waits for {@link #MONITOR_INITIAL_DELAY_MS} milliseconds after startup before
+ * invoking any handlers.</p>
+ */
 public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runnable, EventLoop {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
@@ -87,6 +94,13 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     }
 
     @Override
+    /**
+     * Registers a monitoring handler. The handler should have
+     * {@link HandlerPriority#MONITOR} priority. It is wrapped in an
+     * {@link IdempotentLoopStartedEventHandler} so that its
+     * {@link EventHandler#loopStarted()} method runs exactly once on this
+     * loop's thread. Adding the same handler twice is ignored.
+     */
     public synchronized void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
 
@@ -175,10 +189,10 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     }
 
     /**
-     * {@link EventHandler#loopStarted()} needs to be called once before the first call to
-     * {@link EventHandler#action()} and it must be called on the event loop thread. An
-     * easy way to achieve that is to wrap the handler in this idempotent decorator and
-     * call it at the start of every iteration.
+     * Decorator that invokes {@link EventHandler#loopStarted()} exactly once on
+     * the loop thread before any calls to {@link EventHandler#action()}. The
+     * monitor event loop wraps every handler in this class and calls
+     * {@link #loopStarted()} at the beginning of each iteration.
      */
     private static final class IdempotentLoopStartedEventHandler extends SimpleCloseable implements EventHandler {
 

@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2020 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +32,20 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static net.openhft.chronicle.threads.Threads.*;
 
 /**
- * Event Loop for blocking tasks.
+ * Event loop suited for I/O or other long running tasks.
+ * Each handler is executed on its own thread.
+ *
+ * <p>The {@link Pauser} supplied at construction is used to create a fresh
+ * instance for every handler thread.  Idle handlers therefore pause
+ * independently of one another.</p>
+ *
+ * <p>Calling {@link #start()} launches a thread for each added handler.
+ * When {@link #stop()} is invoked those threads are interrupted and the
+ * executor service is shut down.</p>
+ *
+ * <p>Handlers with priorities other than
+ * {@link net.openhft.chronicle.core.threads.HandlerPriority#BLOCKING}
+ * are accepted but treated the same as blocking handlers.</p>
  */
 public class BlockingEventLoop extends AbstractLifecycleEventLoop implements EventLoop {
 
@@ -66,7 +77,11 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     }
 
     /**
-     * This can be called multiple times and each handler will be executed in its own thread
+     * Registers a new handler.  Every call spawns another thread for the
+     * handler.
+     * <p>Priorities other than
+     * {@link net.openhft.chronicle.core.threads.HandlerPriority#BLOCKING}
+     * are permitted but are not treated specially.</p>
      *
      * @param handler to execute
      */

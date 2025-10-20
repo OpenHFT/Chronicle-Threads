@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2020 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,11 +38,33 @@ import static java.lang.String.format;
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
 /**
- * Composes child event loops to support all {@link HandlerPriority} priorities. This class will delegate
- * any {@link EventHandler} that is installed on it (via {@link #addHandler(EventHandler)}) to a child
- * event loop appropriately. See also other implementations of {@link EventLoop} in this library.
+ * Coordinates a set of child event loops and routes handlers to them by
+ * {@link HandlerPriority priority}. The constructor allocates the monitor and,
+ * when required, the core and blocking loops. Replication and concurrent loops
+ * are created lazily when handlers with those priorities are installed.
  * <p>
- * Supports event loop monitoring - controlled by system property {@code MONITOR_INTERVAL_MS} and documented in README.adoc
+ * The recommended way to create an instance is via {@link EventGroupBuilder}.
+ * The builder defaults to daemon threads, a balanced pauser and a number of
+ * concurrent loops equal to {@link #CONC_THREADS}. Monitoring is enabled by
+ * default and can be disabled with the system property
+ * {@code disableLoopBlockMonitor=true}.
+ * <p>
+ * {@link #start()} starts all current child loops and waits for the core (or
+ * monitor when no core exists) to become alive. {@link #stop()} stops the loops
+ * and waits for them to finish. Loops are not expected to be restarted once
+ * stopped.
+ * <p>
+ * Handlers installed via {@link #addHandler(EventHandler)} are routed to the
+ * appropriate child loop. Unsupported priorities cause an
+ * {@link IllegalArgumentException}.
+ * <p>
+ * Example:
+ * <pre>
+ * EventGroup eg = EventGroup.builder()
+ *         .withName("example")
+ *         .build();
+ * eg.start();
+ * </pre>
  */
 public class EventGroup
         extends AbstractLifecycleEventLoop
@@ -182,6 +202,23 @@ public class EventGroup
             replication.unpause();
     }
 
+    /**
+     * Installs the handler on the child loop that matches its
+     * {@link HandlerPriority}. Handlers may be added before or after the
+     * group is started. Priority to loop mapping is as follows:
+     * <ul>
+     * <li>{@link HandlerPriority#MONITOR} - monitor loop</li>
+     * <li>{@link HandlerPriority#HIGH}, {@link HandlerPriority#MEDIUM},
+     * {@link HandlerPriority#TIMER} and {@link HandlerPriority#DAEMON} - core loop</li>
+     * <li>{@link HandlerPriority#BLOCKING} - blocking loop</li>
+     * <li>{@link HandlerPriority#REPLICATION} and
+     * {@link HandlerPriority#REPLICATION_TIMER} - replication loop</li>
+     * <li>{@link HandlerPriority#CONCURRENT} - one of the concurrent loops</li>
+     * </ul>
+     * If the relevant loop was not configured an {@link IllegalStateException}
+     * is thrown. Unknown priorities result in an
+     * {@link IllegalArgumentException}.
+     */
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
@@ -231,6 +268,11 @@ public class EventGroup
         }
     }
 
+    /**
+     * Adds a monitor that logs a stack trace if the core loop runs longer than
+     * the supplied time limit. The {@code timeOfStart} supplier should return
+     * the time the action began in nano-seconds.
+     */
     public void setupTimeLimitMonitor(final long timeLimitNS, final LongSupplier timeOfStart) {
         throwExceptionIfClosed();
 
@@ -243,6 +285,10 @@ public class EventGroup
                 core::thread);
     }
 
+    /**
+     * Installs a {@link ThreadMonitor} on the monitor loop to observe a thread
+     * for long running tasks.
+     */
     public void addTimingMonitor(final String description,
                                  final long timeLimitNS,
                                  final LongSupplier timeSupplier,
@@ -329,6 +375,10 @@ public class EventGroup
         EventLoops.stopAll(concThreads, replication, core, blocking);
     }
 
+    /**
+     * Returns {@code true} if the core loop thread is running. If no core loop
+     * is configured the state of the monitor loop is reported instead.
+     */
     @Override
     public boolean isAlive() {
         return (core == null ? monitor : core).isAlive();

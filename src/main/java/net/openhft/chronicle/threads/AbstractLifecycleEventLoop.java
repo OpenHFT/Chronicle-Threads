@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2022 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,13 +27,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A parent class that:
+ * Base implementation that manages the life-cycle of an {@link EventLoop}.
+ *
+ * <p>It extends {@link AbstractCloseable}, and integrates with the
+ * closeable hierarchy.</p>
+ *
+ * <p>The life-cycle follows {@link EventLoopLifecycle}:</p>
  * <ul>
- *     <li>Enforces the life-cycle of an EventLoop</li>
- *     <li>Implements idempotency for {@link #start()}, {@link #stop()}</li>
- *     <li>Ensures {@link #stop()} only returns when the EventLoop is stopped</li>
+ *     <li>{@code NEW} &ndash; constructed but not running.</li>
+ *     <li>{@code STARTED} &ndash; handlers are executing.</li>
+ *     <li>{@code STOPPING} &ndash; {@link #stop()} has been requested.</li>
+ *     <li>{@code STOPPED} &ndash; all work is finished.</li>
  * </ul>
- * See {@link EventLoopLifecycle} for details of the life-cycle
+ * Transitions are linear in that order. Invoking {@code stop()} while in
+ * {@code NEW} skips {@code STARTED} entirely. Both {@code start()} and
+ * {@code stop()} are idempotent and {@code stop()} blocks until the loop is
+ * {@code STOPPED}.
  */
 @SuppressWarnings("this-escape")
 public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
@@ -49,9 +56,19 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     protected final String name;
     boolean privateGroup;
 
+    /**
+     * Create an instance with the supplied name.
+     * <p>
+     * The {@link AbstractCloseable} thread ownership check is disabled so the
+     * loop may be started or stopped from threads other than the creating
+     * thread.
+     *
+     * @param name descriptive name for the loop
+     */
     protected AbstractLifecycleEventLoop(@NotNull String name) {
         this.name = name.replaceAll("/$", "");
 
+        // event loops operate on dedicated threads but may be closed elsewhere
         singleThreadedCheckDisabled(true);
     }
 
@@ -74,8 +91,9 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     }
 
     /**
-     * Implement whatever this event loop needs to start, will only
-     * ever be called once
+     * Perform the concrete start up work.
+     * Invoked exactly once when the life-cycle moves from
+     * {@link EventLoopLifecycle#NEW} to {@link EventLoopLifecycle#STARTED}.
      */
     protected abstract void performStart();
 
@@ -93,18 +111,27 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     }
 
     /**
-     * Implement a stop from {@link EventLoopLifecycle#NEW} state, should block until all
-     * handlers have had {@link EventHandler#loopFinished()} called.
+     * Stop the loop when {@link #stop()} is invoked before it has started.
+     * Implementations should block until every handler has received
+     * {@link EventHandler#loopFinished()}.
      */
     protected abstract void performStopFromNew();
 
     /**
-     * Implement a stop from {@link EventLoopLifecycle#STARTED} state, should block until all
-     * handlers have completed their final iteration and had
-     * {@link EventHandler#loopFinished()} called.
+     * Stop the loop once it has begun processing.
+     * Implementations should wait for the current iteration to finish and then
+     * invoke {@link EventHandler#loopFinished()} on every handler.
      */
     protected abstract void performStopFromStarted();
 
+    /**
+     * Wait for the loop to reach {@link EventLoopLifecycle#STOPPED}.
+     *
+     * <p>If the state does not change within
+     * {@link #AWAIT_TERMINATION_TIMEOUT_MS} milliseconds an error is logged and
+     * the method returns. The timeout is primarily to avoid tests hanging
+     * indefinitely.</p>
+     */
     protected final void awaitTermination() {
         long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
         while (!Thread.currentThread().isInterrupted()) {

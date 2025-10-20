@@ -4,6 +4,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Confirms the stable {@code toString} output for each built-in pauser.
+ * Verifies the fix for issue {@code #251} where descriptions were inconsistent.
+ */
 public class Issue251Test {
     @Test
     public void toString_timedBusyVariants() {

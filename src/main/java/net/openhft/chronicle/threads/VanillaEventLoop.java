@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2020 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +33,14 @@ import java.util.stream.Stream;
 import static net.openhft.chronicle.threads.Threads.eventLoopQuietly;
 import static net.openhft.chronicle.threads.Threads.loopStartedCall;
 
+/**
+ * Event loop built on {@link MediumEventLoop}.
+ * <p>
+ * In addition to the HIGH and MEDIUM priorities handled by the parent class it
+ * provides queues for {@link HandlerPriority#TIMER} and
+ * {@link HandlerPriority#DAEMON} tasks. TIMER handlers are polled at a fixed
+ * interval and DAEMON handlers run when the loop is otherwise idle.
+ */
 public class VanillaEventLoop extends MediumEventLoop {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
@@ -48,12 +54,16 @@ public class VanillaEventLoop extends MediumEventLoop {
     private final Set<HandlerPriority> priorities;
 
     /**
-     * @param parent          the parent event loop
-     * @param name            the name of this event handler
-     * @param pauser          the pause strategy
-     * @param timerIntervalMS how long to pause, Long.MAX_VALUE = always check.
-     * @param daemon          is a demon thread
-     * @param binding         set affinity description, "any", "none", "1", "last-1"
+     * Creates a VanillaEventLoop.
+     *
+     * @param parent          optional parent loop, may be {@code null}
+     * @param name            name of the worker thread
+     * @param pauser          strategy used when the loop is idle
+     * @param timerIntervalMS delay between TIMER polls in milliseconds;
+     *                        {@code Long.MAX_VALUE} causes a check every cycle
+     * @param daemon          whether the worker thread is a daemon
+     * @param binding         CPU affinity description such as "any" or "1"
+     * @param priorities      set of allowed priorities for {@link #addHandler}
      */
     public VanillaEventLoop(@Nullable final EventLoop parent,
                             final String name,
@@ -151,6 +161,10 @@ public class VanillaEventLoop extends MediumEventLoop {
         }
     }
 
+    /**
+     * Routes new handlers to the appropriate queue. TIMER handlers are placed
+     * in {@code timerHandlers} and DAEMON handlers go to {@code daemonHandlers}.
+     */
     @SuppressWarnings("fallthrough")
     @Override
     protected void addNewHandler(@NotNull final EventHandler handler) {

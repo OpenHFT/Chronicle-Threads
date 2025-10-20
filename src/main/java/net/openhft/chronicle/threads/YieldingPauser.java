@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2020 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +22,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * This pauser is designed for situations where short bursts of busyness are acceptable before yielding,
- * aiming to balance responsiveness with CPU usage. The transition from busy-waiting to yielding helps
- * to manage CPU resources more effectively while still allowing the thread to remain responsive.
+ * Pauser that spins for a fixed number of calls and then yields.
+ *
+ * <p>It consumes less CPU than {@link BusyPauser} yet avoids the sleeping
+ * stage used by {@link LongPauser}. Use it when short bursts of activity are
+ * expected but the thread must remain responsive.</p>
  */
 public class YieldingPauser implements TimingPauser {
     final int minBusy;
@@ -37,9 +37,8 @@ public class YieldingPauser implements TimingPauser {
     private long timeOutStart = Long.MAX_VALUE;
 
     /**
-     * Constructs a {@link YieldingPauser} with a specified threshold for busy waiting.
-     *
-     * @param minBusy the minimum number of iterations to perform busy waiting before yielding
+     * @param minBusy number of {@link #pause()} calls to spin before yielding.
+     *                A value of {@code 0} yields immediately.
      */
     public YieldingPauser(int minBusy) {
         this.minBusy = minBusy;
@@ -53,8 +52,11 @@ public class YieldingPauser implements TimingPauser {
     }
 
     /**
-     * Pauses the thread by either busy-waiting or yielding, depending on the number of iterations specified by {@code minBusy}.
-     * Initially, it will busy-wait up to {@code minBusy} iterations; thereafter, it will yield to other threads.
+     * Increments an internal counter and either spins or yields.
+     *
+     * <p>While the count is below {@code minBusy} a safepoint is executed and
+     * the method returns. Once the threshold is passed the thread yields and the
+     * time spent yielding is measured.</p>
      */
     @Override
     public void pause() {
@@ -69,12 +71,15 @@ public class YieldingPauser implements TimingPauser {
     }
 
     /**
-     * Pauses the thread with a timeout. The pause may end either after busy-waiting and yielding or when the timeout expires,
-     * whichever comes first.
+     * Variant of {@link #pause()} that fails after the given timeout.
      *
-     * @param timeout  the maximum time to wait before throwing a {@link TimeoutException}
-     * @param timeUnit the unit of time for the {@code timeout} argument
-     * @throws TimeoutException if the pause operation exceeds the specified timeout
+     * <p>The first call records the start time. Once yielding begins the elapsed
+     * time is checked and a {@link TimeoutException} is thrown when the limit is
+     * exceeded.</p>
+     *
+     * @param timeout  maximum time to wait
+     * @param timeUnit unit of the timeout
+     * @throws TimeoutException if the elapsed time passes the timeout
      */
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {

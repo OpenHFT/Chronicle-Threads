@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2022 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,21 +24,48 @@ import java.util.function.LongSupplier;
 
 import static net.openhft.chronicle.threads.CoreEventLoop.NOT_IN_A_LOOP;
 
+/**
+ * Monitoring harness that drives a {@link ThreadHolder} via the
+ * {@link ThreadMonitor} interface.  The harness delegates all
+ * monitoring actions to the wrapped holder and records the last time
+ * an action was run.
+ */
 public class ThreadMonitorHarness implements ThreadMonitor {
     private final ThreadHolder thread;
     private final LongSupplier timeSupplier;
     private long lastActionCall = Long.MAX_VALUE;
     private long lastStartedNS = NOT_IN_A_LOOP;
 
+    /**
+     * Creates a harness that reports on the supplied holder using the given
+     * time supplier.
+     *
+     * @param thread       holder describing the monitored thread
+     * @param timeSupplier provider of the current time in nanoseconds
+     */
     public ThreadMonitorHarness(ThreadHolder thread, LongSupplier timeSupplier) {
         this.thread = thread;
         this.timeSupplier = timeSupplier;
     }
 
+    /**
+     * Creates a harness using {@link System#nanoTime()} as the time provider.
+     *
+     * @param thread holder describing the monitored thread
+     */
     public ThreadMonitorHarness(ThreadHolder thread) {
         this(thread, System::nanoTime);
     }
 
+    /**
+     * Called periodically to check the state of the wrapped thread.
+     * Throws {@link InvalidEventHandlerException} if the thread has
+     * finished.  If a delay greater than the tolerance is observed the
+     * holder is notified and {@code true} is returned.
+     *
+     * @return {@code true} when the holder reports a delay
+     * @throws InvalidEventHandlerException if the thread is no longer alive
+     */
     @Override
     public boolean action() throws InvalidEventHandlerException {
         if (!thread.isAlive()) {

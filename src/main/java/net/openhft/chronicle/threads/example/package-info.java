@@ -13,23 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.openhft.chronicle.threads;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
- * Marker interface to show we support {@link #pause(long, TimeUnit)}
+ * Example code showing basic Chronicle Threads usage.
+ * <p>
+ * The classes in this package demonstrate simple patterns for configuring event
+ * loops and pausers. These classes are illustrative only and should not be used
+ * as production code.
  */
-public interface TimingPauser extends Pauser {
-
-    /**
-     * Pauses but keep tracks of accumulated pause time and throws if timeout exceeded
-     *
-     * @param timeout  timeout
-     * @param timeUnit unit
-     * @throws TimeoutException thrown if timeout passes
-     */
-    @Override
-    void pause(long timeout, TimeUnit timeUnit) throws TimeoutException;
-}
+package net.openhft.chronicle.threads.example;

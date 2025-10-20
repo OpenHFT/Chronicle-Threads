@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2020 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +34,13 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
+/**
+ * Miscellaneous helper methods for thread and executor management.
+ *
+ * <p>The enum acts as a static holder and exposes utilities to acquire and
+ * shut down executor services, inspect running threads and assist with
+ * event loop execution.</p>
+ */
 public enum Threads {
     ; // none
 
@@ -56,18 +61,43 @@ public enum Threads {
         executorFactory = instance;
     }
 
+    /**
+     * Acquire an executor service from the current factory.
+     *
+     * @param name    prefix used when naming threads
+     * @param threads number of worker threads
+     * @param daemon  whether the threads should be daemons
+     * @return the executor service to use
+     */
     public static ExecutorService acquireExecutorService(String name, int threads, boolean daemon) {
         return executorFactory.acquireExecutorService(name, threads, daemon);
     }
 
+    /**
+     * Acquire a scheduled executor service from the current factory.
+     *
+     * @param name   prefix used when naming threads
+     * @param daemon whether the threads should be daemons
+     * @return the scheduled executor service
+     */
     public static ScheduledExecutorService acquireScheduledExecutorService(String name, boolean daemon) {
         return executorFactory.acquireScheduledExecutorService(name, daemon);
     }
 
+    /**
+     * Install an alternative factory used to create executors.
+     *
+     * @param executorFactory provider used henceforth
+     */
     public static void executorFactory(ExecutorFactory executorFactory) {
         Threads.executorFactory = executorFactory;
     }
 
+    /**
+     * Return the current thread group name with a trailing slash.
+     *
+     * @return thread group prefix
+     */
     @NotNull
     public static String threadGroupPrefix() {
         String threadGroupName = Thread.currentThread().getThreadGroup().getName();
@@ -101,6 +131,12 @@ public enum Threads {
         }
     }
 
+    /**
+     * Shutdown the service according to the daemon flag.
+     *
+     * @param service the executor to close
+     * @param daemon  invoke {@link #shutdownDaemon(ExecutorService)} when true
+     */
     public static void shutdown(@NotNull ExecutorService service, boolean daemon) {
         if (daemon)
             shutdownDaemon(service);
@@ -160,10 +196,20 @@ public enum Threads {
             stringBuilder.append("  ").append(s).append("\n");
     }
 
+    /**
+     * Unpark all threads belonging to the service.
+     *
+     * @param service executor whose threads should be unparked
+     */
     public static void unpark(ExecutorService service) {
         forEachThread(service, LockSupport::unpark);
     }
 
+    /**
+     * Interrupt all threads managed by the service.
+     *
+     * @param service executor whose threads should be interrupted
+     */
     public static void interrupt(ExecutorService service) {
         Threads.forEachThread(service, Thread::interrupt);
     }

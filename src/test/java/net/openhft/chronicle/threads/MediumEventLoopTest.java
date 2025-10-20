@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2024 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +15,15 @@
  */
 
 package net.openhft.chronicle.threads;
+
+/**
+ * Tests the expected behaviour of {@link MediumEventLoop}.
+ *
+ * <p>Handlers may be registered before or after the loop starts. Those that
+ * throw from lifecycle methods are removed and closed without stopping the
+ * loop. Concurrent start and stop calls from separate threads should succeed
+ * without error.
+ */
 
 import net.openhft.chronicle.core.io.InvalidMarshallableException;
 import net.openhft.chronicle.core.threads.EventHandler;

@@ -1,7 +1,5 @@
 /*
- * Copyright 2015 Higher Frequency Trading
- *
- *       https://chronicle.software
+ * Copyright 2015-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +24,19 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests the pausing behaviour of {@link LongPauser}.
+ *
+ * <p>These tests ensure that:
+ * <ul>
+ *   <li>{@link LongPauser#unpause()} releases a thread blocked in
+ *       {@link LongPauser#pause()} promptly.</li>
+ *   <li>{@link LongPauser#asyncPause()} waits for roughly the configured
+ *       duration before clearing.</li>
+ *   <li>{@link LongPauser#reset()} cancels any pending asynchronous
+ *       pause.</li>
+ * </ul>
+ */
 public class LongPauserTest extends ThreadsTestCommon {
 
     @Test

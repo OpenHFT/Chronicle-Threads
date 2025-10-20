@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2020 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +21,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Similar to {@link BusyPauser} but also supporting {@link TimingPauser}
+ * Busy-spin pauser that also implements {@link TimingPauser}.
+ * <p>
+ * Like {@link BusyPauser} it never yields or sleeps, so it occupies a CPU core
+ * while waiting. In addition it tracks elapsed busy-spin time and can throw a
+ * {@link TimeoutException} when a configured timeout is exceeded.
  */
 public class BusyTimedPauser implements Pauser, TimingPauser {
 
@@ -40,25 +42,31 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
         return true;
     }
 
+    /**
+     * Clears any timeout state so the next timed pause starts afresh.
+     */
     @Override
     public void reset() {
         time = Long.MAX_VALUE;
     }
 
+    /**
+     * Busy-spins once and increments the pause count.
+     * No yielding or sleeping occurs.
+     */
     @Override
     public void pause() {
         countPaused++;
-        // busy wait.
         Jvm.nanoPause();
     }
 
     /**
-     * Attempts to pause the thread with a specified timeout. If the pause exceeds the specified duration,
-     * a {@link TimeoutException} is thrown, indicating the timeout has elapsed without resumption of operations.
+     * Busy-spins until the accumulated pause time exceeds the supplied timeout.
+     * The timer starts with the first call after {@link #reset()}.
      *
-     * @param timeout  the maximum time to wait before throwing an exception
-     * @param timeUnit the unit of time for the timeout parameter
-     * @throws TimeoutException if the wait exceeds the specified timeout duration
+     * @param timeout  maximum time to spin before throwing an exception
+     * @param timeUnit unit for {@code timeout}
+     * @throws TimeoutException if the time since the first call exceeds the timeout
      */
     @Override
     public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {

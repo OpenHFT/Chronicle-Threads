@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2022 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +28,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 
+/**
+ * Utility methods for working with {@link EventLoop EventLoops}. At present the
+ * class only supplies a helper to stop several loops at once.
+ */
 public final class EventLoops {
 
     // Suppresses default constructor, ensuring non-instantiability.
@@ -37,11 +39,13 @@ public final class EventLoops {
     }
 
     /**
-     * Stop many {@link EventLoop}s concurrently using {@link ForkJoinPool#commonPool()}
-     * <p>
-     * Returns when all EventLoops are stopped, safe to pass nulls or collections containing nulls
+     * Stops many {@link EventLoop}s concurrently using {@link ForkJoinPool#commonPool()}.
+     * The call blocks until every {@code EventLoop.stop()} has finished. Null
+     * values or collections containing nulls are ignored. Each task runs in the
+     * common pool and any {@link ExecutionException} is logged. If interrupted
+     * while waiting the interrupt status is restored.
      *
-     * @param eventLoops A list of EventLoops or collections of event loops
+     * @param eventLoops a list of {@link EventLoop}s or collections of them
      */
     public static void stopAll(Object... eventLoops) {
         List<Callable<Void>> eventLoopStoppers = new ArrayList<>();

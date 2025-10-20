@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2024 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +27,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestEventHandlers {
 
+    /**
+     * Utility handler used in tests. Counts how many times each lifecycle
+     * method is invoked.
+     */
     public static class CountingHandler implements EventHandler, Closeable {
         protected final AtomicInteger loopStartedCalled = new AtomicInteger();
         protected final AtomicInteger loopFinishedCalled = new AtomicInteger();
@@ -99,6 +101,10 @@ public class TestEventHandlers {
     public static final String HANDLER_EVENT_LOOP_EXCEPTION_TXT = "Something went wrong in set eventLoop!!!";
     public static final String HANDLER_PRIORITY_EXCEPTION_TXT = "Something went wrong in priority!!!";
 
+    /**
+     * Handler that throws from selected lifecycle methods so tests can
+     * exercise error paths in the event loop.
+     */
     public static class ThrowingHandler extends CountingHandler {
         protected final boolean throwsEventLoop;
         protected final boolean throwsPriority;

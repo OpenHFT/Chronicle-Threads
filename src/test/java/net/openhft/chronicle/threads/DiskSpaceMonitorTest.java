@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2022 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +47,11 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
         DiskSpaceMonitor.INSTANCE.clear();
     }
 
+    /**
+     * Exercises disk monitoring when the threshold is raised from zero to 100 per cent.
+     * Exceptions are recorded and disk space is polled repeatedly to verify that
+     * roughly five warnings are reported. The test is skipped on Arm hardware.
+     */
     @Test
     public void pollDiskSpace() {
         // todo investigate why this fails on arm

@@ -1,7 +1,5 @@
 /*
- * Copyright 2016-2020 chronicle.software
- *
- *       https://chronicle.software
+ * Copyright 2016-2025 chronicle.software
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,12 +24,32 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Provides a suite of factory methods for creating various {@link Pauser} objects, each offering different strategies for managing thread execution.
- * The {@link Pauser} is designed to offer flexible pausing strategies depending on CPU availability and desired execution patterns.
+ * Strategy interface for controlling how an idle thread waits for work.
  *
- * <p>This interface also defines the methods for managing pause states and conditions within an application's threading model. It includes methods to pause, unpause, reset, and other utilities that influence thread scheduling and execution behaviors.</p>
+ * <p>The pauser is typically employed inside an event loop. When no work is
+ * found {@link #pause()} is invoked; once work is performed the pauser is
+ * {@link #reset()} back to its most responsive state. The usual pattern is:</p>
  *
- * <p>Refer to {@link PauserMode} for capturing these configurations in a serializable manner.</p>
+ * <pre>{@code
+ * while (running) {
+ *     if (doWork()) {
+ *         pauser.reset();
+ *     } else {
+ *         pauser.pause();
+ *     }
+ * }
+ * }</pre>
+ *
+ * <p>Implementations are expected to be thread-safe for use by a single event
+ * loop thread. Calling the same pauser from multiple threads is not
+ * supported unless stated otherwise.</p>
+ *
+ * <p>The factory methods will fall back to {@link #sleepy()} or
+ * {@link #balanced()} when the host machine lacks sufficient processors. The
+ * chosen mode affects CPU usage and latency. See {@link SleepyWarning} for the
+ * detection logic.</p>
+ *
+ * <p>Configurations may be serialised via {@link PauserMode}.</p>
  */
 public interface Pauser {
 
@@ -52,11 +70,14 @@ public interface Pauser {
     }
 
     /**
-     * Returns a {@link Pauser} that either yields, pauses, or does not wait at all, based on system capabilities.
-     * It selects the most appropriate pauser based on CPU availability and specified minimal busyness.
+     * Returns a pauser that initially yields for {@code minBusy} microseconds
+     * before entering a longer pause. If the machine has too few processors this
+     * method falls back to {@link #balanced()} or {@link #sleepy()}.
      *
-     * @param minBusy the minimal busyness period in microseconds before yielding or pausing
-     * @return the most appropriate {@link Pauser}
+     * <p>Yielding gives low latency at the cost of extra CPU time.</p>
+     *
+     * @param minBusy minimal busy-yield period in microseconds
+     * @return a pauser tuned for low latency or a fall-back if resources are limited
      */
     static Pauser yielding(int minBusy) {
         SleepyWarning.warnSleepy();
@@ -66,28 +87,36 @@ public interface Pauser {
     }
 
     /**
-     * A sleepy pauser which yields for a millisecond, then sleeps for 1 to 20 ms
+     * A very low CPU pauser. It yields once for roughly a millisecond and then
+     * sleeps between one and twenty milliseconds. This gives the highest
+     * latency but places minimal load on the processor.
      *
-     * @return a {@link TimingPauser} implementing a sleepy strategy
+     * @return a pauser intended for background or low priority tasks
      */
     static TimingPauser sleepy() {
         return new LongPauser(0, 50, 500, 20_000, TimeUnit.MICROSECONDS);
     }
 
     /**
-     * A balanced pauser which tries to be busy for short bursts but backs off when idle.
+     * A pauser that spends a small amount of time busy and then backs off by
+     * yielding and sleeping up to twenty milliseconds. It balances CPU
+     * utilisation with moderate latency. Automatically selected on machines with
+     * fewer than twice {@link #MIN_PROCESSORS} cores when {@link #busy()} or
+     * {@link #yielding()} is requested.
      *
-     * @return a {@link TimingPauser} implementing a balanced strategy
+     * @return a pauser suitable for mixed workloads
      */
     static TimingPauser balanced() {
         return balancedUpToMillis(20);
     }
 
     /**
-     * A balanced pauser which tries to be busy for short bursts but backs off when idle with a limit of max back off.
+     * As {@link #balanced()} but the back-off sleeps will not exceed the given
+     * limit. Use this when a service must not sleep for too long whilst still
+     * avoiding excessive CPU use.
      *
-     * @param millis the maximum back-off period in milliseconds
-     * @return a {@link TimingPauser} implementing a balanced strategy with a maximum back-off limit
+     * @param millis maximum back-off period in milliseconds
+     * @return a pauser with bounded sleep duration
      */
     static TimingPauser balancedUpToMillis(int millis) {
         return SLEEPY ? sleepy()
@@ -95,39 +124,47 @@ public interface Pauser {
     }
 
     /**
-     * Creates a {@link MilliPauser} that waits for a fixed duration before resuming execution.
+     * Creates a pauser that always sleeps for the specified time. It uses very
+     * little CPU and therefore gives the highest latency of all strategies.
      *
-     * @param millis the fixed wait time in milliseconds
-     * @return a {@link MilliPauser}
+     * @param millis fixed sleep time in milliseconds
+     * @return a pauser that simply sleeps
      */
     static MilliPauser millis(int millis) {
         return new MilliPauser(millis);
     }
 
     /**
-     * Creates a {@link Pauser} that pauses with a back-off strategy, starting at a minimum millisecond interval and potentially increasing to a maximum.
+     * Creates a pauser that sleeps for {@code minMillis} and gradually backs
+     * off up to {@code maxMillis}. Useful when a thread may be idle for long
+     * periods but should still wake periodically.
      *
-     * @param minMillis the starting minimum pause duration in milliseconds
-     * @param maxMillis the maximum pause duration in milliseconds
-     * @return a {@link Pauser} with a back-off strategy
+     * @param minMillis starting sleep time in milliseconds
+     * @param maxMillis maximum sleep time in milliseconds
+     * @return a pauser with growing sleep periods
      */
     static Pauser millis(int minMillis, int maxMillis) {
         return new LongPauser(0, 0, minMillis, maxMillis, TimeUnit.MILLISECONDS);
     }
 
     /**
-     * Provides a simple {@link Pauser} that is more process-friendly by yielding the thread execution.
+     * Convenience method equivalent to {@link #yielding(int)} with a small
+     * busy-yield period. Provides low latency when the machine has spare
+     * processors and gracefully falls back otherwise.
      *
-     * @return a yielding {@link Pauser}
+     * @return a pauser that initially yields
      */
     static Pauser yielding() {
         return yielding(2);
     }
 
     /**
-     * Creates a {@link Pauser} that actively keeps the thread busy and does not employ any waiting strategies.
+     * Returns a pauser that continuously busy-spins. This offers the lowest
+     * possible latency but consumes an entire core. When the runtime cannot
+     * spare a core the method falls back to {@link #balanced()} or
+     * {@link #sleepy()}.
      *
-     * @return a {@link Pauser} that never waits
+     * @return a pauser that never deliberately waits
      */
     @NotNull
     static Pauser busy() {
@@ -138,9 +175,12 @@ public interface Pauser {
     }
 
     /**
-     * Creates a {@link TimingPauser} that keeps the thread busy but also incorporates timed waits.
+     * Similar to {@link #busy()} but allows timed pauses so that a monitoring
+     * thread can wait with a timeout. It still consumes a core when active and
+     * will downgrade to {@link #balanced()} or {@link #sleepy()} if resources are
+     * scarce.
      *
-     * @return a {@link TimingPauser} that combines busy and timed wait strategies
+     * @return a pauser combining busy spinning with timed waits
      */
     @NotNull
     static TimingPauser timedBusy() {
@@ -150,58 +190,34 @@ public interface Pauser {
     }
 
     /**
-     * Pauses the current thread.
-     * <p>
-     * The actual pause time and thread scheduling impact is not specified and depends
-     * on the implementing class. For some implementations, a progressive increase
-     * of the pause time is employed, thread executions may or may not be yielded, whereas
-     * other implementations may not pause or yield at all.
-     * <p>
-     * Thus, depending on the implementation this could do nothing (busy spin), yield, sleep, ...
-     * <p>
-     * Call this if no work was done.
+     * Called when the thread finds no work to do. Depending on the
+     * implementation the call may busy-spin, yield or sleep. Successive calls
+     * usually increase the pause duration until {@link #reset()} is invoked.
      */
     void pause();
 
     /**
-     * Pauses "asynchronously" whereby the issuing EventHandler can
-     * pause without blocking other handlers in the EventLoop.
-     * <p>
-     * The issuing EventHandler can check if it is still pausing
-     * asynchronously by invoking {@link #asyncPausing()}. Typically, this is
-     * done as depicted below:
-     *
-     * <pre>{@code
-     *     // @Override
-     *     public boolean action() throws InvalidEventHandlerException {
-     *       if (pauser.asyncPausing()) {
-     *           // Yield, so that other EventHandlers can run
-     *           return false;
-     *       }
-     *     }
-     * }</pre>
-     *
-     * @see #asyncPausing()
+     * Begins a pause that other handlers may monitor without blocking. The
+     * caller can check {@link #asyncPausing()} to see if the pause has
+     * completed and should typically yield until it returns {@code false}.
      */
     default void asyncPause() {
     }
 
     /**
-     * Checks if the pauser is currently in an asynchronous pause state.
+     * Indicates whether a pause started with {@link #asyncPause()} is still in
+     * progress.
      *
-     * @return {@code true} if the pauser is still pausing asynchronously, {@code false} otherwise
+     * @return {@code true} while the pauser remains in its asynchronous pause
      */
     default boolean asyncPausing() {
         return false;
     }
 
     /**
-     * Resets the pauser's internal state back (if any) to the most aggressive setting.
-     * <p>
-     * Pausers that progressively increases the pause time are reset back to its lowest
-     * pause time.
-     * <p>
-     * Call this if you just did some work.
+     * Restores the pauser to its most responsive state. Call this after the
+     * thread performs work so that the next {@link #pause()} starts from the
+     * minimum delay.
      */
     void reset();
 
@@ -213,35 +229,42 @@ public interface Pauser {
     }
 
     /**
-     * Try to cancel the pausing if it is pausing.
-     * <p>
-     * No guarantee is made that this call will actually have an effect.
+     * Attempts to interrupt a pause initiated on another thread. The call may
+     * have no effect if the thread is not currently pausing.
      */
     void unpause();
 
     /**
-     * Returns the paused time so far in milliseconds.
+     * Total time spent in {@link #pause()} calls since the pauser was created.
+     * The value is expressed in milliseconds.
      *
-     * @return the paused time so far in milliseconds
+     * @return cumulative pause time in milliseconds
      */
     long timePaused();
 
     /**
-     * Returns the number of times the pauser has checked for
-     * completion.
+     * Number of pause cycles that have occurred. Each call to
+     * {@link #pause()} or {@link #asyncPause()} increments this count when a
+     * pause actually takes place.
      *
-     * @return Returns the number of times the pauser has checked for
-     * completion
+     * @return how many pauses have been recorded
      */
     long countPaused();
 
     /**
-     * @return true if it doesn't really pause
+     * Indicates that the pauser never performs a real wait and simply spins.
+     * Useful for monitoring utilities that wish to avoid blocking.
+     *
+     * @return {@code true} if the implementation is busy-spinning
      */
     default boolean isBusy() {
         return false;
     }
 
+    /**
+     * Emits a single warning when the pauser factory selects {@link #sleepy()}
+     * or {@link #balanced()} due to limited CPU resources.
+     */
     enum SleepyWarning {
         ; // none
 
