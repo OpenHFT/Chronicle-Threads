@@ -1,0 +1,94 @@
+= Chronicle Threads Operational Controls
+:toc:
+:sectnums:
+:lang: en-GB
+
+== CPU Isolation and Affinity Governance
+
+Why ::
+Latency-sensitive handlers rely on predictable scheduling and cache residency.
+
+Core controls ::
+* Reserve dedicated CPU cores for loops using busy pausers, aligning with documented recommendations (THR-DOC-016).
+* Validate runtime affinity strings against estate topology before deployment (THR-FN-015, THR-FN-017).
+* Record the chosen affinity mapping in run-books so support engineers can confirm compliance during incident response.
+
+Review hot-spots ::
+* K8s or container orchestrators that may reassign cores.
+* BIOS or hypervisor changes that alter NUMA layout.
+* Third-party tooling that repins threads (profilers, debuggers).
+
+== Loop-Block Monitoring and Alerting
+
+Why ::
+A stalled handler compromises all work on its loop and introduces systemic jitter.
+
+Core controls ::
+* Keep the monitor loop enabled in production to enforce execution thresholds (THR-NF-O-018, THR-NF-O-019).
+* Tune `loop.block.threshold.ns` and `MONITOR_INTERVAL_MS` via system properties to reflect acceptable tail latency (THR-OPS-023, THR-OPS-024).
+* Integrate `PauserMonitorFactory` outputs with telemetry collectors so SLO breaches surface quickly (THR-NF-O-021).
+
+Review hot-spots ::
+* Handlers that call out to external services.
+* Contended locks inside business logic.
+* JVM safepoint pauses observable as correlated spikes across all loops.
+
+== Startup, Shutdown, and Recovery
+
+Why ::
+Predictable lifecycle management prevents resource leaks and eases maintenance.
+
+Core controls ::
+* Configure shutdown hooks or explicit close ordering so loops stop gracefully and relinquish resources (THR-FN-002, THR-OPS-025).
+* Use builder precedence rules to override unsuitable host-wide defaults (THR-OPS-024).
+* Include loop topology and handler binding in operational documentation to guide failover drills.
+
+Review hot-spots ::
+* Mutable static state shared across handlers that survives restart.
+* Incomplete handler deregistration causing repeated warnings during shutdown.
+* JVM exit sequences where native resources must release before process termination.
+
+== Configuration Hygiene
+
+Why ::
+Misconfiguration can disable safety features or erode performance targets.
+
+Core controls ::
+* Maintain an allow-listed set of Chronicle Threads system properties and validate them in CI pipelines.
+* Version control default builder profiles for each environment (development, certification, production) and peer review changes.
+* Capture pauser and monitor settings in infrastructure-as-code artefacts to avoid snowflake deployments.
+
+Review hot-spots ::
+* Ad-hoc overrides applied via command-line flags.
+* Legacy scripts that pre-date the Nine-Box taxonomy and omit traceability IDs.
+* Environment variable templating that truncates affinity strings.
+
+== Telemetry and Observability
+
+Why ::
+Workload visibility enables tuning and rapid diagnosis.
+
+Core controls ::
+* Export pauser and loop-block metrics to the organisation-wide metrics pipeline (e.g., Prometheus, Graphite).
+* Correlate Chronicle Threads metrics with downstream components (Queues, Maps) to contextualise latency spikes.
+* Ensure monitor-loop warnings are promoted to actionable alerts rather than suppressed in logs.
+
+Review hot-spots ::
+* Handlers that bypass standard logging frameworks.
+* Log rotation policies that discard stack traces before investigation.
+* Telemetry exporters that share threads with latency-sensitive loops.
+
+== Change Management
+
+Why ::
+Threading behaviour influences end-to-end latency; uncontrolled change increases risk.
+
+Core controls ::
+* Pair configuration modifications with updated documentation and automated tests (THR-OPS-023).
+* Track requirement IDs (e.g., THR-NF-P-027) in change tickets so reviewers can verify continued compliance.
+* Simulate workload impact in a staging environment whenever pausers, affinities, or monitor thresholds change.
+
+Review hot-spots ::
+* Hot fixes applied directly to production nodes.
+* Divergent configuration between active-active sites.
+* Missing rollback plans for affinity or pauser adjustments.

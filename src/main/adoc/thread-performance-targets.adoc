@@ -1,0 +1,68 @@
+= Chronicle Threads Performance Targets
+:toc:
+:sectnums:
+:lang: en-GB
+
+== Scope
+
+This document enumerates the latency, jitter, throughput, and allocation targets for Chronicle Threads and describes how teams must measure and report them. It elaborates the non-functional requirements captured in `project-requirements.adoc` (THR-NF-P-014 through THR-NF-P-031).
+
+== Reference Hardware Profile
+
+Baseline ::
+* Dual-socket x86_64 server, 3.2 GHz or faster, Turbo disabled.
+* 64 GiB RAM, uniform memory access within a socket.
+* Linux kernel 5.15 or newer with `isolcpus`, `nohz_full`, and `rcu_nocbs` tuned for fast cores.
+* OpenJDK 21 LTS, G1 GC, `-XX:+UseNUMA`, `-XX:+AlwaysPreTouch`.
+
+Variations ::
+* ARM64 hosts must document deviations from the x86 baseline and retune thresholds accordingly.
+* Virtualised environments require an additional jitter budget that is recorded alongside benchmark artefacts.
+
+== Target Matrix
+
+[cols="2,3,3",options="header"]
+|===
+|Requirement |Target |Measurement Notes
+|THR-NF-P-027 (Latency) |<= 10 microseconds at 99.99 percentile for single-hop handler runs |Profiling harness schedules 10 million iterations with a busy pauser and isolated core.
+|THR-NF-P-028 (Jitter) |<= 2 microseconds peak-to-peak jitter under steady load |Continuous histogram per handler, sampled via monitor loop over 15 minute windows.
+|THR-NF-P-029 (Throughput) |>= 5 million 64-byte events per second on a fast loop |Benchmark harness dispatches fixed-size payloads, recording sustained processing rate.
+|THR-NF-P-030 (Heap Allocation) |<= 0.1 Bytes per event averaged across handlers |Java Flight Recorder or allocation profiler attached during workload replay.
+|THR-NF-P-014 (Pauser Hot Path) |0 allocations in `Pauser.pause()` / `reset()` |Unit tests instrumented with allocation counters; CI gate fails on non-zero heap activity.
+|THR-NF-P-031 (CPU Utilisation) |Loop CPU utilisation tracks input rate; idle loops drop below 5 percent |Derived from pauser metrics (`timePaused`, `countPaused`); reported via telemetry dashboards.
+|===
+
+== Measurement Methodology
+
+Workload Selection ::
+* Use representative handlers (queue tailer, order matching micro-benchmark, timed maintenance task).
+* Include at least one blocking handler routed to the `BLOCKING` priority to validate segregation.
+
+Warm-up ::
+* Discard initial 30 seconds to allow JIT compilation and cache priming.
+* Verify monitor-loop metrics stabilise before collecting results.
+
+Sampling ::
+* Persist HDR histograms for latency and jitter with 2 decimal microsecond precision.
+* Capture CPU affinity maps and pauser states alongside results to prove configuration fidelity.
+
+Repeatability ::
+* Run each scenario three times; publish mean and worst-case metrics.
+* Store benchmark artefacts in build pipelines so regressions can be bisected.
+
+== Instrumentation Guidelines
+
+* Enable loop-block monitor logging at WARN to capture threshold breaches (THR-NF-O-019).
+* Attach `PauserMonitorFactory` exporters to push pause counts and durations into time-series storage.
+* Tag benchmark runs with Git commit, JVM build, and operating system version for traceability.
+
+== Regression Gates
+
+* CI pipelines must reject changes that exceed any target by more than 5 percent unless accompanied by an approved waiver referencing the relevant requirement ID.
+* Nightly builds execute an extended soak (minimum 8 hours) to surface low-frequency jitter outliers; findings feed into operational run-books.
+
+== Reporting
+
+* Summarise performance results in release notes with explicit references to the requirements satisfied (e.g., "Maintains THR-NF-P-027 latency target").
+* Archive raw benchmark logs and histograms for audit and future tuning.
+* When targets cannot be met on non-reference hardware, document compensating controls and adjustments to operational thresholds.

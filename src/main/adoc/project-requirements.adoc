@@ -3,7 +3,7 @@
 :revdate: 2025-05-25
 :toc:
 :source-highlighter: rouge
-:lang: en=-GB
+:lang: en-GB
 
 == 1 Purpose and Scope
 
@@ -16,7 +16,7 @@ ultra-low-latency, event-driven Java systems.
 *Out of scope* are:
 * Detailed Non-Functional Requirement (NFR) specifications beyond the key performance targets identified in Section 5.
 * Licensing and commercial support details.
-* The detailed product roadmap (though Section 8 outlines potential future enhancements).
+* The detailed product roadmap (though Section 9 outlines potential future enhancements).
 
 == 2 Definitions
 
@@ -124,9 +124,21 @@ They are primarily applicable when using performance-oriented pausers (e.g., `BU
 * `PauserMode.BUSY` SHALL consume 100% of its assigned (and ideally isolated) CPU core.
 * Adaptive pauser modes (e.g., `BALANCED`, `SLEEPY`) SHALL reduce CPU consumption significantly (e.g., target < 20%) when the event loop is idle.
 
-== 6 Use-Case Scenarios
+== 6 Documentation, Testing, and Traceability
 
-=== 6.1 Matching Engine
+[cols="1,4,3",options="header"]
+|===
+|ID |Requirement |Artefact(s)
+|THR-DOC-032 |Publish an architecture overview that illustrates loop composition, handler routing, and affinity guidance, keeping it aligned with the functional catalogue. |link:thread-architecture-overview.adoc[thread-architecture-overview.adoc]
+|THR-DOC-033 |Maintain an operational controls playbook detailing CPU isolation, monitoring thresholds, and configuration precedence so operators can enforce safe defaults. |link:thread-operational-controls.adoc[thread-operational-controls.adoc]
+|THR-DOC-034 |Record security considerations for handler admission, affinity, telemetry integrity, and dependency posture, updating the review after material changes. |link:thread-security-review.adoc[thread-security-review.adoc]
+|THR-DOC-035 |Provide a thread-safety guide that explains confinement rules, hand-off patterns, and testing practices for event loop handlers. |link:thread-thread-safety-guide.adoc[thread-thread-safety-guide.adoc]
+|THR-TEST-036 |Automate benchmark and soak tests that demonstrate compliance with latency, jitter, throughput, and allocation targets. |link:thread-performance-targets.adoc[thread-performance-targets.adoc]
+|===
+
+== 7 Use-Case Scenarios
+
+=== 7.1 Matching Engine
 A financial matching engine processes incoming orders and market data.
 *Multiple* `EventHandler` instances (e.g., for order book management, risk checks, trade execution) share a `HIGH` priority `EventLoop` pinned to an isolated CPU core (Core 2). (Illustrates: THR-FN-005, THR-FN-006, THR-FN-015, THR-NF-P-027)
 A `MEDIUM` priority `EventLoop` on a separate core (Core 3) handles journalling of trades and significant events to Chronicle Queue.
@@ -134,21 +146,26 @@ A `MEDIUM` priority `EventLoop` on a separate core (Core 3) handles journalling 
 A `MONITOR` loop, possibly on a non-isolated core, supervises both application loops.
 (Illustrates: THR-NF-O-018)
 
-=== 6.2 Bursty Telemetry Ingestion
+=== 7.2 Bursty Telemetry Ingestion
 An `EventLoop` configured with a `PauserMode.BALANCED` ingests UDP packets containing telemetry data.
 The `EventHandler` parses these packets (e.g., using Chronicle Wire) and forwards them to a Chronicle Queue for downstream processing.
 During off-peak hours, CPU usage for this loop drops significantly (e.g., below 5%) due to the pauser's adaptive back-off.
 During bursts, it processes events with low latency.
 (Illustrates: THR-FN-010, THR-FN-012, THR-NF-P-031)
 
-== 7 References
+== 8 References
 * Chronicle Threads `README.adoc` (Provides overview, usage examples, and pauser details)
 * `systemProperties.adoc` (Comprehensive list of configurable JVM system properties)
 * `net.openhft.chronicle.core.threads.HandlerPriority` Javadoc (Definitive list of handler priorities)
 * `net.openhft.chronicle.threads.PauserMode` Javadoc (Definitive list of pauser modes)
 * Chronicle Affinity library documentation (For details on CPU binding syntax and capabilities)
+* `thread-architecture-overview.adoc` (Runtime topology)
+* `thread-operational-controls.adoc` (Operational safeguards)
+* `thread-performance-targets.adoc` (Benchmark methodology)
+* `thread-security-review.adoc` (Security posture)
+* `thread-thread-safety-guide.adoc` (Confinement practices)
 
-== 8 Open Issues / Future Enhancements
+== 9 Open Issues / Future Enhancements
 This section lists areas identified for potential future development or requiring further investigation.
 They are not committed functional requirements for the current version.
 
@@ -157,7 +174,7 @@ They are not committed functional requirements for the current version.
 * Live reconfiguration of `Pauser` parameters via JMX or a similar management interface.
 * Enhanced built-in metrics publication mechanisms beyond basic pauser counters and loop-block logs.
 
-== 9 Appendices
+== 10 Appendices
 
 === A Builder Example
 
