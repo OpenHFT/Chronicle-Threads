@@ -58,12 +58,12 @@ Affinity strings supplied via builders control how loops bind to hardware thread
 They accept the Chronicle Affinity syntax, including NUMA-aware layouts (THR-FN-017).
 Example:
 
-```
+----
 EventGroup eg = EventGroup.builder()
         .withName("risk-eg")
         .withBinding("0,2-3")
         .build();
-```
+----
 
 * `0` binds the primary high-priority loop to core 0.
 * `2-3` pins additional loops (e.g., MONITOR or BLOCKING) across cores 2 and 3.

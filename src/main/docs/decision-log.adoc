@@ -20,20 +20,20 @@ Each decision record aims to provide context, the decision itself, its status, r
 * Decision Statement:
 ** Each `EventLoop` instance shall operate on a dedicated Java platform thread.
 ** All `EventHandler` instances registered with a particular `EventLoop` (excluding `BLOCKING` or `CONCURRENT` priority handlers which have their own threading model within an `EventGroup`) are executed serially by this single thread.
-* **Alternatives Considered:**
-** *Multi-threaded Event Loops:*
-*** *Description:* Allow multiple handlers on the same loop to execute concurrently across a thread pool.
-*** *Pros:* Potential for higher throughput on a single loop if handlers are independent and can truly run in parallel.
-*** *Cons:* Requires handlers to be thread-safe, introduces complexity of locks or other concurrency primitives, makes latency less predictable due to potential contention, and increases the difficulty of reasoning about handler state.
-** *Actor Model per Handler:*
-*** *Description:* Each handler instance is an actor with its own queue and thread.
-*** *Pros:* Strong isolation.
-*** *Cons:* Higher resource consumption (threads, queues) and potentially higher message passing overhead compared to direct serialized invocation.
-* **Rationale for Decision:**
+Alternatives Considered ::
+** _Multi-threaded Event Loops:_
+*** _Description:_ Allow multiple handlers on the same loop to execute concurrently across a thread pool.
+*** _Pros:_ Potential for higher throughput on a single loop if handlers are independent and can truly run in parallel.
+*** _Cons:_ Requires handlers to be thread-safe, introduces complexity of locks or other concurrency primitives, makes latency less predictable due to potential contention, and increases the difficulty of reasoning about handler state.
+** _Actor Model per Handler:_
+*** _Description:_ Each handler instance is an actor with its own queue and thread.
+*** _Pros:_ Strong isolation.
+*** _Cons:_ Higher resource consumption (threads, queues) and potentially higher message passing overhead compared to direct serialized invocation.
+Rationale for Decision ::
 ** This model significantly simplifies `EventHandler` implementation, as developers do not need to manage thread-safety within a handler's interaction with its own state or other handlers on the same loop.
 ** It promotes predictable, low-jitter latency by eliminating lock contention in the critical execution path of handlers.
 ** Aligns with the common "thread-per-core" pattern used in low-latency systems.
-* **Impact & Consequences:**
+Impact & Consequences ::
 ** Positive:
 ** Simplifies handler development and testing.
 ** Improves latency predictability for handlers on a given loop.
@@ -44,8 +44,8 @@ Each decision record aims to provide context, the decision itself, its status, r
 (This is mitigated by `EventGroup` allowing `BLOCKING` priority handlers to run in separate, dedicated thread pools).
 * What are the trade-offs made?
 Single core throughput vs. simplicity and low-contention latency.
-* **Notes/Links:**
-*** This decision is fundamental to the design of `VanillaEventLoop` and `MediumEventLoop`.
+Notes/Links ::
+** This decision is fundamental to the design of `VanillaEventLoop` and `MediumEventLoop`.
 
 === THR-NF-P-002: Default to Busy-Spin Pauser for Latency-Critical "Fast Threads"
 
@@ -56,22 +56,22 @@ Single core throughput vs. simplicity and low-contention latency.
 * Decision Statement:
 ** `EventLoop` instances configured for the highest performance (e.g., using `PauserMode.BUSY` or `PauserMode.TIMED_BUSY`) shall employ a busy-spinning (or near busy-spinning) `Pauser` strategy by default.
 ** Alternative pauser modes (`YIELDING`, `BALANCED`, `SLEEPY`, `MILLI`) remain available and are recommended for less latency-sensitive loops or systems with CPU core constraints.
-* **Alternatives Considered:**
-** *Yielding Pauser as Default:*
-*** *Description:* `Thread.yield()` immediately when idle.
-*** *Pros:* More CPU-friendly than busy-spinning.
-*** *Cons:* Introduces higher and less predictable wakeup latency.
-** *Sleeping Pauser as Default:*
-*** *Description:* `LockSupport.parkNanos()` or `Thread.sleep()` immediately when idle.
-*** *Pros:* Lowest CPU usage when idle.
-*** *Cons:* Highest wakeup latency.
-** *Adaptive Pauser (e.g., `BALANCED`) as Default for all:*
-*** *Description:* Uses a mix of spinning, yielding, and sleeping.
-*** *Pros:* Good balance for general use cases.
-*** *Cons:* Not the absolute lowest latency for highly optimized fast threads compared to pure busy-spinning.
-* **Rationale for Decision:**
+Alternatives Considered ::
+** _Yielding Pauser as Default:_
+*** _Description:_ `Thread.yield()` immediately when idle.
+*** _Pros:_ More CPU-friendly than busy-spinning.
+*** _Cons:_ Introduces higher and less predictable wakeup latency.
+** _Sleeping Pauser as Default:_
+*** _Description:_ `LockSupport.parkNanos()` or `Thread.sleep()` immediately when idle.
+*** _Pros:_ Lowest CPU usage when idle.
+*** _Cons:_ Highest wakeup latency.
+** _Adaptive Pauser (e.g., `BALANCED`) as Default for all:_
+*** _Description:_ Uses a mix of spinning, yielding, and sleeping.
+*** _Pros:_ Good balance for general use cases.
+*** _Cons:_ Not the absolute lowest latency for highly optimized fast threads compared to pure busy-spinning.
+Rationale for Decision ::
 ** Busy-spinning keeps the thread's cache hot and avoids the overhead of context switching and OS scheduler-induced delays, leading to the lowest possible reaction time when an event becomes available.
-* **Impact & Consequences:**
+Impact & Consequences ::
 ** Positive:
 ** Achieves minimal event processing latency (p99.99 and tail latencies) for designated fast threads.
 ** Predictable entry into event handler logic once an event is detected.
@@ -81,7 +81,7 @@ This necessitates careful system configuration, including CPU isolation (`isolcp
 ** If not managed properly (e.g., too many busy-spinning threads for available isolated cores), it can degrade overall system performance.
 * What are the trade-offs made?
 Lowest latency vs. high CPU consumption and need for careful system tuning.
-* **Notes/Links:**
+Notes/Links ::
 *** See `Pauser.java`, `BusyPauser.java`, and `PauserMode.java`.
 *** Documented recommendation in `README.adoc` and `project-requirements.adoc` (R4-02).
 
@@ -95,21 +95,21 @@ Lowest latency vs. high CPU consumption and need for careful system tuning.
 ** A background monitoring singleton (`DiskSpaceMonitor`) shall be provided within Chronicle Threads.
 ** This monitor will periodically check disk usage for paths associated with Chronicle components (e.g., queue directories when they are initialized).
 ** Warnings shall be logged via a `NotifyDiskLow` service (defaulting to `NotifyDiskLowLogWarn`) when free disk space drops below a configurable percentage threshold (system property: `chronicle.disk.monitor.threshold.percent`).
-* **Alternatives Considered:**
-** *No built-in monitoring:*
-*** *Description:* Require users to rely solely on external, system-level disk monitoring tools.
-*** *Pros:* Simplifies the library.
-*** *Cons:* Less integrated; users might overlook setting up adequate external monitoring tailored to Chronicle's usage patterns.
-** *More Aggressive Actions:*
-*** *Description:* e.g., halt queue appenders if disk space is critically low.
-*** *Pros:* Could prevent further writes that might lead to immediate crashes.
-*** *Cons:* May be too intrusive for a general-purpose library; such policies are better implemented at the application level.
+Alternatives Considered ::
+** _No built-in monitoring:_
+*** _Description:_ Require users to rely solely on external, system-level disk monitoring tools.
+*** _Pros:_ Simplifies the library.
+*** _Cons:_ Less integrated; users might overlook setting up adequate external monitoring tailored to Chronicle's usage patterns.
+** _More Aggressive Actions:_
+*** _Description:_ e.g., halt queue appenders if disk space is critically low.
+*** _Pros:_ Could prevent further writes that might lead to immediate crashes.
+*** _Cons:_ May be too intrusive for a general-purpose library; such policies are better implemented at the application level.
 The library's role is primarily to inform.
-* **Rationale for Decision:**
+Rationale for Decision ::
 ** Provides a built-in, proactive layer of defense that is easy to enable.
 ** Logging warnings is a non-intrusive way to alert operations without unilaterally halting application functionality.
 ** The `ServiceLoader` mechanism for `NotifyDiskLow` allows for custom notification actions if needed.
-* **Impact & Consequences:**
+Impact & Consequences ::
 ** Positive:
 ** Operations teams receive early warnings of potential storage exhaustion, allowing for proactive intervention.
 ** Reduces the risk of unexpected application failures due to full disks.
@@ -118,7 +118,7 @@ The library's role is primarily to inform.
 ** Effectiveness relies on logs being actively monitored or a custom `NotifyDiskLow` service being implemented for more active notifications.
 * What are the trade-offs made?
 Built-in convenience and basic safety vs. reliance on external monitoring for comprehensive operational alerting.
-* **Notes/Links:**
+Notes/Links ::
 *** See `DiskSpaceMonitor.java`, `NotifyDiskLow.java`, `NotifyDiskLowLogWarn.java`.
 *** Key system properties: `chronicle.disk.monitor.disable`, `chronicle.disk.monitor.threshold.percent`.
 
@@ -131,20 +131,20 @@ Built-in convenience and basic safety vs. reliance on external monitoring for co
 * Decision Statement:
 ** All functional requirements (in `project-requirements.adoc`) and architectural decisions (in this log) shall use identifiers prefixed with `THR-` followed by a tag from the Nine-Box taxonomy (e.g., `FN`, `NF-P`, `OPS`, `DOC`) and a sequential number (e.g., `THR-FN-001`).
 ** The specific Nine-Box tag definitions and usage guidelines are maintained in the project's `AGENTS.md` document.
-* **Alternatives Considered:**
-** *Simple Sequential Numbering (e.g., REQ-001, DEC-001):*
-*** *Description:* Basic sequential IDs.
-*** *Pros:* Very simple to implement.
-*** *Cons:* Provides no information about the type or domain of the item from its ID.
-** *Custom Categorization Scheme:*
-*** *Description:* Develop a project-specific set of categories.
-*** *Pros:* Could be perfectly tailored.
-*** *Cons:* Requires effort to define and maintain; less transferable knowledge if team members work on other projects using different schemes.
-* **Rationale for Decision:**
+Alternatives Considered ::
+** _Simple Sequential Numbering (e.g., REQ-001, DEC-001):_
+*** _Description:_ Basic sequential IDs.
+*** _Pros:_ Very simple to implement.
+*** _Cons:_ Provides no information about the type or domain of the item from its ID.
+** _Custom Categorization Scheme:_
+*** _Description:_ Develop a project-specific set of categories.
+*** _Pros:_ Could be perfectly tailored.
+*** _Cons:_ Requires effort to define and maintain; less transferable knowledge if team members work on other projects using different schemes.
+Rationale for Decision ::
 ** The Nine-Box taxonomy (referenced from `AGENTS.md`) provides a pre-defined, reasonably comprehensive set of categories that are broadly applicable to software development artifacts.
 ** Using this existing scheme promotes consistency if it's adopted across multiple Chronicle Software projects.
 ** Tags in IDs offer immediate insight into the item's domain.
-* **Impact & Consequences:**
+Impact & Consequences ::
 ** Positive:
 ** Improved traceability between requirements, decisions, tests, and potentially code.
 ** Easier for team members to understand the context of an identified item quickly.
@@ -154,5 +154,5 @@ Built-in convenience and basic safety vs. reliance on external monitoring for co
 ** Initial setup of the scheme and guidelines in `AGENTS.md`.
 * What are the trade-offs made?
 Richer categorization and traceability vs. slight learning curve for the taxonomy.
-* **Notes/Links:**
+Notes/Links ::
 *** The Nine-Box taxonomy details are in `AGENTS.md`.

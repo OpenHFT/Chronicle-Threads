@@ -8,11 +8,10 @@
 
 == Purpose and Scope
 
-This document specifies the *functional requirements* for the
-*Chronicle Threads* library (OpenHFT / Chronicle Software).
+This document specifies the _functional requirements_ for the _Chronicle Threads_ library (OpenHFT / Chronicle Software).
 It is aimed at architects, developers, and performance engineers who intend to use Chronicle Threads as the execution engine for ultra-low-latency, event-driven Java systems.
 
-*Out of scope* are:
+_Out of scope_ are:
 * Detailed Non-Functional Requirement (NFR) specifications beyond the key performance targets identified in the <<key-performance-targets,Key Performance Targets>> section.
 * Licensing and commercial support details.
 * The detailed product roadmap (though the <<open-issues,Open Issues / Future Enhancements>> section outlines potential future enhancements).
@@ -21,105 +20,105 @@ It is aimed at architects, developers, and performance engineers who intend to u
 
 [cols="1,3"]
 |===
-|*Term* |*Meaning*
+|_Term_ |_Meaning_
 
-|*EventLoop* |A single-threaded loop that repeatedly invokes `EventHandler` instances.
-|*EventHandler* |Application-provided component that implements `action()`; executed by an `EventLoop`.
-|*EventGroup* |A container that manages one or more `EventLoop`s, potentially including a dedicated monitor loop.
-|*Pauser* |Strategy object that controls how an idle loop waits (e.g., busy-spin, yield, sleep).
-|*Fast Thread* |A thread—usually pinned to an isolated CPU core—running a latency-critical event loop.
-|*Hot Path* / *Fast Path* |The code execution path that is performance-critical and frequently executed, where low latency and minimal overhead are paramount.
-|*Loop-Block Monitor* |Background handler that measures `EventHandler` run-time and logs outliers exceeding a configured threshold.
-|*NUMA* |Non-Uniform Memory Access; a memory architecture where memory access time depends on the memory location relative to a processor.
-|*Chronicle Affinity* |A library used for managing thread affinity, allowing threads to be pinned to specific CPU cores.
+|_EventLoop_ |A single-threaded loop that repeatedly invokes `EventHandler` instances.
+|_EventHandler_ |Application-provided component that implements `action()`; executed by an `EventLoop`.
+|_EventGroup_ |A container that manages one or more `EventLoop`s, potentially including a dedicated monitor loop.
+|_Pauser_ |Strategy object that controls how an idle loop waits (e.g., busy-spin, yield, sleep).
+|_Fast Thread_ |A thread—usually pinned to an isolated CPU core—running a latency-critical event loop.
+|_Hot Path_ / _Fast Path_ |The code execution path that is performance-critical and frequently executed, where low latency and minimal overhead are paramount.
+|_Loop-Block Monitor_ |Background handler that measures `EventHandler` run-time and logs outliers exceeding a configured threshold.
+|_NUMA_ |Non-Uniform Memory Access; a memory architecture where memory access time depends on the memory location relative to a processor.
+|_Chronicle Affinity_ |A library used for managing thread affinity, allowing threads to be pinned to specific CPU cores.
 |===
 
 == Overall Architectural Goals
 
-* Minimise **end-to-end latency** and **jitter** for event processing.
-* Provide a **deterministic single-threaded** execution model for event handlers within an `EventLoop`, removing the need for locks in the hot path of handler logic.
-* Allow **fine-grained control** of the latency versus CPU consumption trade-off.
+* Minimise *end-to-end latency* and *jitter* for event processing.
+* Provide a *deterministic single-threaded* execution model for event handlers within an `EventLoop`, removing the need for locks in the hot path of handler logic.
+* Allow *fine-grained control* of the latency versus CPU consumption trade-off.
 * Integrate effectively with other Chronicle components (e.g., Chronicle Queue, Chronicle Map, Chronicle Wire, Chronicle Services, Chronicle Tune).
 
 == High-Level Functional Requirements
 
 === Event‐Loop Lifecycle and Configuration
 
-. *Creation and Configuration*
-*THR-FN-001* The library SHALL provide builder APIs (e.g., `EventLoopBuilder`, `EventGroupBuilder`) for fluent and immutable configuration of event loops and groups.
-. *Start/Stop Operations*
-*THR-FN-002* An `EventLoop` or `EventGroup` SHALL support idempotent `start()` and graceful `close()` operations.
+. _Creation and Configuration_
+_THR-FN-001_ The library SHALL provide builder APIs (e.g., `EventLoopBuilder`, `EventGroupBuilder`) for fluent and immutable configuration of event loops and groups.
+. _Start/Stop Operations_
+_THR-FN-002_ An `EventLoop` or `EventGroup` SHALL support idempotent `start()` and graceful `close()` operations.
 A graceful `close()` implies that active handlers are allowed to complete their current action, and associated resources are released.
-. *Non-Restartable Loops*
-*THR-FN-003* Attempting to `start()` an `EventLoop` or `EventGroup` that has already been `close()`d SHALL be rejected or have no effect, as loops are not designed to be restartable.
+. _Non-Restartable Loops_
+_THR-FN-003_ Attempting to `start()` an `EventLoop` or `EventGroup` that has already been `close()`d SHALL be rejected or have no effect, as loops are not designed to be restartable.
 
 === Handler Management
 
-. *Dynamic Registration*
-*THR-FN-004* Clients SHALL be able to add an `EventHandler` to a running `EventGroup` at runtime.
-. *Handler Priority*
-*THR-FN-005* Each `EventHandler` SHALL declare a `HandlerPriority`.
+. _Dynamic Registration_
+_THR-FN-004_ Clients SHALL be able to add an `EventHandler` to a running `EventGroup` at runtime.
+. _Handler Priority_
+_THR-FN-005_ Each `EventHandler` SHALL declare a `HandlerPriority`.
 The system SHALL support a range of priorities influencing execution order and/or loop assignment.
 (Refer to `net.openhft.chronicle.core.threads.HandlerPriority` enum for the exhaustive list of priorities, e.g., `HIGH`, `MEDIUM`, `LOW`, `TIMER`, `BLOCKING`, `REPLICATION`, `CONCURRENT`, `MONITOR`, `DAEMON`).
-. *Execution Contract*
-*THR-FN-006* An `EventHandler`'s `action()` method MUST be invoked serially on the `EventLoop`'s dedicated thread.
-*THR-FN-007* The `action()` method MUST return a boolean: `true` if useful work was done (suggesting the handler may have more immediate work), `false` otherwise.
-. *Self-Deregistration*
-*THR-FN-008* An `EventHandler` MAY request its own deregistration from the `EventLoop` by throwing `net.openhft.chronicle.core.threads.InvalidEventHandlerException`.
-. *Error Isolation and Reporting*
-*THR-NF-O-009* Unchecked exceptions thrown by an `EventHandler`'s `action()` method SHALL NOT terminate the `EventLoop` itself.
+. _Execution Contract_
+_THR-FN-006_ An `EventHandler`'s `action()` method MUST be invoked serially on the `EventLoop`'s dedicated thread.
+_THR-FN-007_ The `action()` method MUST return a boolean: `true` if useful work was done (suggesting the handler may have more immediate work), `false` otherwise.
+. _Self-Deregistration_
+_THR-FN-008_ An `EventHandler` MAY request its own deregistration from the `EventLoop` by throwing `net.openhft.chronicle.core.threads.InvalidEventHandlerException`.
+. _Error Isolation and Reporting_
+_THR-NF-O-009_ Unchecked exceptions thrown by an `EventHandler`'s `action()` method SHALL NOT terminate the `EventLoop` itself.
 The offending handler SHALL be removed, and the error SHALL be reported using the standard `net.openhft.chronicle.core.Jvm.warn()` logging mechanism by default.
 
 === Idle Strategy (Pauser)
 
-. *Supported Pauser Modes*
-*THR-FN-010* The library SHALL ship with a set of standard `Pauser` strategies, configurable via `PauserMode` enum values, including at least: `BUSY`, `TIMED_BUSY`, `YIELDING`, `BALANCED`, `MILLI`, and `SLEEPY`.
+. _Supported Pauser Modes_
+_THR-FN-010_ The library SHALL ship with a set of standard `Pauser` strategies, configurable via `PauserMode` enum values, including at least: `BUSY`, `TIMED_BUSY`, `YIELDING`, `BALANCED`, `MILLI`, and `SLEEPY`.
 (Refer to `net.openhft.chronicle.threads.PauserMode.java` and `README.adoc` for details on each mode).
-. *Custom Pauser Pluggability*
-*THR-FN-011* Applications SHALL be able to supply custom `Pauser` implementations via programmatic configuration (e.g., through builder APIs like `EventGroupBuilder.withPauser(Pauser customPauser)`).
-. *Adaptive Back-off Parameterisation*
-*THR-FN-012* Adaptive pausers (such as `LongPauser`, which underpins modes like `BALANCED` and `SLEEPY`) SHALL allow parameterisation of their back-off behaviour, including aspects like minimum busy-spin duration, yield duration, and minimum/maximum sleep times.
-. *TimingPauser Support*
-*THR-NF-O-013* `TimingPauser` implementations (e.g., `LongPauser`, `BusyTimedPauser`) SHALL expose pause-related metrics (e.g., total time paused via `timePaused()`, pause count via `countPaused()`) and SHALL optionally throw `java.util.concurrent.TimeoutException` when a configured timeout duration is exceeded during a timed pause.
-. *Zero-Allocation Hot Path*
-*THR-NF-P-014* The hot path methods `Pauser.pause()` and `Pauser.reset()` for built-in pausers SHALL NOT allocate heap objects.
+. _Custom Pauser Pluggability_
+_THR-FN-011_ Applications SHALL be able to supply custom `Pauser` implementations via programmatic configuration (e.g., through builder APIs like `EventGroupBuilder.withPauser(Pauser customPauser)`).
+. _Adaptive Back-off Parameterisation_
+_THR-FN-012_ Adaptive pausers (such as `LongPauser`, which underpins modes like `BALANCED` and `SLEEPY`) SHALL allow parameterisation of their back-off behaviour, including aspects like minimum busy-spin duration, yield duration, and minimum/maximum sleep times.
+. _TimingPauser Support_
+_THR-NF-O-013_ `TimingPauser` implementations (e.g., `LongPauser`, `BusyTimedPauser`) SHALL expose pause-related metrics (e.g., total time paused via `timePaused()`, pause count via `countPaused()`) and SHALL optionally throw `java.util.concurrent.TimeoutException` when a configured timeout duration is exceeded during a timed pause.
+. _Zero-Allocation Hot Path_
+_THR-NF-P-014_ The hot path methods `Pauser.pause()` and `Pauser.reset()` for built-in pausers SHALL NOT allocate heap objects.
 
 === Thread Affinity and CPU Isolation
 
-. *CPU Affinity API*
-*THR-FN-015* The library SHALL provide mechanisms to bind `EventLoop` threads to specific CPU cores, utilizing Chronicle Affinity.
+. _CPU Affinity API_
+_THR-FN-015_ The library SHALL provide mechanisms to bind `EventLoop` threads to specific CPU cores, utilizing Chronicle Affinity.
 This SHALL be configurable via builder APIs (e.g., `EventGroupBuilder.withBinding(String affinity)`).
-. *CPU Isolation Guidance*
-*THR-DOC-016* Documentation (`README.adoc`) SHALL recommend OS-level isolation of CPU cores (e.g., using `isolcpus` on Linux) for `EventLoop` threads when latency-sensitive pausers (like `PauserMode.BUSY` or `PauserMode.TIMED_BUSY`) are used, to minimize jitter.
-. *NUMA Awareness*
-*THR-FN-017* Builders SHOULD allow configuration that facilitates pinning `EventLoop` threads to specific NUMA nodes.
+. _CPU Isolation Guidance_
+_THR-DOC-016_ Documentation (`README.adoc`) SHALL recommend OS-level isolation of CPU cores (e.g., using `isolcpus` on Linux) for `EventLoop` threads when latency-sensitive pausers (like `PauserMode.BUSY` or `PauserMode.TIMED_BUSY`) are used, to minimize jitter.
+. _NUMA Awareness_
+_THR-FN-017_ Builders SHOULD allow configuration that facilitates pinning `EventLoop` threads to specific NUMA nodes.
 This is typically achieved via the `binding` string syntax provided to Chronicle Affinity, which can specify core layouts respecting NUMA topology.
 
 === Monitoring and Diagnostics
 
-. *Loop Block Monitoring*
-*THR-NF-O-018* For an `EventGroup`, a dedicated monitor loop (e.g., `MonitorEventLoop`) SHALL, by default, measure the wall-clock duration of `EventHandler` invocations on other event loops within the group.
-*THR-NF-O-019* If an `EventHandler`'s `action()` method duration exceeds a configurable threshold (defaulting to a value specified by `loop.block.threshold.ns`), the framework SHALL capture and log a stack trace of the event loop thread executing that handler.
-. *Monitoring Configuration Toggles*
-*THR-OPS-020* Loop block monitoring MAY be disabled globally via a system property (e.g., `disableLoopBlockMonitor=true`).
+. _Loop Block Monitoring_
+_THR-NF-O-018_ For an `EventGroup`, a dedicated monitor loop (e.g., `MonitorEventLoop`) SHALL, by default, measure the wall-clock duration of `EventHandler` invocations on other event loops within the group.
+_THR-NF-O-019_ If an `EventHandler`'s `action()` method duration exceeds a configurable threshold (defaulting to a value specified by `loop.block.threshold.ns`), the framework SHALL capture and log a stack trace of the event loop thread executing that handler.
+. _Monitoring Configuration Toggles_
+_THR-OPS-020_ Loop block monitoring MAY be disabled globally via a system property (e.g., `disableLoopBlockMonitor=true`).
 The monitoring interval SHALL also be configurable (e.g., `MONITOR_INTERVAL_MS`).
-. *Pauser Metrics Accessibility*
-*THR-NF-O-021* Key metrics from `Pauser` instances, such as `timePaused()` and `countPaused()`, SHALL be programmatically accessible.
+. _Pauser Metrics Accessibility_
+_THR-NF-O-021_ Key metrics from `Pauser` instances, such as `timePaused()` and `countPaused()`, SHALL be programmatically accessible.
 Implementations of `PauserMonitorFactory` MAY provide handlers to monitor and log these.
-. *Low-Overhead Monitoring*
-*THR-NF-P-022* When all `EventHandler` invocations are within their execution thresholds, the loop block monitoring mechanism MUST impose negligible overhead (target < 1 us overhead per monitored loop per second, excluding logging actions if a threshold is breached).
+. _Low-Overhead Monitoring_
+_THR-NF-P-022_ When all `EventHandler` invocations are within their execution thresholds, the loop block monitoring mechanism MUST impose negligible overhead (target < 1 us overhead per monitored loop per second, excluding logging actions if a threshold is breached).
 
 === Configuration and Deployment
 
-. *System Property Overrides*
-*THR-OPS-023* Default behaviours and parameters (e.g., pauser modes, monitor intervals, logging thresholds) SHALL be overridable via JVM system properties.
+. _System Property Overrides_
+_THR-OPS-023_ Default behaviours and parameters (e.g., pauser modes, monitor intervals, logging thresholds) SHALL be overridable via JVM system properties.
 (Refer to `systemProperties.adoc` for a comprehensive list; Appendix B provides examples).
-. *Programmatic Configuration Precedence*
-*THR-OPS-024* Programmatic configurations provided via builder APIs SHALL take precedence over global system property settings.
-. *Graceful JVM Shutdown Hook*
-*THR-OPS-025* An `EventGroup` instance, when configured appropriately (e.g., via `((net.openhft.chronicle.core.io.AbstractCloseable) eventGroup).addShutdownHook(true)`), SHALL attempt to `close()` automatically on JVM exit.
-. *JDK Compatibility*
-*THR-NF-O-026* Chronicle Threads SHALL run on Java 11 LTS or newer.
+. _Programmatic Configuration Precedence_
+_THR-OPS-024_ Programmatic configurations provided via builder APIs SHALL take precedence over global system property settings.
+. _Graceful JVM Shutdown Hook_
+_THR-OPS-025_ An `EventGroup` instance, when configured appropriately (e.g., via `((net.openhft.chronicle.core.io.AbstractCloseable) eventGroup).addShutdownHook(true)`), SHALL attempt to `close()` automatically on JVM exit.
+. _JDK Compatibility_
+_THR-NF-O-026_ Chronicle Threads SHALL run on Java 11 LTS or newer.
 The library SHALL default to using platform threads.
 While aiming for compatibility with JDK Project Loom (virtual threads) for suitable use cases (e.g., blocking handlers not requiring core affinity), full support and affinity guarantees with virtual threads depend on JDK evolution and are subject to considerations detailed in the <<open-issues,Open Issues / Future Enhancements>> section.
 
@@ -129,12 +128,12 @@ While aiming for compatibility with JDK Project Loom (virtual threads) for suita
 These non-functional targets guide the design and optimization of Chronicle Threads for ultra-low-latency scenarios.
 They are primarily applicable when using performance-oriented pausers (e.g., `BUSY`) on suitably configured systems (e.g., with isolated cores).
 
-*THR-NF-P-027* **Latency:** Single-hop message processing through an event handler SHALL target <= 10 us at the 99.99th percentile on commodity x86_64 hardware with a busy pauser and isolated cores.
-*THR-NF-P-028* **Jitter:** Peak-to-peak variation in handler execution time SHALL target <= 2 us under steady load conditions for well-behaved handlers.
-*THR-NF-P-029* **Throughput:** A single "fast core" `EventLoop` SHALL be capable of processing >= 5 million simple (e.g., 64-byte payload) events per second.
-*THR-NF-P-030* **Heap Allocation:** In the hot path of event processing (i.e., within the `EventLoop` and `EventHandler.action()` calls for common use cases), heap allocation SHALL target <= 0.1 Bytes per event on average.
+_THR-NF-P-027_ *Latency:* Single-hop message processing through an event handler SHALL target <= 10 us at the 99.99th percentile on commodity x86_64 hardware with a busy pauser and isolated cores.
+_THR-NF-P-028_ *Jitter:* Peak-to-peak variation in handler execution time SHALL target <= 2 us under steady load conditions for well-behaved handlers.
+_THR-NF-P-029_ *Throughput:* A single "fast core" `EventLoop` SHALL be capable of processing >= 5 million simple (e.g., 64-byte payload) events per second.
+_THR-NF-P-030_ *Heap Allocation:* In the hot path of event processing (i.e., within the `EventLoop` and `EventHandler.action()` calls for common use cases), heap allocation SHALL target <= 0.1 Bytes per event on average.
 Pauser hot paths are covered by THR-NF-P-014.
-*THR-NF-P-031* **CPU Utilisation:**
+_THR-NF-P-031_ *CPU Utilisation:*
 * `PauserMode.BUSY` SHALL consume 100% of its assigned (and ideally isolated) CPU core.
 * Adaptive pauser modes (e.g., `BALANCED`, `SLEEPY`) SHALL reduce CPU consumption significantly (e.g., target < 20%) when the event loop is idle.
 
@@ -155,7 +154,7 @@ Pauser hot paths are covered by THR-NF-P-014.
 === Matching Engine
 
 A financial matching engine processes incoming orders and market data.
-*Multiple* `EventHandler` instances (e.g., for order book management, risk checks, trade execution) share a `HIGH` priority `EventLoop` pinned to an isolated CPU core (Core 2).
+_Multiple_ `EventHandler` instances (e.g., for order book management, risk checks, trade execution) share a `HIGH` priority `EventLoop` pinned to an isolated CPU core (Core 2).
 (Illustrates: THR-FN-005, THR-FN-006, THR-FN-015, THR-NF-P-027) A `MEDIUM` priority `EventLoop` on a separate core (Core 3) handles journalling of trades and significant events to Chronicle Queue.
 (Illustrates: THR-FN-005, THR-FN-015) A `MONITOR` loop, possibly on a non-isolated core, supervises both application loops.
 (Illustrates: THR-NF-O-018)
@@ -187,7 +186,7 @@ During bursts, it processes events with low latency.
 This section lists areas identified for potential future development or requiring further investigation.
 They are not committed functional requirements for the current version.
 
-* Support for **carrier-thread reuse** with JDK virtual threads while retaining affinity guarantees where possible.
+* Support for *carrier-thread reuse* with JDK virtual threads while retaining affinity guarantees where possible.
 * First-class asynchronous I/O helper components to better integrate frameworks like Netty or `java.nio.channels` directly with `EventLoop`s.
 * Live reconfiguration of `Pauser` parameters via JMX or a similar management interface.
 * Enhanced built-in metrics publication mechanisms beyond basic pauser counters and loop-block logs.
@@ -222,7 +221,7 @@ For a comprehensive list, refer to the `systemProperties.adoc` document.
 
 [cols="1,3"]
 |===
-|*Property* |*Effect / Default (Illustrative)*
+|_Property_ |_Effect / Default (Illustrative)_
 
 |`pauserMode` |Global override for default pauser selection (e.g., `busy`, `balanced`). Used if not specified by builder.
 |`loop.block.threshold.ns` |Nanoseconds before a handler invocation is flagged as a block (Default: 100,000,000 ns = 100 ms).
