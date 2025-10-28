@@ -36,7 +36,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
     @Test
     void testAddingTwoEventHandlersBeforeStartingLoopIsThreadSafe() {
         for (int i = 0; i < 10_000; i++) {
-            try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true,"", VanillaEventLoop.ALLOWED_PRIORITIES)) {
+            try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, "", VanillaEventLoop.ALLOWED_PRIORITIES)) {
                 CyclicBarrier barrier = new CyclicBarrier(2);
                 IntStream.range(0, 2).parallel()
                         .forEach(ignored -> {
@@ -91,7 +91,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
     }
 
     void addingHandlerBeforeStart(CountingHandler handler) {
-        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
+        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null, VanillaEventLoop.ALLOWED_PRIORITIES)) {
 
             // Add the handler.
             eventLoop.addHandler(handler);
@@ -134,7 +134,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
     }
 
     void addingHandlerAfterStart(CountingHandler handler) {
-        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
+        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null, VanillaEventLoop.ALLOWED_PRIORITIES)) {
 
             // Start the loop.
             eventLoop.start();
@@ -143,7 +143,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
             // Add the handler.
             eventLoop.addHandler(handler);
 
-            Waiters.waitForCondition("Loop started called",() -> (handler.loopStartedCalled() > 0), 5000);
+            Waiters.waitForCondition("Loop started called", () -> (handler.loopStartedCalled() > 0), 5000);
 
             // Check the handler.
             assertEquals(1, handler.loopStartedCalled());
@@ -178,7 +178,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
     }
 
     void throwingHandlerAddedBeforeStart(ThrowingHandler handler) {
-        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
+        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null, VanillaEventLoop.ALLOWED_PRIORITIES)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
             expectException(HANDLER_CLOSE_EXCEPTION_TXT);
@@ -226,7 +226,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
     }
 
     void throwingHandlerAddingAfterStart(ThrowingHandler handler) {
-        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
+        try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null, VanillaEventLoop.ALLOWED_PRIORITIES)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
             expectException(HANDLER_CLOSE_EXCEPTION_TXT);
@@ -286,7 +286,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
     void concurrentStartStopDoesNoThrowError() throws ExecutionException, InterruptedException {
         ExecutorService es = Executors.newCachedThreadPool();
         for (int i = 0; i < 100; i++) {
-            try (VanillaEventLoop vanillaEventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
+            try (VanillaEventLoop vanillaEventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null, VanillaEventLoop.ALLOWED_PRIORITIES)) {
                 final Future<?> starter = es.submit(vanillaEventLoop::start);
                 final Future<?> stopper = es.submit(vanillaEventLoop::stop);
                 starter.get();
@@ -296,7 +296,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
         ExecutorServiceUtil.shutdownAndWaitForTermination(es);
     }
 
-    private static class NoOpHandler implements EventHandler {
+    private static final class NoOpHandler implements EventHandler {
 
         @Override
         public boolean action() {

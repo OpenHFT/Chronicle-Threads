@@ -47,7 +47,7 @@ import static net.openhft.chronicle.threads.Threads.*;
  * {@link net.openhft.chronicle.core.threads.HandlerPriority#BLOCKING}
  * are accepted but treated the same as blocking handlers.</p>
  */
-public class BlockingEventLoop extends AbstractLifecycleEventLoop implements EventLoop {
+public class BlockingEventLoop extends AbstractLifecycleEventLoop {
 
     @NotNull
     private transient final EventLoop parent;
@@ -106,7 +106,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         try {
             final Runner runner = new Runner(handler, pauserSupplier.get());
             runners.add(runner);
-            service.submit(runner);
+            service.execute(runner);
 
         } catch (RejectedExecutionException e) {
             if (!service.isShutdown())
@@ -161,7 +161,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     @Override
     public boolean isRunningOnThread(Thread thread) {
-        for (int i=0; i < runners.size(); i++) {
+        for (int i = 0; i < runners.size(); i++) {
             if (thread == runners.get(i).thread()) {
                 return true;
             }
@@ -175,7 +175,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         private boolean endedGracefully = false;
         private transient volatile Thread thread = null;
 
-        public Runner(final EventHandler handler, Pauser pauser) {
+        Runner(final EventHandler handler, Pauser pauser) {
             this.handler = handler;
             this.pauser = pauser;
         }
@@ -195,7 +195,9 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 }
                 endedGracefully = true;
             } catch (InvalidEventHandlerException e) {
-                // expected and logged below.
+                if (Jvm.isDebugEnabled(handler.getClass())) {
+                    Jvm.debug().on(handler.getClass(), "Handler removed after InvalidEventHandlerException");
+                }
             } catch (Throwable t) {
                 if (!isClosed())
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw ", t);

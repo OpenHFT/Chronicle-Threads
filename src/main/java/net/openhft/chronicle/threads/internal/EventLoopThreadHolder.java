@@ -19,6 +19,7 @@ package net.openhft.chronicle.threads.internal;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.threads.CoreEventLoop;
 import net.openhft.chronicle.threads.ThreadHolder;
+
 /**
  * {@link ThreadHolder} implementation used to monitor a single event loop
  * thread.  It keeps track of how long the loop has been running and requests a
@@ -70,7 +71,7 @@ public class EventLoopThreadHolder implements ThreadHolder {
     @Override
     public void dumpThread(long startedNS, long nowNS) {
         long blockingTimeNS = nowNS - startedNS;
-        double blockingTimeMS = blockingTimeNS / 100_000 / 10.0;
+        double blockingTimeMS = blockingTimeNS / 1_000_000.0;
         if (blockingTimeMS <= 0.0)
             return;
         eventLoop.dumpRunningState(eventLoop.name() + " thread has blocked for "

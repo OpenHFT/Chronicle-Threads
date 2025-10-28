@@ -152,7 +152,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
             // Add the handler.
             eventLoop.addHandler(handler);
 
-            Waiters.waitForCondition("Loop started called",() -> (handler.loopStartedCalled() > 0), 5000);
+            Waiters.waitForCondition("Loop started called", () -> (handler.loopStartedCalled() > 0), 5000);
 
             // Check the handler.
             assertEquals(1, handler.loopStartedCalled());
@@ -305,7 +305,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
         ExecutorServiceUtil.shutdownAndWaitForTermination(es);
     }
 
-    private static class NoOpHandler implements EventHandler {
+    private static final class NoOpHandler implements EventHandler {
 
         @Override
         public boolean action() {

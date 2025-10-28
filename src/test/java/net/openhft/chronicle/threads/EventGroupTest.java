@@ -41,7 +41,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.Collections.singleton;
-import static net.openhft.chronicle.core.io.Closeable.*;
+import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -621,7 +621,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         abstract void throwIt() throws InvalidEventHandlerException;
     }
 
-    private static class PausingBlockingEventHandler implements EventHandler {
+    private static final class PausingBlockingEventHandler implements EventHandler {
         @Override
         public boolean action() {
             LockSupport.parkNanos(Long.MAX_VALUE);

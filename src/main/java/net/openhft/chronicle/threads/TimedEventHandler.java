@@ -41,7 +41,9 @@ import org.jetbrains.annotations.NotNull;
  * </pre>
  */
 public abstract class TimedEventHandler implements EventHandler {
-    /** next scheduled run time in {@link System#nanoTime()} units. */
+    /**
+     * next scheduled run time in {@link System#nanoTime()} units.
+     */
     private long nextRunNS = 0;
 
     /**

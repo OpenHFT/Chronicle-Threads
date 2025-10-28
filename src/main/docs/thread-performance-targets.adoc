@@ -5,7 +5,8 @@
 
 == Scope
 
-This document enumerates the latency, jitter, throughput, and allocation targets for Chronicle Threads and describes how teams must measure and report them. It elaborates the non-functional requirements captured in `project-requirements.adoc` (THR-NF-P-014 through THR-NF-P-031).
+This document enumerates the latency, jitter, throughput, and allocation targets for Chronicle Threads and describes how teams must measure and report them.
+It elaborates the non-functional requirements captured in `project-requirements.adoc` (THR-NF-P-014 through THR-NF-P-031).
 
 == Reference Hardware Profile
 

@@ -53,12 +53,12 @@ public class ThreadsThreadHolder implements ThreadHolder {
     /**
      * Create an instance configured to monitor the supplied thread.
      *
-     * @param description   text appended to log messages
-     * @param timeLimitNS   threshold in nanoseconds before logging occurs
-     * @param timeSupplier  provides the current time
+     * @param description    text appended to log messages
+     * @param timeLimitNS    threshold in nanoseconds before logging occurs
+     * @param timeSupplier   provides the current time
      * @param threadSupplier supplies the thread to observe
-     * @param logEnabled    predicate controlling whether logging happens
-     * @param logConsumer   receives the formatted log message
+     * @param logEnabled     predicate controlling whether logging happens
+     * @param logConsumer    receives the formatted log message
      */
     public ThreadsThreadHolder(String description, long timeLimitNS, LongSupplier timeSupplier, Supplier<Thread> threadSupplier, BooleanSupplier logEnabled, Consumer<String> logConsumer) {
         this.description = description;
@@ -91,7 +91,8 @@ public class ThreadsThreadHolder implements ThreadHolder {
 
     @Override
     public void monitorThreadDelayed(long actionCallDelayNS) {
-        logConsumer.accept("Monitor thread for " + getName() + " cpuId: " + Affinity.getCpu() + " was delayed by " + actionCallDelayNS / 100000 / 10.0 + " ms");
+        double delayedMs = Math.round((actionCallDelayNS / 1_000_000.0) * 10.0) / 10.0;
+        logConsumer.accept("Monitor thread for " + getName() + " cpuId: " + Affinity.getCpu() + " was delayed by " + delayedMs + " ms");
     }
 
     @Override
@@ -124,10 +125,9 @@ public class ThreadsThreadHolder implements ThreadHolder {
      * @param timeInNS The time in nanoseconds
      * @return The time in milliseconds represented as a float with limited precision
      */
-    @SuppressWarnings(/* we mean to do the integer division first */
-            {"java:S2184", "IntegerDivisionInFloatingPointContext"})
     static double nanosecondsToMillisWithTenthsPrecision(long timeInNS) {
-        return (timeInNS / 100_000) / 10d;
+        double millis = timeInNS / 1_000_000.0;
+        return Math.round(millis * 10.0) / 10.0;
     }
 
     @Override

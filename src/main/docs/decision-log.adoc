@@ -40,8 +40,10 @@ Each decision record aims to provide context, the decision itself, its status, r
 ** Facilitates easier reasoning about application state managed by handlers.
 ** Negative:
 ** The throughput of a single `EventLoop` is limited by a single CPU core.
-** A misbehaving (long-running or blocking) handler on a standard event loop can starve other handlers on the same loop. (This is mitigated by `EventGroup` allowing `BLOCKING` priority handlers to run in separate, dedicated thread pools).
-* What are the trade-offs made? Single core throughput vs. simplicity and low-contention latency.
+** A misbehaving (long-running or blocking) handler on a standard event loop can starve other handlers on the same loop.
+(This is mitigated by `EventGroup` allowing `BLOCKING` priority handlers to run in separate, dedicated thread pools).
+* What are the trade-offs made?
+Single core throughput vs. simplicity and low-contention latency.
 * **Notes/Links:**
 *** This decision is fundamental to the design of `VanillaEventLoop` and `MediumEventLoop`.
 
@@ -74,9 +76,11 @@ Each decision record aims to provide context, the decision itself, its status, r
 ** Achieves minimal event processing latency (p99.99 and tail latencies) for designated fast threads.
 ** Predictable entry into event handler logic once an event is detected.
 ** Negative:
-** Consumes 100% of a CPU core, even when idle. This necessitates careful system configuration, including CPU isolation (`isolcpus`) and ensuring enough cores are available for other system tasks and less critical threads.
+** Consumes 100% of a CPU core, even when idle.
+This necessitates careful system configuration, including CPU isolation (`isolcpus`) and ensuring enough cores are available for other system tasks and less critical threads.
 ** If not managed properly (e.g., too many busy-spinning threads for available isolated cores), it can degrade overall system performance.
-* What are the trade-offs made? Lowest latency vs. high CPU consumption and need for careful system tuning.
+* What are the trade-offs made?
+Lowest latency vs. high CPU consumption and need for careful system tuning.
 * **Notes/Links:**
 *** See `Pauser.java`, `BusyPauser.java`, and `PauserMode.java`.
 *** Documented recommendation in `README.adoc` and `project-requirements.adoc` (R4-02).
@@ -99,7 +103,8 @@ Each decision record aims to provide context, the decision itself, its status, r
 ** *More Aggressive Actions:*
 *** *Description:* e.g., halt queue appenders if disk space is critically low.
 *** *Pros:* Could prevent further writes that might lead to immediate crashes.
-*** *Cons:* May be too intrusive for a general-purpose library; such policies are better implemented at the application level. The library's role is primarily to inform.
+*** *Cons:* May be too intrusive for a general-purpose library; such policies are better implemented at the application level.
+The library's role is primarily to inform.
 * **Rationale for Decision:**
 ** Provides a built-in, proactive layer of defense that is easy to enable.
 ** Logging warnings is a non-intrusive way to alert operations without unilaterally halting application functionality.
@@ -111,7 +116,8 @@ Each decision record aims to provide context, the decision itself, its status, r
 ** Negative:
 ** The monitor consumes minimal system resources (one background thread, periodic I/O for disk checks).
 ** Effectiveness relies on logs being actively monitored or a custom `NotifyDiskLow` service being implemented for more active notifications.
-* What are the trade-offs made? Built-in convenience and basic safety vs. reliance on external monitoring for comprehensive operational alerting.
+* What are the trade-offs made?
+Built-in convenience and basic safety vs. reliance on external monitoring for comprehensive operational alerting.
 * **Notes/Links:**
 *** See `DiskSpaceMonitor.java`, `NotifyDiskLow.java`, `NotifyDiskLowLogWarn.java`.
 *** Key system properties: `chronicle.disk.monitor.disable`, `chronicle.disk.monitor.threshold.percent`.
@@ -146,6 +152,7 @@ Each decision record aims to provide context, the decision itself, its status, r
 ** Negative:
 ** Requires team members to be familiar with the Nine-Box taxonomy and apply it consistently.
 ** Initial setup of the scheme and guidelines in `AGENTS.md`.
-* What are the trade-offs made? Richer categorization and traceability vs. slight learning curve for the taxonomy.
+* What are the trade-offs made?
+Richer categorization and traceability vs. slight learning curve for the taxonomy.
 * **Notes/Links:**
 *** The Nine-Box taxonomy details are in `AGENTS.md`.

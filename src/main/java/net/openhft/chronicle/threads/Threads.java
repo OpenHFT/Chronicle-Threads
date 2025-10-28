@@ -249,7 +249,7 @@ public enum Threads {
 
             for (Object o : objects) {
                 Thread t = Jvm.getValue(o, "thread");
-                if (t.getState() != State.TERMINATED)
+                if (t != null && t.getState() != State.TERMINATED)
                     consumer.accept(t);
             }
         } catch (Exception e) {
@@ -283,7 +283,7 @@ public enum Threads {
                 }
             }
         } catch (IllegalAccessException | IllegalArgumentException error) {
-            // We can't access the field, move on
+            Jvm.debug().on(Threads.class, "Unable to resolve delegated executor: " + error);
         }
         return executorService;
     }

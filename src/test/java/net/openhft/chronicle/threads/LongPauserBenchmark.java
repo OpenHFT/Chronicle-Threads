@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Benchmark used to gauge the overhead of waking a {@link LongPauser}.
- *
+ * <p>
  * A helper thread loops calling {@link LongPauser#pause()} and then yields.
  * The main thread repeatedly invokes {@link LongPauser#unpause()} a fixed
  * number of times and measures the elapsed time. Dividing the total by the

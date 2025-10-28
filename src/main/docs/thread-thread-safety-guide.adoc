@@ -5,7 +5,8 @@
 
 == Scope
 
-This guide explains how Chronicle Threads enforces single-threaded handler execution and how developers should structure code that interacts with event loops. It expands on requirements THR-FN-006 through THR-NF-O-009 and aligns with Chronicle Core's `SingleThreadedChecked` utilities.
+This guide explains how Chronicle Threads enforces single-threaded handler execution and how developers should structure code that interacts with event loops.
+It expands on requirements THR-FN-006 through THR-NF-O-009 and aligns with Chronicle Core's `SingleThreadedChecked` utilities.
 
 == Event Loop Ownership Model
 
@@ -17,9 +18,11 @@ This guide explains how Chronicle Threads enforces single-threaded handler execu
 
 Initialise :: Construct handlers and supporting resources on the main thread, then call `singleThreadedCheckReset()` before registering them with the target loop.
 
-Operate :: Once registered, treat handler state as confined to the loop's thread. All mutations should occur inside `action()` or helper methods invoked from that loop.
+Operate :: Once registered, treat handler state as confined to the loop's thread.
+All mutations should occur inside `action()` or helper methods invoked from that loop.
 
-Dispose :: Use `InvalidEventHandlerException.reusable()` to self-deregister when the handler has completed its lifecycle (THR-FN-008). Ensure downstream resources honour Chronicle Core's `Closeable` and `ReferenceCounted` contracts.
+Dispose :: Use `InvalidEventHandlerException.reusable()` to self-deregister when the handler has completed its lifecycle (THR-FN-008).
+Ensure downstream resources honour Chronicle Core's `Closeable` and `ReferenceCounted` contracts.
 
 == Interaction with Shared Services
 
@@ -33,7 +36,8 @@ Unchecked exceptions ::
 * The loop removes the offending handler and logs via `Jvm.warn()`; implement catch-and-report patterns where recovery is possible (THR-NF-O-009).
 
 Timeouts ::
-* Use monitor-loop thresholds to detect blocked handlers early (THR-NF-O-018). Handlers can emit domain-specific heartbeats to aid diagnosis.
+* Use monitor-loop thresholds to detect blocked handlers early (THR-NF-O-018).
+Handlers can emit domain-specific heartbeats to aid diagnosis.
 
 Defensive coding ::
 * Validate external inputs before entering tight loops to avoid unbounded CPU usage.

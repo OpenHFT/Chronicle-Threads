@@ -77,11 +77,6 @@ public class VanillaEventLoop extends MediumEventLoop {
         this.priorities = EnumSet.copyOf(priorities);
     }
 
-    public static void closeAll(@NotNull final List<EventHandler> handlers) {
-        // do not remove the handler here, remove all at end instead
-        Closeable.closeQuietly(handlers);
-    }
-
     private static void clearUsedByThread(@NotNull EventHandler handler) {
         if (handler instanceof AbstractCloseable)
             ((AbstractCloseable) handler).singleThreadedCheckReset();
@@ -165,47 +160,41 @@ public class VanillaEventLoop extends MediumEventLoop {
      * Routes new handlers to the appropriate queue. TIMER handlers are placed
      * in {@code timerHandlers} and DAEMON handlers go to {@code daemonHandlers}.
      */
-    @SuppressWarnings("fallthrough")
     @Override
     protected void addNewHandler(@NotNull final EventHandler handler) {
-        final HandlerPriority t1 = handler.priority();
-        switch (t1.alias()) {
-            case HIGH:
-                if (updateHighHandler(handler)) {
-                    break;
-                } else {
-                    Jvm.warn().on(getClass(), "Only one high handler supported was " + highHandler + ", treating " + handler + " as MEDIUM");
-                    // fall through to MEDIUM
-                }
+        HandlerPriority alias = handler.priority().alias();
+        boolean highHandled = false;
+        if (alias == HandlerPriority.HIGH) {
+            if (updateHighHandler(handler)) {
+                highHandled = true;
+            } else {
+                Jvm.warn().on(getClass(), "Only one high handler supported was " + highHandler + ", treating " + handler + " as MEDIUM");
+                alias = HandlerPriority.MEDIUM;
+            }
+        }
 
-            case MEDIUM:
-                if (!mediumHandlers.contains(handler)) {
-                    clearUsedByThread(handler);
-                    eventLoopQuietly(parent != null ? parent : this, handler);
-                    mediumHandlers.add(handler);
-                    mediumHandlers.sort(Comparator.comparing(EventHandler::priority).reversed());
-                    updateMediumHandlersArray();
-                }
-                break;
-
-            case TIMER:
-                if (!timerHandlers.contains(handler)) {
-                    clearUsedByThread(handler);
-                    eventLoopQuietly(parent != null ? parent : this, handler);
-                    timerHandlers.add(handler);
-                }
-                break;
-
-            case DAEMON:
-                if (!daemonHandlers.contains(handler)) {
-                    clearUsedByThread(handler);
-                    eventLoopQuietly(parent != null ? parent : this, handler);
-                    daemonHandlers.add(handler);
-                }
-                break;
-
-            default:
-                throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
+        if (!highHandled && alias == HandlerPriority.MEDIUM) {
+            if (!mediumHandlers.contains(handler)) {
+                clearUsedByThread(handler);
+                eventLoopQuietly(parent != null ? parent : this, handler);
+                mediumHandlers.add(handler);
+                mediumHandlers.sort(Comparator.comparing(EventHandler::priority).reversed());
+                updateMediumHandlersArray();
+            }
+        } else if (!highHandled && alias == HandlerPriority.TIMER) {
+            if (!timerHandlers.contains(handler)) {
+                clearUsedByThread(handler);
+                eventLoopQuietly(parent != null ? parent : this, handler);
+                timerHandlers.add(handler);
+            }
+        } else if (!highHandled && alias == HandlerPriority.DAEMON) {
+            if (!daemonHandlers.contains(handler)) {
+                clearUsedByThread(handler);
+                eventLoopQuietly(parent != null ? parent : this, handler);
+                daemonHandlers.add(handler);
+            }
+        } else if (!highHandled) {
+            throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
         }
 
         if (thread == Thread.currentThread()) {
@@ -241,8 +230,8 @@ public class VanillaEventLoop extends MediumEventLoop {
 
     @Override
     protected void closeAllHandlers() {
-        closeAll(daemonHandlers);
-        closeAll(timerHandlers);
+        MediumEventLoop.closeAll(daemonHandlers);
+        MediumEventLoop.closeAll(timerHandlers);
         super.closeAllHandlers();
     }
 

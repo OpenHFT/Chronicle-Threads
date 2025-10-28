@@ -32,9 +32,9 @@ public enum ThreadMonitors {
     /**
      * Create a monitor for a single thread.
      *
-     * @param description   text used in log messages
-     * @param timeLimit     threshold in nanoseconds before a stack trace is logged
-     * @param timeSupplier  supplies the current time, usually {@link System#nanoTime}
+     * @param description    text used in log messages
+     * @param timeLimit      threshold in nanoseconds before a stack trace is logged
+     * @param timeSupplier   supplies the current time, usually {@link System#nanoTime}
      * @param threadSupplier returns the thread to observe
      * @return a monitor handler for installation on a monitor loop
      */
@@ -74,9 +74,9 @@ public enum ThreadMonitors {
     /**
      * Create a monitor aimed at a service thread.
      *
-     * @param description   text used in log messages
-     * @param timeLimit     threshold in nanoseconds before a stack trace is logged
-     * @param timeSupplier  supplies the current time
+     * @param description    text used in log messages
+     * @param timeLimit      threshold in nanoseconds before a stack trace is logged
+     * @param timeSupplier   supplies the current time
      * @param threadSupplier returns the thread to observe
      * @return a monitor handler for installation on a monitor loop
      */

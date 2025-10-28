@@ -15,9 +15,12 @@
  */
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.threads.*;
+import net.openhft.chronicle.core.threads.EventLoop;
+import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.testframework.Waiters;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static net.openhft.chronicle.threads.TestEventHandlers.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -89,7 +92,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
 
     @Test
     void testGoodHandlerAddedBeforeStart() {
-        for(HandlerPriority priority : HandlerPriority.values()) {
+        for (HandlerPriority priority : HandlerPriority.values()) {
             addGoodHandlerBeforeStart(new CountingHandler(priority));
         }
     }
@@ -104,7 +107,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             // Add the handler.
             eventGroup.addHandler(handler);
 
-            Waiters.waitForCondition("Wait handler loopStarted called:" + handler.priority,() -> (handler.loopStartedCalled() > 0), 5000);
+            Waiters.waitForCondition("Wait handler loopStarted called:" + handler.priority, () -> (handler.loopStartedCalled() > 0), 5000);
 
             // Check the handler.
             assertEquals(1, handler.loopStartedCalled());
@@ -131,7 +134,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
 
     @Test
     void testGoodHandlerAddedAfterStart() {
-        for(HandlerPriority priority : HandlerPriority.values()) {
+        for (HandlerPriority priority : HandlerPriority.values()) {
             addGoodHandlerAfterStart(new CountingHandler(priority));
         }
     }
@@ -223,7 +226,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             eventGroup.addHandler(handler);
 
             // Wait for the handler to be removed.
-            Waiters.waitForCondition("Wait handler loopStarted called:" + handler.priority,() -> (handler.closeCalled() > 0), 5000);
+            Waiters.waitForCondition("Wait handler loopStarted called:" + handler.priority, () -> (handler.closeCalled() > 0), 5000);
 
             // Event loop is running.
             assertTrue(eventGroup.isAlive());
@@ -280,7 +283,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
 
             // Add the new handler. It should be picked up by the event loop and exception in eventLoop logged and ignored.
             eventGroup.addHandler(handler);
-            Waiters.waitForCondition("Wait handler loopStarted called:" + handler.priority,() -> (handler.loopStartedCalled() > 0), 5000);
+            Waiters.waitForCondition("Wait handler loopStarted called:" + handler.priority, () -> (handler.loopStartedCalled() > 0), 5000);
 
             // Check the handler.
             assertEquals(1, handler.loopStartedCalled());

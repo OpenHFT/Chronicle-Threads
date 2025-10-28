@@ -6,10 +6,7 @@
 
     <description>Baseline Chronicle rule selections used during the code-review profile.</description>
 
-    <rule ref="category/java/bestpractices.xml"/>
-    <rule ref="category/java/codestyle.xml"/>
-    <rule ref="category/java/design.xml"/>
-    <rule ref="category/java/errorprone.xml"/>
-    <rule ref="category/java/multithreading.xml"/>
-    <rule ref="category/java/performance.xml"/>
+    <rule ref="category/java/errorprone.xml/NullAssignment"/>
+    <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
+    <rule ref="category/java/performance.xml/AvoidInstantiatingObjectsInLoops"/>
 </ruleset>

@@ -21,10 +21,9 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import net.openhft.chronicle.testframework.Waiters;
+import net.openhft.chronicle.threads.TestEventHandlers.CountingHandler;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
-
-import net.openhft.chronicle.threads.TestEventHandlers.CountingHandler;
 
 import java.util.EnumSet;
 import java.util.concurrent.CountDownLatch;

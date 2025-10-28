@@ -30,13 +30,19 @@ import net.openhft.chronicle.core.Jvm;
 public enum EventLoopUtil {
     ; // none
 
-    /** Fallback when {@code eventloop.accept.mod} is not set. */
+    /**
+     * Fallback when {@code eventloop.accept.mod} is not set.
+     */
     private static final int DEFAULT_ACCEPT_HANDLER_MOD_COUNT = 128;
 
-    /** Interval for re-adding accept handlers. */
+    /**
+     * Interval for re-adding accept handlers.
+     */
     public static final int ACCEPT_HANDLER_MOD_COUNT =
             Jvm.getInteger("eventloop.accept.mod", DEFAULT_ACCEPT_HANDLER_MOD_COUNT);
 
-    /** True when accept handler re-arming is active. */
+    /**
+     * True when accept handler re-arming is active.
+     */
     public static final boolean IS_ACCEPT_HANDLER_MOD_COUNT = ACCEPT_HANDLER_MOD_COUNT > 0;
 }

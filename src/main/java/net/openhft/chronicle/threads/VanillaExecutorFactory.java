@@ -30,7 +30,9 @@ import java.util.concurrent.ScheduledExecutorService;
  * always single-threaded.</p>
  */
 public enum VanillaExecutorFactory implements ExecutorFactory {
-    /** sole instance used by default */
+    /**
+     * sole instance used by default
+     */
     INSTANCE;
 
     @Override

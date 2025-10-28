@@ -8,7 +8,9 @@
     <Match>
         <Class name="net.openhft.chronicle.threads.LongPauser"/>
         <Bug pattern="AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE"/>
-        <Comment>THR-SB-310: LongPauser metrics collected on owner thread; suppression maintained until pauser refactor.</Comment>
+        <Comment>THR-SB-310: LongPauser metrics collected on owner thread; suppression maintained until pauser
+            refactor.
+        </Comment>
     </Match>
     <Match>
         <Class name="net.openhft.chronicle.threads.LongPauser"/>
@@ -33,7 +35,8 @@
     <Match>
         <Class name="net.openhft.chronicle.threads.MediumEventLoop"/>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Comment>THR-SB-312: Exposing worker thread required for diagnostics APIs; reviewed with platform team.</Comment>
+        <Comment>THR-SB-312: Exposing worker thread required for diagnostics APIs; reviewed with platform team.
+        </Comment>
     </Match>
     <Match>
         <Class name="net.openhft.chronicle.threads.MediumEventLoop"/>
@@ -53,21 +56,29 @@
     <Match>
         <Class name="net.openhft.chronicle.threads.BlockingEventLoop"/>
         <Bug pattern="EI_EXPOSE_REP2"/>
-        <Comment>THR-SB-314: BlockingEventLoop keeps parent reference for lifecycle coordination; replacement tracked in THR-314.</Comment>
+        <Comment>THR-SB-314: BlockingEventLoop keeps parent reference for lifecycle coordination; replacement tracked in
+            THR-314.
+        </Comment>
     </Match>
     <Match>
         <Class name="net.openhft.chronicle.threads.EventGroup"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Comment>THR-SB-315: Constructor closes partial resources before rethrowing; reviewed with platform maintainers.</Comment>
+        <Comment>THR-SB-315: Constructor closes partial resources before rethrowing; reviewed with platform
+            maintainers.
+        </Comment>
     </Match>
     <Match>
         <Class name="net.openhft.chronicle.threads.EventGroup"/>
         <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION"/>
-        <Comment>THR-SB-315: waitToStart deliberately rethrows TimeoutException to preserve legacy behaviour; follow-up tracked with THR-315.</Comment>
+        <Comment>THR-SB-315: waitToStart deliberately rethrows TimeoutException to preserve legacy behaviour; follow-up
+            tracked with THR-315.
+        </Comment>
     </Match>
     <Match>
         <Class name="net.openhft.chronicle.threads.DiskSpaceMonitor"/>
         <Bug pattern="ME_ENUM_FIELD_SETTER"/>
-        <Comment>THR-SB-401: Setter remains public to maintain backwards compatibility for DiskSpaceMonitor configuration.</Comment>
+        <Comment>THR-SB-401: Setter remains public to maintain backwards compatibility for DiskSpaceMonitor
+            configuration.
+        </Comment>
     </Match>
 </FindBugsFilter>

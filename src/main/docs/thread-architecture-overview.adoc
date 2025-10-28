@@ -5,11 +5,13 @@
 
 == Purpose
 
-This guide explains how Chronicle Threads composes event loops, handlers, pausers, and monitoring into a cohesive runtime so that engineers can reason about placement, affinity, and operational behaviour. It complements the functional catalogue in `project-requirements.adoc` and provides concrete design cues for solution architects.
+This guide explains how Chronicle Threads composes event loops, handlers, pausers, and monitoring into a cohesive runtime so that engineers can reason about placement, affinity, and operational behaviour.
+It complements the functional catalogue in `project-requirements.adoc` and provides concrete design cues for solution architects.
 
 == Event Loop Topologies
 
-Chronicle Threads organises work into named `EventLoop` instances that the `EventGroup` manages (THR-FN-001). Each loop is single-threaded for handler execution (THR-FN-006) and is categorised by handler priority (THR-FN-005).
+Chronicle Threads organises work into named `EventLoop` instances that the `EventGroup` manages (THR-FN-001).
+Each loop is single-threaded for handler execution (THR-FN-006) and is categorised by handler priority (THR-FN-005).
 
 ....
  EventGroup
@@ -23,27 +25,38 @@ Chronicle Threads organises work into named `EventLoop` instances that the `Even
    +-- MonitorLoop[MONITOR] -> observes loop-block latency and pauser metrics
 ....
 
-Handlers attach to the loop whose priority matches their declared `HandlerPriority`. An `EventGroup` materialises blocking and monitor loops only when required. Applications can deploy multiple `EventGroup` instances in the same JVM to isolate subsystems whilst sharing pauser implementations.
+Handlers attach to the loop whose priority matches their declared `HandlerPriority`.
+An `EventGroup` materialises blocking and monitor loops only when required.
+Applications can deploy multiple `EventGroup` instances in the same JVM to isolate subsystems whilst sharing pauser implementations.
 
 == Handler Lifecycle and Serial Execution
 
-Handlers are added at runtime via `EventGroup.addHandler()` (THR-FN-004). The loop invokes each handler serially, ensuring stateful logic can remain lock-free (THR-FN-006). The handler signals its progress via the boolean return value of `action()` (THR-FN-007). Self-removal uses `InvalidEventHandlerException` (THR-FN-008); the loop removes the handler, logs through the standard `Jvm` channel, and continues running (THR-NF-O-009).
+Handlers are added at runtime via `EventGroup.addHandler()` (THR-FN-004).
+The loop invokes each handler serially, ensuring stateful logic can remain lock-free (THR-FN-006).
+The handler signals its progress via the boolean return value of `action()` (THR-FN-007).
+Self-removal uses `InvalidEventHandlerException` (THR-FN-008); the loop removes the handler, logs through the standard `Jvm` channel, and continues running (THR-NF-O-009).
 
-Handlers should bound their execution time so that monitor loops can flag outliers reliably (THR-NF-O-018). Long-running work belongs on the `BLOCKING` priority where independent threads handle it. When reconfiguring a live loop, call `EventLoop.addHandler()` on the owning loop thread or rely on the concurrency-safe wrappers provided by `EventGroup`.
+Handlers should bound their execution time so that monitor loops can flag outliers reliably (THR-NF-O-018).
+Long-running work belongs on the `BLOCKING` priority where independent threads handle it.
+When reconfiguring a live loop, call `EventLoop.addHandler()` on the owning loop thread or rely on the concurrency-safe wrappers provided by `EventGroup`.
 
 == Pauser Strategy and Scheduler Interaction
 
-Pausers implement the idle strategy for each loop and are configured via builders or per-loop overrides (THR-FN-010, THR-FN-011). Adaptive pausers expose tuning parameters that balance busy-spin and sleeping phases (THR-FN-012) while exposing metrics for observability (THR-NF-O-013, THR-NF-O-021).
+Pausers implement the idle strategy for each loop and are configured via builders or per-loop overrides (THR-FN-010, THR-FN-011).
+Adaptive pausers expose tuning parameters that balance busy-spin and sleeping phases (THR-FN-012) while exposing metrics for observability (THR-NF-O-013, THR-NF-O-021).
 
 * `BUSY` / `TIMED_BUSY`: Bind to isolated cores, targeting nanosecond wake-up latency (THR-DOC-016).
 * `BALANCED` / `SLEEPY`: Combine spin, yield, and park for mixed workloads.
 * Custom: Provide a bespoke `Pauser` for domain-specific throttling.
 
-Hot paths avoid allocations (THR-NF-P-014) so a pauser change cannot introduce garbage. Each loop records the time spent paused, supporting utilisation diagnostics.
+Hot paths avoid allocations (THR-NF-P-014) so a pauser change cannot introduce garbage.
+Each loop records the time spent paused, supporting utilisation diagnostics.
 
 == Affinity and NUMA Alignment
 
-Affinity strings supplied via builders control how loops bind to hardware threads (THR-FN-015). They accept the Chronicle Affinity syntax, including NUMA-aware layouts (THR-FN-017). Example:
+Affinity strings supplied via builders control how loops bind to hardware threads (THR-FN-015).
+They accept the Chronicle Affinity syntax, including NUMA-aware layouts (THR-FN-017).
+Example:
 
 ```
 EventGroup eg = EventGroup.builder()
@@ -55,21 +68,25 @@ EventGroup eg = EventGroup.builder()
 * `0` binds the primary high-priority loop to core 0.
 * `2-3` pins additional loops (e.g., MONITOR or BLOCKING) across cores 2 and 3.
 
-When multiple `EventGroup` instances coexist, coordinate bindings to avoid core contention. Document selected affinities alongside deployment manifests so operators can validate CPU isolation.
+When multiple `EventGroup` instances coexist, coordinate bindings to avoid core contention.
+Document selected affinities alongside deployment manifests so operators can validate CPU isolation.
 
 == Monitoring Plane
 
-Each `EventGroup` provisions a monitor loop that samples execution times and resets pausers at configurable intervals (THR-NF-O-018, THR-NF-O-019, THR-OPS-020). The monitor loop:
+Each `EventGroup` provisions a monitor loop that samples execution times and resets pausers at configurable intervals (THR-NF-O-018, THR-NF-O-019, THR-OPS-020).
+The monitor loop:
 
 * Measures handler invocation duration, logging stack traces for breaches.
 * Publishes pauser metrics through configured `PauserMonitorFactory` hooks.
 * Responds to system properties that disable or tune monitoring (THR-OPS-023).
 
-The monitoring loop is not latency-critical but must keep pace with the core loops to avoid stale diagnostics. Ensure JVM logging levels capture WARN messages from monitor handlers in production.
+The monitoring loop is not latency-critical but must keep pace with the core loops to avoid stale diagnostics.
+Ensure JVM logging levels capture WARN messages from monitor handlers in production.
 
 == Integration Touchpoints
 
-Chronicle Threads commonly underpins Chronicle Queue tailers, Chronicle Map maintenance tasks, and application-specific pipelines. When integrating:
+Chronicle Threads commonly underpins Chronicle Queue tailers, Chronicle Map maintenance tasks, and application-specific pipelines.
+When integrating:
 
 * Use `net.openhft.chronicle.core.io.Closeable` semantics to align handler lifecycle with queue appenders or tailers.
 * Combine telemetry exports with the monitor loop to funnel utilisation metrics to the estate-wide monitoring system.

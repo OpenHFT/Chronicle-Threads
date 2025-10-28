@@ -58,6 +58,7 @@ public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
      * @param priority    priority to assign or {@code null} for the JVM default
      * @param inEventLoop mark threads as part of an event loop for monitoring
      */
+    @SuppressWarnings("PMD.NullAssignment")
     public NamedThreadFactory(String name, Boolean daemon, Integer priority, boolean inEventLoop) {
         super(name);
         this.nameShadow = name;

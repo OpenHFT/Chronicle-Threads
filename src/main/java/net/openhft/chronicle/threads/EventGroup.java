@@ -66,9 +66,7 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * eg.start();
  * </pre>
  */
-public class EventGroup
-        extends AbstractLifecycleEventLoop
-        implements EventLoop {
+public class EventGroup extends AbstractLifecycleEventLoop {
 
     public static final int CONC_THREADS = Jvm.getInteger("eventGroup.conc.threads",
             Jvm.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
@@ -97,7 +95,7 @@ public class EventGroup
     private VanillaEventLoop replication;
 
     @Deprecated(/* Instead use EventGroupBuilder. TODO: make package-private and undeprecate in x.28, as only EventGroupBuilder should be using */)
-    @SuppressWarnings({"this-escape", "deprecation"})
+    @SuppressWarnings({"PMD.NullAssignment", "this-escape", "deprecation"})
     public EventGroup(final boolean daemon,
                       @NotNull final Pauser pauser,
                       final Pauser replicationPauser,
@@ -256,12 +254,11 @@ public class EventGroup
                 getReplication().addHandler(handler);
                 break;
 
-            case CONCURRENT: {
+            case CONCURRENT:
                 if (concThreads.isEmpty())
                     throw new IllegalStateException("Cannot add CONCURRENT " + handler + " to " + name);
                 getConcThread(counter.getAndIncrement() % concThreads.size()).addHandler(handler);
                 break;
-            }
 
             default:
                 throw new IllegalArgumentException("Unknown priority " + handler.priority());
@@ -406,8 +403,8 @@ public class EventGroup
     @Override
     public boolean isRunningOnThread(Thread thread) {
         return core != null && core.isRunningOnThread(thread) ||
-               blocking != null && blocking.isRunningOnThread(thread) ||
-               monitor.isRunningOnThread(thread);
+                blocking != null && blocking.isRunningOnThread(thread) ||
+                monitor.isRunningOnThread(thread);
     }
 
     @Override
