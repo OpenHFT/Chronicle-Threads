@@ -24,10 +24,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class DiskSpaceMonitorTest extends ThreadsTestCommon {
@@ -92,4 +99,56 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
         Thread.sleep(1000);
     }
 
+    @Test
+    public void notifyIteratorForwardsToAllDelegates() throws Exception {
+        Constructor<?> constructor = Class.forName("net.openhft.chronicle.threads.DiskSpaceMonitor$NotifyDiskLowIterator")
+                .getDeclaredConstructor(java.util.List.class);
+        constructor.setAccessible(true);
+
+        RecordingNotify first = new RecordingNotify();
+        RecordingNotify second = new RecordingNotify();
+        NotifyDiskLow aggregator = (NotifyDiskLow) constructor.newInstance(Arrays.asList(first, second));
+
+        FileStore store = Files.getFileStore(Paths.get("."));
+        aggregator.warning(72.5, store);
+        aggregator.panic(store);
+
+        for (RecordingNotify entry : Arrays.asList(first, second)) {
+            assertTrue(entry.warningCalled);
+            assertEquals(72.5, entry.lastWarningPercent, 0.001);
+            assertSame(store, entry.lastStore);
+            assertTrue(entry.panicCalled);
+        }
+    }
+
+    @Test
+    public void publicSetterRetainsConfiguredThreshold() {
+        int original = DiskSpaceMonitor.INSTANCE.getThresholdPercentage();
+        try {
+            DiskSpaceMonitor.INSTANCE.setThresholdPercentage(17);
+            assertEquals(17, DiskSpaceMonitor.INSTANCE.getThresholdPercentage());
+        } finally {
+            DiskSpaceMonitor.INSTANCE.setThresholdPercentage(original);
+        }
+    }
+
+    private static final class RecordingNotify implements NotifyDiskLow {
+        boolean panicCalled;
+        boolean warningCalled;
+        double lastWarningPercent;
+        FileStore lastStore;
+
+        @Override
+        public void panic(FileStore fileStore) {
+            panicCalled = true;
+            lastStore = fileStore;
+        }
+
+        @Override
+        public void warning(double diskSpaceFullPercent, FileStore fileStore) {
+            warningCalled = true;
+            lastWarningPercent = diskSpaceFullPercent;
+            lastStore = fileStore;
+        }
+    }
 }

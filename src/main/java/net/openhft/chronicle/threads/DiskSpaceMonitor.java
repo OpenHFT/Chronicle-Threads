@@ -67,7 +67,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
     final ScheduledExecutorService executor;
-    private int thresholdPercentage = Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 5);
+    private volatile int thresholdPercentage = Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 5);
     private TimeProvider timeProvider = SystemTimeProvider.INSTANCE;
 
     DiskSpaceMonitor() {
@@ -117,7 +117,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                 return;
             }
         }
-        DiskAttributes da = diskAttributesMap.computeIfAbsent(fs, DiskAttributes::new);
+        diskAttributesMap.computeIfAbsent(fs, DiskAttributes::new);
 
         final long tookUs = (timeProvider.currentTimeNanos() - start) / 1_000;
         if (tookUs > TIME_TAKEN_WARN_THRESHOLD_US)
@@ -191,7 +191,8 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                 notifyDiskLow.panic(fileStore);
 
             } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage / 100) {
-                final double diskSpaceFull = ((long) (1000d * (totalSpace - unallocatedBytes) / totalSpace + 0.999)) / 10.0;
+                final double usedFraction = (double) (totalSpace - unallocatedBytes) / (double) totalSpace;
+                final double diskSpaceFull = Math.round(usedFraction * 1000.0) / 10.0;
                 notifyDiskLow.warning(diskSpaceFull, fileStore);
 
             } else {
@@ -199,8 +200,10 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                 timeNextCheckedMS = now + (unallocatedBytes >> 20);
             }
             long time = System.nanoTime() - start;
-            if (time > 1_000_000)
-                Jvm.perf().on(getClass(), "Took " + time / 10_000 / 100.0 + " ms to check the disk space of " + fileStore);
+            if (time > 1_000_000) {
+                double millis = time / 1_000_000.0;
+                Jvm.perf().on(getClass(), "Took " + millis + " ms to check the disk space of " + fileStore);
+            }
         }
     }
 

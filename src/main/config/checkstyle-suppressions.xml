@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<suppressions>
+    <!-- THR-CST-101: Existing API relies on package-visible members; review after scheduler refactor -->
+    <suppress checks="VisibilityModifier" files="net/openhft/chronicle/threads/.*"/>
+
+    <!-- THR-CST-102: Legacy control flow intentionally omits braces; capture cleanup in THR-312 -->
+    <suppress checks="NeedBraces" files="net/openhft/chronicle/threads/.*"/>
+
+    <!-- THR-CST-103: String composition retained for logging clarity; monitor under THR-313 -->
+    <suppress checks="OperatorWrap" files="net/openhft/chronicle/threads/.*"/>
+
+    <!-- THR-CST-104: Retain longer lines until formatter update lands (THR-314) -->
+    <suppress checks="LineLength" files="net/openhft/chronicle/threads/.*"/>
+
+    <!-- THR-CST-105: Console output in examples kept for documentation parity; THR-315 tracks replacement -->
+    <suppress checks="Regexp" files="net/openhft/chronicle/threads/.*"/>
+
+    <!-- THR-CST-106: Wildcard imports retained across threads package until formatter cleanup (THR-320) -->
+    <suppress checks="AvoidStarImport" files="net/openhft/chronicle/threads/.*"/>
+
+    <!-- THR-CST-107: Redundant modifiers in tests will be tidied during THR-316 -->
+    <suppress checks="RedundantModifier" files="net/openhft/chronicle/threads/.*Test.*"/>
+
+    <!-- THR-CST-108: DiskSpaceMonitor needs wildcard imports until legacy ServiceLoader cleanup (THR-401) -->
+    <suppress checks="AvoidStarImport" files="net/openhft/chronicle/threads/DiskSpaceMonitor.java"/>
+
+    <!-- THR-CST-109: DiskSpaceMonitor notifier iterator remains public for ServiceLoader compatibility; revisit in THR-401 -->
+    <suppress checks="RedundantModifier" files="net/openhft/chronicle/threads/DiskSpaceMonitor.java"/>
+</suppressions>
