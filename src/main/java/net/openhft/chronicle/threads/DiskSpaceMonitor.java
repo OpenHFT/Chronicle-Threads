@@ -142,6 +142,14 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         return thresholdPercentage;
     }
 
+    /**
+     * Retains a public setter so callers can adjust the low disk warning threshold.
+     *
+     * <p>The legacy API expects {@link #INSTANCE} to expose threshold tuning, so the method
+     * remains public instead of adopting package-private visibility.</p>
+     *
+     * @param thresholdPercentage percentage of capacity that triggers a warning
+     */
     public void setThresholdPercentage(int thresholdPercentage) {
         this.thresholdPercentage = thresholdPercentage;
     }
