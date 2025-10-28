@@ -81,4 +81,14 @@
             configuration.
         </Comment>
     </Match>
+    <Match>
+        <Class name="net.openhft.chronicle.threads.DiskSpaceMonitor"/>
+        <Bug pattern="MS_EXPOSE_REP"/>
+        <Comment>THR-SB-402: Enum values() exposure accepted to preserve JVM generated API; callers obtain defensive copies.</Comment>
+    </Match>
+    <Match>
+        <Class name="net.openhft.chronicle.threads.internal.EventLoopStateRenderer"/>
+        <Bug pattern="MS_EXPOSE_REP"/>
+        <Comment>THR-SB-403: Enum values() exposure required for diagnostic rendering; review tracked alongside renderer refit.</Comment>
+    </Match>
 </FindBugsFilter>
