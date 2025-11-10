@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -47,7 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class StopVCloseTest extends ThreadsTestCommon {
 
     @BeforeEach
-    public void handlersInit() {
+    void handlersInit() {
         ignoreException("Monitoring a task which has finished ");
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
     }
@@ -58,7 +62,7 @@ public class StopVCloseTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void eventGroupStop() {
+    void eventGroupStop() {
         final EnumSet<HandlerPriority> allPriorities = EnumSet.allOf(HandlerPriority.class);
         try (final EventLoop eventGroup = EventGroup.builder()
                 .withConcurrentThreadsNum(1)
@@ -102,7 +106,7 @@ public class StopVCloseTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void blockingStopped() throws InterruptedException {
+    void blockingStopped() throws InterruptedException {
         BlockingEventLoop bel = new BlockingEventLoop("blocking");
         bel.start();
         BlockingQueue<String> q = new LinkedBlockingQueue<>();

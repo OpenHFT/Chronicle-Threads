@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -24,10 +28,10 @@ import java.util.concurrent.TimeoutException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class YieldingPauserTest extends ThreadsTestCommon {
+class YieldingPauserTest extends ThreadsTestCommon {
 
     @Test
-    public void pause() {
+    void pause() {
         final int pauseTimeMillis = 100;
         final YieldingPauser tp = new YieldingPauser(pauseTimeMillis);
         for (int i = 0; i < 10; i++) {

@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -99,7 +103,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
         }
     }
 
-    void addingHandlerBeforeStart(CountingHandler handler) {
+    private void addingHandlerBeforeStart(CountingHandler handler) {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
 
             // Add the handler.
@@ -142,7 +146,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
         addingHandlerBeforeStart(new CountingHandler(HandlerPriority.HIGH));
     }
 
-    void addingHandlerAfterStart(CountingHandler handler) {
+    private void addingHandlerAfterStart(CountingHandler handler) {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
 
             // Start the loop.
@@ -186,7 +190,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
         addingHandlerAfterStart(new CountingHandler(HandlerPriority.HIGH));
     }
 
-    void throwingHandlerAddedBeforeStart(ThrowingHandler handler) {
+    private void throwingHandlerAddedBeforeStart(ThrowingHandler handler) {
 
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
@@ -234,7 +238,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
         throwingHandlerAddedBeforeStart(new ThrowingHandler(HandlerPriority.HIGH, false, false));
     }
 
-    void throwingHandlerAddingAfterStart(ThrowingHandler handler) {
+    private void throwingHandlerAddingAfterStart(ThrowingHandler handler) {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);

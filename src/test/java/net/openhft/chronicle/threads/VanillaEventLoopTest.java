@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -90,7 +94,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
         }
     }
 
-    void addingHandlerBeforeStart(CountingHandler handler) {
+    private void addingHandlerBeforeStart(CountingHandler handler) {
         try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
 
             // Add the handler.
@@ -133,7 +137,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
         addingHandlerBeforeStart(new CountingHandler(HandlerPriority.DAEMON));
     }
 
-    void addingHandlerAfterStart(CountingHandler handler) {
+    private void addingHandlerAfterStart(CountingHandler handler) {
         try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
 
             // Start the loop.
@@ -177,7 +181,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
         addingHandlerAfterStart(new CountingHandler(HandlerPriority.DAEMON));
     }
 
-    void throwingHandlerAddedBeforeStart(ThrowingHandler handler) {
+    private void throwingHandlerAddedBeforeStart(ThrowingHandler handler) {
         try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
@@ -225,7 +229,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
         throwingHandlerAddedBeforeStart(new ThrowingHandler(HandlerPriority.DAEMON, false, false));
     }
 
-    void throwingHandlerAddingAfterStart(ThrowingHandler handler) {
+    private void throwingHandlerAddingAfterStart(ThrowingHandler handler) {
         try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null,VanillaEventLoop.ALLOWED_PRIORITIES)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);

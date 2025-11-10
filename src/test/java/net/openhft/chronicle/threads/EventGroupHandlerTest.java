@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -34,14 +38,14 @@ import static org.junit.jupiter.api.Assertions.*;
 class EventGroupHandlerTest extends ThreadsTestCommon {
 
     @BeforeEach
-    public void beforeAll() {
+    void beforeAll() {
         ignoreException("Monitoring a task which has finished ");
         // Initial delay defaults to 10secs. Set to 10ms for testing.
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10;
     }
 
     @AfterEach
-    public void afterEach() {
+    void afterEach() {
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
     }
 
@@ -51,7 +55,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
         return EventGroup.builder().withName(EVENT_GROUP_NAME).withDaemon(true).build();
     }
 
-    void addGoodHandlerBeforeStart(CountingHandler handler) {
+    private void addGoodHandlerBeforeStart(CountingHandler handler) {
 
         try (final EventLoop eventGroup = createEventGroup()) {
             assertEquals(EVENT_GROUP_NAME, eventGroup.name());
@@ -94,7 +98,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
         }
     }
 
-    void addGoodHandlerAfterStart(CountingHandler handler) {
+    private void addGoodHandlerAfterStart(CountingHandler handler) {
         try (final EventLoop eventGroup = createEventGroup()) {
 
             // Start the loop.
@@ -136,7 +140,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
         }
     }
 
-    void addThrowingHandlerLoopStartedBeforeStart(CountingHandler handler) {
+    private void addThrowingHandlerLoopStartedBeforeStart(CountingHandler handler) {
         try (final EventLoop eventGroup = createEventGroup()) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
@@ -207,7 +211,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
         addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.CONCURRENT, false, false));
     }
 
-    void addThrowingHandlerAfterEventLoopStarted(CountingHandler handler) {
+    private void addThrowingHandlerAfterEventLoopStarted(CountingHandler handler) {
         try (final EventLoop eventGroup = createEventGroup()) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
@@ -268,7 +272,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
         addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.CONCURRENT, false, false));
     }
 
-    void addThrowingEventLoopAfterEventLoopStarted(CountingHandler handler) {
+    private void addThrowingEventLoopAfterEventLoopStarted(CountingHandler handler) {
         try (final EventLoop eventGroup = createEventGroup()) {
             expectException(HANDLER_EVENT_LOOP_EXCEPTION_TXT);
 

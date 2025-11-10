@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -45,7 +49,7 @@ public class ThreadsTestCommon {
         AbstractReferenceCounted.enableReferenceTracing();
     }
 
-    public void assertReferencesReleased() {
+    private void assertReferencesReleased() {
         AbstractReferenceCounted.assertReferencesReleased();
     }
 
@@ -54,7 +58,7 @@ public class ThreadsTestCommon {
         threadDump = new ThreadDump();
     }
 
-    public void checkThreadDump() {
+    private void checkThreadDump() {
         threadDump.assertNoNewThreads();
     }
 
@@ -63,27 +67,27 @@ public class ThreadsTestCommon {
         exceptions = Jvm.recordExceptions();
     }
 
-    public void ignoreException(String message) {
+    void ignoreException(String message) {
         ignoreException(k -> contains(k.message, message) || (k.throwable != null && k.throwable.getMessage().contains(message)), message);
     }
 
-    static boolean contains(String text, String message) {
+    private static boolean contains(String text, String message) {
         return text != null && text.contains(message);
     }
 
-    public void expectException(String message) {
+    void expectException(String message) {
         expectException(k -> contains(k.message, message) || (k.throwable != null && contains(k.throwable.getMessage(), message)), message);
     }
 
-    public void ignoreException(Predicate<ExceptionKey> predicate, String description) {
+    private void ignoreException(Predicate<ExceptionKey> predicate, String description) {
         ignoreExceptions.put(predicate, description);
     }
 
-    public void expectException(Predicate<ExceptionKey> predicate, String description) {
+    private void expectException(Predicate<ExceptionKey> predicate, String description) {
         expectedExceptions.put(predicate, description);
     }
 
-    public void checkExceptions() {
+    private void checkExceptions() {
         for (Map.Entry<Predicate<ExceptionKey>, String> expectedException : expectedExceptions.entrySet()) {
             if (!exceptions.keySet().removeIf(expectedException.getKey()))
                 throw new AssertionError("No error for " + expectedException.getValue());
@@ -104,12 +108,12 @@ public class ThreadsTestCommon {
         }
     }
 
-    public void assertExceptionThrown(String message) {
+    void assertExceptionThrown(String message) {
         String description = format("No exception found containing string `%s`", message);
         assertExceptionThrown(k -> k.message.contains(message) || (k.throwable != null && k.throwable.getMessage().contains(message)), description);
     }
 
-    public void assertExceptionThrown(Predicate<ExceptionKey> predicate, String description) {
+    private void assertExceptionThrown(Predicate<ExceptionKey> predicate, String description) {
         for (ExceptionKey key : exceptions.keySet()) {
             if (predicate.test(key)) {
                 return;
@@ -133,9 +137,9 @@ public class ThreadsTestCommon {
         tearDown();
     }
 
-    protected void preAfter() throws InterruptedException {
+    void preAfter() throws InterruptedException {
     }
 
-    protected void tearDown() {
+    private void tearDown() {
     }
 }

@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -68,7 +72,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
     }
 
     @TestFactory
-    public Stream<DynamicTest> concurrentTestsForEachEventLoop() {
+    Stream<DynamicTest> concurrentTestsForEachEventLoop() {
         List<EventLoopTestParameters<?>> eventLoopSuppliers = new ArrayList<>();
         eventLoopSuppliers.add(new EventLoopTestParameters<>(BlockingEventLoop.class,
                 () -> new BlockingEventLoop("blockingEventLoop")));
@@ -99,11 +103,11 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         final Supplier<T> eventLoopSupplier;
         final Set<HandlerPriority> priorities;
 
-        public EventLoopTestParameters(Class<T> eventLoopClass, Supplier<T> eventLoopSupplier) {
+        EventLoopTestParameters(Class<T> eventLoopClass, Supplier<T> eventLoopSupplier) {
             this(eventLoopClass, eventLoopSupplier, singleton(HandlerPriority.MEDIUM));
         }
 
-        public EventLoopTestParameters(Class<T> eventLoopClass, Supplier<T> eventLoopSupplier, Set<HandlerPriority> priorities) {
+        EventLoopTestParameters(Class<T> eventLoopClass, Supplier<T> eventLoopSupplier, Set<HandlerPriority> priorities) {
             this.eventLoopSupplier = eventLoopSupplier;
             this.eventLoopClass = eventLoopClass;
             this.priorities = priorities;
@@ -113,12 +117,12 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             return eventLoopSupplier.get();
         }
 
-        public String className() {
+        String className() {
             return eventLoopClass.getSimpleName();
         }
     }
 
-    public void canConcurrentlyAddHandlersAndStartEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) {
+    private void canConcurrentlyAddHandlersAndStartEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) {
         Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
         ExecutorService executorService = Executors.newCachedThreadPool();
         try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
@@ -144,7 +148,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    public void canConcurrentlyAddHandlersAndStopEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) {
+    private void canConcurrentlyAddHandlersAndStopEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) {
         Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
         ExecutorService executorService = Executors.newCachedThreadPool();
         try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
@@ -166,7 +170,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
     }
 
-    public void canConcurrentlyAddTerminatingHandlersAndStartEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) {
+    private void canConcurrentlyAddTerminatingHandlersAndStartEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) {
         Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
         ExecutorService executorService = Executors.newCachedThreadPool();
         try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
@@ -203,7 +207,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
                 .run();
     }
 
-    public void canConcurrentlyAddTerminatingHandlersAndStopEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) {
+    private void canConcurrentlyAddTerminatingHandlersAndStopEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) {
         Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
         ExecutorService executorService = Executors.newCachedThreadPool();
         try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
@@ -250,7 +254,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             }
         }
 
-        public void waitUntilEventLoopStarted() {
+        void waitUntilEventLoopStarted() {
             try {
                 hasStartedEventLoop.acquire();
             } catch (InterruptedException e) {
@@ -281,7 +285,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             }
         }
 
-        public void waitUntilEventLoopStopped() {
+        void waitUntilEventLoopStopped() {
             try {
                 hasStoppedEventLoop.acquire();
             } catch (InterruptedException e) {
@@ -325,7 +329,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             }
         }
 
-        public void stopAddingHandlers() {
+        void stopAddingHandlers() {
             stopAddingHandlers = true;
             try {
                 stoppedAddingHandlers.acquire();
@@ -334,19 +338,19 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             }
         }
 
-        public void stopAllHandlers() {
+        void stopAllHandlers() {
             addedHandlers.forEach(ControllableHandler::stop);
         }
 
-        public boolean allHandlersAreStarted() {
+        boolean allHandlersAreStarted() {
             return addedHandlers.stream().allMatch(ControllableHandler::isRunning);
         }
 
-        public boolean allHandlersAreStopped() {
+        boolean allHandlersAreStopped() {
             return addedHandlers.stream().allMatch(ControllableHandler::isComplete);
         }
 
-        public String summary() {
+        String summary() {
             return addedHandlers.size() + " handlers added, "
                     + addedHandlers.stream().filter(ControllableHandler::isRunning).count() + " running, "
                     + addedHandlers.stream().filter(ControllableHandler::isComplete).count() + " complete\n"
@@ -367,7 +371,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         volatile boolean closed = false;
         volatile boolean exitOnNextIteration = false;
 
-        public ControllableHandler(HandlerPriority priority) {
+        ControllableHandler(HandlerPriority priority) {
             this(priority, -1);
         }
 
@@ -376,7 +380,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             closed = true;
         }
 
-        public ControllableHandler(HandlerPriority priority, int endOnIteration) {
+        ControllableHandler(HandlerPriority priority, int endOnIteration) {
             this.id = COUNTER.getAndIncrement();
             this.priority = priority;
             this.endOnIteration = endOnIteration;
@@ -406,15 +410,15 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             this.loopFinished = true;
         }
 
-        public void stop() {
+        void stop() {
             exitOnNextIteration = true;
         }
 
-        public boolean isRunning() {
+        boolean isRunning() {
             return loopStarted && !loopFinished;
         }
 
-        public boolean isComplete() {
+        boolean isComplete() {
             return !loopStarted || loopFinished;
         }
 

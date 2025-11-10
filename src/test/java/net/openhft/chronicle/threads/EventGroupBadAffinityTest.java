@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -24,7 +28,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class EventGroupBadAffinityTest extends ThreadsTestCommon {
+class EventGroupBadAffinityTest extends ThreadsTestCommon {
 
     /**
      * Ensures that an invalid CPU affinity string fails fast so that
@@ -32,7 +36,7 @@ public class EventGroupBadAffinityTest extends ThreadsTestCommon {
      */
     @Timeout(5_000)
     @Test
-    public void testInvalidAffinity() {
+    void testInvalidAffinity() {
         expectException("Cannot parse 'xxx'");
         ignoreException("Timed out waiting for start!");
         try (final EventLoop eventGroup = EventGroup.builder().withBinding("xxx").build()) {

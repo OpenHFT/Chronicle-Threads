@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -34,20 +38,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * pause counts and rejects timed pauses.
  */
 
-public class PauserTest extends ThreadsTestCommon {
+class PauserTest extends ThreadsTestCommon {
 
     @Test
-    public void balanced() {
+    void balanced() {
         doTest(Pauser.balanced());
     }
 
     @Test
-    public void balancedUpToMillis1() {
+    void balancedUpToMillis1() {
         doTest(Pauser.balancedUpToMillis(1));
     }
 
     @Test
-    public void busy() throws TimeoutException {
+    void busy() throws TimeoutException {
         Pauser pauser = BusyPauser.INSTANCE;
         assertEquals(0, pauser.countPaused());
         assertEquals(0, pauser.timePaused());
@@ -62,22 +66,22 @@ public class PauserTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void millis1() {
+    void millis1() {
         doTest(Pauser.millis(1), 200);
     }
 
     @Test
-    public void sleepy() {
+    void sleepy() {
         doTest(Pauser.sleepy(), 200);
     }
 
     @Test
-    public void timedBusy() {
+    void timedBusy() {
         doTest(Pauser.timedBusy());
     }
 
     @Test
-    public void yielding() {
+    void yielding() {
         doTest(Pauser.yielding());
     }
 

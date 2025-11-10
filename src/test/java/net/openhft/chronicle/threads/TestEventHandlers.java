@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 /*
  * Copyright 2016-2025 chronicle.software
  *
@@ -32,12 +36,12 @@ public class TestEventHandlers {
      * method is invoked.
      */
     public static class CountingHandler implements EventHandler, Closeable {
-        protected final AtomicInteger loopStartedCalled = new AtomicInteger();
-        protected final AtomicInteger loopFinishedCalled = new AtomicInteger();
-        protected final AtomicInteger actionCalled = new AtomicInteger();
-        protected final AtomicInteger closeCalled = new AtomicInteger();
-        protected final HandlerPriority priority;
-        protected EventLoop eventLoop;
+        final AtomicInteger loopStartedCalled = new AtomicInteger();
+        final AtomicInteger loopFinishedCalled = new AtomicInteger();
+        final AtomicInteger actionCalled = new AtomicInteger();
+        final AtomicInteger closeCalled = new AtomicInteger();
+        final HandlerPriority priority;
+        EventLoop eventLoop;
 
         CountingHandler(HandlerPriority priority) {
             this.priority = priority;
@@ -99,18 +103,18 @@ public class TestEventHandlers {
     public static final String HANDLER_LOOP_FINISHED_EXCEPTION_TXT = "Something went wrong in loopFinished!!!";
     public static final String HANDLER_CLOSE_EXCEPTION_TXT = "Something went wrong in close!!!";
     public static final String HANDLER_EVENT_LOOP_EXCEPTION_TXT = "Something went wrong in set eventLoop!!!";
-    public static final String HANDLER_PRIORITY_EXCEPTION_TXT = "Something went wrong in priority!!!";
+    private static final String HANDLER_PRIORITY_EXCEPTION_TXT = "Something went wrong in priority!!!";
 
     /**
      * Handler that throws from selected lifecycle methods so tests can
      * exercise error paths in the event loop.
      */
     public static class ThrowingHandler extends CountingHandler {
-        protected final boolean throwsEventLoop;
-        protected final boolean throwsPriority;
-        protected final boolean throwsLoopStarted;
-        protected final boolean throwsLoopFinished;
-        protected final boolean throwsClose;
+        final boolean throwsEventLoop;
+        final boolean throwsPriority;
+        final boolean throwsLoopStarted;
+        final boolean throwsLoopFinished;
+        final boolean throwsClose;
 
         ThrowingHandler(HandlerPriority priority, boolean throwsEventLoop, boolean throwsPriority) {
             super(priority);

@@ -1,3 +1,7 @@
+//
+// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+//
+
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
@@ -23,7 +27,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
  * Spawns many event groups across several processes to check that a large
  * number of event loops can be created and closed without exhausting the CPU.
  */
-public class EventGroupStressTest extends ThreadsTestCommon {
+class EventGroupStressTest extends ThreadsTestCommon {
 
     private static final int NUM_PROCESSES = 10;
     private static final int NUM_GROUPS_PER_PROCESS = 20;
@@ -86,7 +90,7 @@ public class EventGroupStressTest extends ThreadsTestCommon {
         private final HandlerPriority priority;
         private volatile boolean loopStarted = false;
 
-        public TestEventHandler() {
+        TestEventHandler() {
             this.priority = PRIORITIES[ThreadLocalRandom.current().nextInt(PRIORITIES.length)];
         }
 
