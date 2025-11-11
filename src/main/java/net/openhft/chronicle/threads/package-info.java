@@ -1,7 +1,6 @@
-//
-// Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
-//
-
+/*
+ * Copyright 2013-2025 chronicle.software; SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Event loop implementations and utilities for running deterministic
  * single-threaded event handlers.  {@link net.openhft.chronicle.core.threads.EventLoop EventLoop}
