@@ -3,15 +3,6 @@
  */
 package net.openhft.chronicle.threads;
 
-/**
- * Tests the expected behaviour of {@link MediumEventLoop}.
- *
- * <p>Handlers may be registered before or after the loop starts. Those that
- * throw from lifecycle methods are removed and closed without stopping the
- * loop. Concurrent start and stop calls from separate threads should succeed
- * without error.
- */
-
 import net.openhft.chronicle.core.io.InvalidMarshallableException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -27,6 +18,14 @@ import java.util.stream.IntStream;
 import static net.openhft.chronicle.threads.TestEventHandlers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests the expected behaviour of {@link MediumEventLoop}.
+ *
+ * <p>Handlers may be registered before or after the loop starts. Those that
+ * throw from lifecycle methods are removed and closed without stopping the
+ * loop. Concurrent start and stop calls from separate threads should succeed
+ * without error.
+ */
 class MediumEventLoopTest extends ThreadsTestCommon {
 
     @Test

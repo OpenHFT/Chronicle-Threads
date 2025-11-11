@@ -81,7 +81,6 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         return isStarted();
     }
 
-    @Override
     /**
      * Registers a monitoring handler. The handler should have
      * {@link HandlerPriority#MONITOR} priority. It is wrapped in an
@@ -89,6 +88,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
      * {@link EventHandler#loopStarted()} method runs exactly once on this
      * loop's thread. Adding the same handler twice is ignored.
      */
+    @Override
     public synchronized void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
 

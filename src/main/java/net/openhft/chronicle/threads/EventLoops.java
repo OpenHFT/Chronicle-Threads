@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 
@@ -37,7 +38,17 @@ public final class EventLoops {
     public static void stopAll(Object... eventLoops) {
         List<Callable<Void>> eventLoopStoppers = new ArrayList<>();
         addAllEventLoopStoppers(Arrays.asList(eventLoops), eventLoopStoppers);
-        for (Future<Void> voidFuture : ForkJoinPool.commonPool().invokeAll(eventLoopStoppers)) {
+        final List<Future<Void>> futures;
+        ExecutorService executor = ForkJoinPool.commonPool();
+        try {
+            futures = executor.invokeAll(eventLoopStoppers);
+        } catch (InterruptedException e) {
+            Jvm.warn().on(EventLoops.class, "Interrupted waiting for event loops to stop");
+            Thread.currentThread().interrupt();
+            return;
+        }
+
+        for (Future<Void> voidFuture : futures) {
             try {
                 voidFuture.get();
             } catch (ExecutionException e) {
@@ -45,6 +56,7 @@ public final class EventLoops {
             } catch (InterruptedException e) {
                 Jvm.warn().on(EventLoops.class, "Interrupted waiting for event loops to stop");
                 Thread.currentThread().interrupt();
+                return;
             }
         }
     }
