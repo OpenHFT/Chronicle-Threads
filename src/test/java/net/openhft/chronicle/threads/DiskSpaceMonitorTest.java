@@ -17,15 +17,15 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-public class DiskSpaceMonitorTest extends ThreadsTestCommon {
+class DiskSpaceMonitorTest extends ThreadsTestCommon {
 
     @BeforeEach
-    public void beforeEach(){
+    void beforeEach(){
         clearState();
     }
 
     @AfterEach
-    public void afterEach(){
+    void afterEach(){
         clearState();
     }
 
@@ -40,7 +40,7 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
      * roughly five warnings are reported. The test is skipped on Arm hardware.
      */
     @Test
-    public void pollDiskSpace() {
+    void pollDiskSpace() {
         // todo investigate why this fails on arm
         assumeTrue(!Jvm.isArm());
         System.setProperty("chronicle.disk.monitor.threshold.percent", "0");
@@ -69,7 +69,7 @@ public class DiskSpaceMonitorTest extends ThreadsTestCommon {
      * a failure occurs on a subsequent run.
      */
     @Test
-    public void ensureThatDiskSpaceMonitorRunsForMoreThanOneIteration() throws InterruptedException {
+    void ensureThatDiskSpaceMonitorRunsForMoreThanOneIteration() throws InterruptedException {
         SetTimeProvider timeProvider = new SetTimeProvider();
         ignoreException("warning: the JVM may crash if it undertakes an operation with a memory-mapped file and the disk is out of space");
         DiskSpaceMonitor.INSTANCE.pollDiskSpace(new File("."));

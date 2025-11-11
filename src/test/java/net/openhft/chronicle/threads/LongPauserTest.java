@@ -24,10 +24,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *       pause.</li>
  * </ul>
  */
-public class LongPauserTest extends ThreadsTestCommon {
+class LongPauserTest extends ThreadsTestCommon {
 
     @Test
-    public void unpauseStopsPausing() throws InterruptedException {
+    void unpauseStopsPausing() throws InterruptedException {
         final int pauseMillis = 1_000;
         final LongPauser pauser = new LongPauser(0, 0, pauseMillis, pauseMillis, TimeUnit.MILLISECONDS);
         final CountDownLatch started = new CountDownLatch(1);
@@ -46,7 +46,7 @@ public class LongPauserTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void testLongAsyncPauser() {
+    void testLongAsyncPauser() {
         final LongPauser pauser = new LongPauser(0, 0, 1, 1, TimeUnit.MILLISECONDS);
         boolean failedOnce = false;
         for (int i = 0; i < 100; i++) {
@@ -72,7 +72,7 @@ public class LongPauserTest extends ThreadsTestCommon {
         assertFalse(longPauser.asyncPausing());
     }
 
-    static void testUntilUnpaused(LongPauser pauser, int n, TimeUnit timeUnit) {
+    private static void testUntilUnpaused(LongPauser pauser, int n, TimeUnit timeUnit) {
         long timeNS = timeUnit.convert(n, TimeUnit.NANOSECONDS);
         long start = System.nanoTime();
         while (pauser.asyncPausing()) {

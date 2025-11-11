@@ -11,10 +11,10 @@ import java.util.concurrent.TimeoutException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class YieldingPauserTest extends ThreadsTestCommon {
+class YieldingPauserTest extends ThreadsTestCommon {
 
     @Test
-    public void pause() {
+    void pause() {
         final int pauseTimeMillis = 100;
         final YieldingPauser tp = new YieldingPauser(pauseTimeMillis);
         for (int i = 0; i < 10; i++) {

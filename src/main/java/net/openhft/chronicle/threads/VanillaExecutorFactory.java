@@ -20,12 +20,12 @@ public enum VanillaExecutorFactory implements ExecutorFactory {
     /** sole instance used by default */
     INSTANCE;
 
-    @Override
     /**
-     * Provides an executor backed by a {@link NamedThreadFactory}.  A single
+     * Provides an executor backed by a {@link NamedThreadFactory}. A single
      * thread executor is created when {@code threads} equals one, otherwise a
      * fixed thread pool is returned.
      */
+    @Override
     public ExecutorService acquireExecutorService(String name, int threads, boolean daemon) {
         NamedThreadFactory threadFactory = new NamedThreadFactory(name, daemon);
         return threads == 1
@@ -33,10 +33,10 @@ public enum VanillaExecutorFactory implements ExecutorFactory {
                 : Executors.newFixedThreadPool(threads, threadFactory);
     }
 
-    @Override
     /**
      * Creates a single-thread {@link ScheduledExecutorService}.
      */
+    @Override
     public ScheduledExecutorService acquireScheduledExecutorService(String name, boolean daemon) {
         return Executors.newSingleThreadScheduledExecutor(
                 new NamedThreadFactory(name, daemon));

@@ -34,10 +34,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * that calling {@link EventLoop#close()} from the loop's own thread triggers
  * a {@link ThreadingIllegalStateException}.
  */
-public class EventLoopsTest extends ThreadsTestCommon {
+class EventLoopsTest extends ThreadsTestCommon {
 
     @Test
-    public void stopAllCanHandleNulls() {
+    void stopAllCanHandleNulls() {
         final StringBuilder sb = new StringBuilder();
         final ExceptionHandler eh = (c, m, t) -> sb.append(m);
         ExceptionHandler exceptionHandler = Jvm.warn();
@@ -53,7 +53,7 @@ public class EventLoopsTest extends ThreadsTestCommon {
 
     @Timeout(5_000)
     @Test
-    public void stopAllWillBlockUntilTheLastEventLoopStops() {
+    void stopAllWillBlockUntilTheLastEventLoopStops() {
         try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
              final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker")) {
             doTest(blockingEventLoop, mediumEventLoop);
@@ -91,7 +91,7 @@ public class EventLoopsTest extends ThreadsTestCommon {
         }
     }
 
-    public static Stream<EventLoop> eventLoopsToClose() {
+    private static Stream<EventLoop> eventLoopsToClose() {
         return Stream.of(
                 new MediumEventLoop(null, "medium", Pauser.balanced(), false, null),
                 new BlockingEventLoop("blocking")
@@ -100,7 +100,7 @@ public class EventLoopsTest extends ThreadsTestCommon {
 
     @ParameterizedTest
     @MethodSource("eventLoopsToClose")
-    public void closeFromEventLoopThreadThrowsException(EventLoop el) {
+    void closeFromEventLoopThreadThrowsException(EventLoop el) {
         try {
             AtomicBoolean exceptionThrownInHandler = new AtomicBoolean();
             AtomicBoolean eventHandlerFinished = new AtomicBoolean();

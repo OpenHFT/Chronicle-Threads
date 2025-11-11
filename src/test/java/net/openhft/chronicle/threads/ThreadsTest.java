@@ -12,10 +12,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class ThreadsTest extends ThreadsTestCommon {
+class ThreadsTest extends ThreadsTestCommon {
 
     @Test
-    public void shouldDumpStackTracesForStuckDelegatedExecutors() {
+    void shouldDumpStackTracesForStuckDelegatedExecutors() {
         final AtomicBoolean running = new AtomicBoolean(true);
         final ExecutorService service = Executors.newSingleThreadExecutor(new NamedThreadFactory("non-daemon-test"));
         service.submit(() -> {
@@ -32,7 +32,7 @@ public class ThreadsTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void shouldDumpStackTracesForStuckDaemonDelegatedExecutors() {
+    void shouldDumpStackTracesForStuckDaemonDelegatedExecutors() {
         final AtomicBoolean running = new AtomicBoolean(true);
         final ExecutorService service = Executors.newSingleThreadExecutor(new NamedThreadFactory("daemon-test"));
         service.submit(() -> {
@@ -49,7 +49,7 @@ public class ThreadsTest extends ThreadsTestCommon {
     }
 
     @Test
-    public void shouldDumpStackTracesForStuckNestedDelegatedExecutors() {
+    void shouldDumpStackTracesForStuckNestedDelegatedExecutors() {
         final AtomicBoolean running = new AtomicBoolean(true);
         final ExecutorService service = Executors.unconfigurableExecutorService(
                 Executors.unconfigurableExecutorService(

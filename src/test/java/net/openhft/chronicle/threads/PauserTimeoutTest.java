@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  * behaviour are expected to throw {@link UnsupportedOperationException} when a
  * timeout is supplied.
  */
-public class PauserTimeoutTest extends ThreadsTestCommon {
-    Pauser[] pausersSupportTimeout = {
+class PauserTimeoutTest extends ThreadsTestCommon {
+    private Pauser[] pausersSupportTimeout = {
             Pauser.balanced(),
             Pauser.sleepy(),
             new BusyTimedPauser(),
@@ -28,7 +28,7 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
             new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS),
 //            new MilliPauser(1)
     };
-    Pauser[] pausersDontSupportTimeout = {
+    private Pauser[] pausersDontSupportTimeout = {
             BusyPauser.INSTANCE};
 
     /**
@@ -38,7 +38,7 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
      * {@link TimeoutException}.
      */
     @Test
-    public void pausersSupportTimeout() {
+    void pausersSupportTimeout() {
         int timeoutNS = 100_000_000;
         for (Pauser p : pausersSupportTimeout) {
             long start = System.nanoTime();
@@ -62,7 +62,7 @@ public class PauserTimeoutTest extends ThreadsTestCommon {
      * {@link UnsupportedOperationException} when a timeout is supplied.
      */
     @Test
-    public void pausersDontSupportTimeout() throws TimeoutException {
+    void pausersDontSupportTimeout() throws TimeoutException {
         for (Pauser p : pausersDontSupportTimeout) {
             try {
                 p.pause(100, TimeUnit.MILLISECONDS);

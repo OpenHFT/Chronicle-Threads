@@ -3,15 +3,6 @@
  */
 package net.openhft.chronicle.threads;
 
-/**
- * Tests the expected behaviour of {@link MediumEventLoop}.
- *
- * <p>Handlers may be registered before or after the loop starts. Those that
- * throw from lifecycle methods are removed and closed without stopping the
- * loop. Concurrent start and stop calls from separate threads should succeed
- * without error.
- */
-
 import net.openhft.chronicle.core.io.InvalidMarshallableException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
@@ -27,6 +18,14 @@ import java.util.stream.IntStream;
 import static net.openhft.chronicle.threads.TestEventHandlers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests the expected behaviour of {@link MediumEventLoop}.
+ *
+ * <p>Handlers may be registered before or after the loop starts. Those that
+ * throw from lifecycle methods are removed and closed without stopping the
+ * loop. Concurrent start and stop calls from separate threads should succeed
+ * without error.
+ */
 class MediumEventLoopTest extends ThreadsTestCommon {
 
     @Test
@@ -86,7 +85,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
         }
     }
 
-    void addingHandlerBeforeStart(CountingHandler handler) {
+    private void addingHandlerBeforeStart(CountingHandler handler) {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
 
             // Add the handler.
@@ -129,7 +128,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
         addingHandlerBeforeStart(new CountingHandler(HandlerPriority.HIGH));
     }
 
-    void addingHandlerAfterStart(CountingHandler handler) {
+    private void addingHandlerAfterStart(CountingHandler handler) {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
 
             // Start the loop.
@@ -173,7 +172,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
         addingHandlerAfterStart(new CountingHandler(HandlerPriority.HIGH));
     }
 
-    void throwingHandlerAddedBeforeStart(ThrowingHandler handler) {
+    private void throwingHandlerAddedBeforeStart(ThrowingHandler handler) {
 
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
@@ -221,7 +220,7 @@ class MediumEventLoopTest extends ThreadsTestCommon {
         throwingHandlerAddedBeforeStart(new ThrowingHandler(HandlerPriority.HIGH, false, false));
     }
 
-    void throwingHandlerAddingAfterStart(ThrowingHandler handler) {
+    private void throwingHandlerAddingAfterStart(ThrowingHandler handler) {
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
             expectException(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
             expectException(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);

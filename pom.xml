@@ -21,10 +21,12 @@
     <name>OpenHFT/Chronicle-Threads</name>
     <description>Chronicle-Threads</description>
     <packaging>bundle</packaging>
+
     <properties>
-      <sonar.organization>openhft</sonar.organization>
-      <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <jacoco.line.coverage>0.7</jacoco.line.coverage>
+        <jacoco.branch.coverage>0.6</jacoco.branch.coverage>
     </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -154,6 +156,16 @@
                             <referenceVersion>2.27ea0</referenceVersion>
                             <artifactsURI>https://teamcity.chronicle.software/repository/download</artifactsURI>
                             <binaryCompatibilityPercentageRequired>100.0</binaryCompatibilityPercentageRequired>
+                            <extraOptions>
+                                <!--This skips "internal" but checks "impl"-->
+                                <extraOption>
+                                    <name>-keep-internal</name>
+                                </extraOption>
+                                <extraOption>
+                                    <name>skip-internal-packages</name>
+                                    <value>.*internal.*</value>
+                                </extraOption>
+                            </extraOptions>
                         </configuration>
                     </execution>
                 </executions>
@@ -234,38 +246,6 @@
 
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>sonar</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.sonarsource.scanner.maven</groupId>
-                        <artifactId>sonar-maven-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.jacoco</groupId>
-                        <artifactId>jacoco-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>prepare-agent</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>report</id>
-                                <phase>prepare-package</phase>
-                                <goals>
-                                    <goal>report</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 
     <scm>
         <url>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git</url>

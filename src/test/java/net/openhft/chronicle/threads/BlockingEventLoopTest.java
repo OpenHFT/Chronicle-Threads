@@ -20,10 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Verifies that a handler in a {@link BlockingEventLoop} is interrupted when
  * the loop is stopped while the calling thread continues unimpeded.
  */
-public class BlockingEventLoopTest extends ThreadsTestCommon {
+class BlockingEventLoopTest extends ThreadsTestCommon {
 
     @Test
-    public void handlersAreInterruptedOnStop() throws TimeoutException {
+    void handlersAreInterruptedOnStop() throws TimeoutException {
         try (final BlockingEventLoop el = new BlockingEventLoop("test-blocking-loop")) {
             el.start();
 
