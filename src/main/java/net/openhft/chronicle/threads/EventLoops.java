@@ -37,15 +37,17 @@ public final class EventLoops {
     public static void stopAll(Object... eventLoops) {
         List<Callable<Void>> eventLoopStoppers = new ArrayList<>();
         addAllEventLoopStoppers(Arrays.asList(eventLoops), eventLoopStoppers);
-        for (Future<Void> voidFuture : ForkJoinPool.commonPool().invokeAll(eventLoopStoppers)) {
-            try {
-                voidFuture.get();
-            } catch (ExecutionException e) {
-                Jvm.error().on(EventLoops.class, "Error stopping event loop", e);
-            } catch (InterruptedException e) {
-                Jvm.warn().on(EventLoops.class, "Interrupted waiting for event loops to stop");
-                Thread.currentThread().interrupt();
+        try {
+            for (Future<Void> voidFuture : ForkJoinPool.commonPool().invokeAll(eventLoopStoppers)) {
+                try {
+                    voidFuture.get();
+                } catch (ExecutionException e) {
+                    Jvm.error().on(EventLoops.class, "Error stopping event loop", e);
+                }
             }
+        } catch (InterruptedException e) {
+            Jvm.warn().on(EventLoops.class, "Interrupted waiting for event loops to stop");
+            Thread.currentThread().interrupt();
         }
     }
 
