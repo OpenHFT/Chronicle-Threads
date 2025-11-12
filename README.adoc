@@ -20,8 +20,7 @@ toc::[]
 This library provides high performance event loop implementations and utility functions to help with threading and concurrency.
 
 Concurrency is _hard_, and event loops provide an abstraction to make dealing with concurrency easier.
-Context switching between threads is expensive and best practice in a low latency system is to keep your latency-sensitive operations executing on a small number of "fast" threads
-and the event loop abstraction fits well with this approach.
+Context switching between threads is expensive and best practice in a low latency system is to keep your latency-sensitive operations executing on a small number of "fast" threads and the event loop abstraction fits well with this approach.
 
 For best latency these fast threads will be busy-spinning i.e. consuming a whole core, and the core running the fast thread is isolated from the OS and other applications.
 
@@ -35,9 +34,8 @@ This library contains a number of event loop implementations and additional feat
 == Event Handlers and Event Loops
 
 An event loop can have multiple event handlers installed on it and the event loop will repeatedly execute these event handlers.
-Each event handler is guaranteed to be called on only one thread. Event handlers are expected to perform a chunk of work
-quickly and return without blocking, although the <<Event Loops,EventGroup>> does provide a mechanism to support blocking
-event handlers - see
+Each event handler is guaranteed to be called on only one thread.
+Event handlers are expected to perform a chunk of work quickly and return without blocking, although the <<Event Loops,EventGroup>> does provide a mechanism to support blocking event handlers - see
 link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft/chronicle/core/threads/HandlerPriority.java[`HandlerPriority`].
 
 See
@@ -45,8 +43,7 @@ link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft
 and
 link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft/chronicle/core/threads/EventHandler.java[`EventHandler`].
 
-Figure 1
-illustrates a diagram of an event loop that serves several event handlers sequentially.
+Figure 1 illustrates a diagram of an event loop that serves several event handlers sequentially.
 
 [#img-eventloop]
 .Event Loop and Event Handlers
@@ -57,10 +54,9 @@ image::docs/images/EventLoop.png[1000,600]
 In this section we explore common event handler use cases
 
 ==== Implement event handler
+
 An event handler can be created by implementing the `EventHandler` interface and overriding its `action()` method so that it executes the required work.
-The `action()` method returns a boolean value signifying whether some work was done by the `action()` - an
-example is an event handler that tries to poll from a Chronicle Queue - the return value of the `action()` should
-indicate if the read succeeded and a message was processed.
+The `action()` method returns a boolean value signifying whether some work was done by the `action()` - an example is an event handler that tries to poll from a Chronicle Queue - the return value of the `action()` should indicate if the read succeeded and a message was processed.
 
 NOTE: The event loop considers this return value by using a heuristic: if the `action()` did some work, it is likely to do some more work next time, and so we should call it again as soon as we can.
 If it did not do some work, it is less likely to do work next time, so it may appropriate to yield or pause before calling again - see <<Pausers>>.
@@ -80,6 +76,7 @@ public final class ExampleEventHandler implements EventHandler {
 ----
 
 ==== Adding to event loop
+
 call the `addHandler` method of the event loop, see also <<Start event loop>>
 
 [source,java]
@@ -88,8 +85,8 @@ el.addHandler(eh0);
 ----
 
 ==== Removing an event handler from an eventLoop
-When an event handler wants to remove itself
-from the event loop, its `action()` method should throw `InvalidEventHandlerException`.
+
+When an event handler wants to remove itself from the event loop, its `action()` method should throw `InvalidEventHandlerException`.
 The `InvalidEventHandlerException.reusable()` method returns a reusable, pre-created, `InvalidEventHandlerException` that is unmodifiable and contains no stack trace.
 The below event handler uninstalls itself after being called 30 times.
 
@@ -115,6 +112,7 @@ These are aggregated together in the link:src/main/java/net/openhft/chronicle/th
 The `EventGroup` also automatically enables <<Performance Monitoring>>..
 
 ==== Creating event loop
+
 event group is created by calling the using the
 link:src/main/java/net/openhft/chronicle/threads/EventGroupBuilder.java[`EventGroupBuilder`].
 Basic example shown below:
@@ -162,8 +160,7 @@ The second use of `HandlerPriority` is to enable each (child) event loop to dete
 Chronicle Threads provides a number of implementations of the
 link:src/main/java/net/openhft/chronicle/threads/Pauser.java[`Pauser`]
 and it is straightforward for the user to implement their own if need be.
-The `Pauser` allows the developer to choose an appropriate trade-off between latency vs CPU consumption for when
-an `EventLoop` is running events which exhibit "bursty" behaviour.
+The `Pauser` allows the developer to choose an appropriate trade-off between latency vs CPU consumption for when an `EventLoop` is running events which exhibit "bursty" behaviour.
 
 The recommended way to use `Pauser` - and this is how Chronicle Thread's event loop implementations use it:
 
@@ -184,13 +181,10 @@ The `Pauser` implementation can choose to yield, pause (with back off if require
 
 In the context of the heuristic in <<Implement event handler>> above - if an
 `EventHandler` does no work, then it may well not need to do any work for a while, as events often occur in bursts in the real world.
-In this case it makes sense for the `Pauser` to keep track of how many times
-it has been called, and progressively implement longer pauses every time its `pause()` is called.
-This behaviour allows a back off pauser to strike a reasonable balance between handling bursts of events quickly,
-but backing off and reducing CPU consumption in case of gap in incoming events.
+In this case it makes sense for the `Pauser` to keep track of how many times it has been called, and progressively implement longer pauses every time its `pause()` is called.
+This behaviour allows a back off pauser to strike a reasonable balance between handling bursts of events quickly, but backing off and reducing CPU consumption in case of gap in incoming events.
 
-A good example of a back off `Pauser` is the `LongPauser` which will busy-loop for `minBusy` events (allowing the event loop to respond
-quickly if a new event arrives immediately), then will yield for `minCount` times before it sleeping for `minTime` increasing up to `maxTime`.
+A good example of a back off `Pauser` is the `LongPauser` which will busy-loop for `minBusy` events (allowing the event loop to respond quickly if a new event arrives immediately), then will yield for `minCount` times before it sleeping for `minTime` increasing up to `maxTime`.
 
 === TimingPauser
 

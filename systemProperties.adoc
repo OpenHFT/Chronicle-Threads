@@ -1,4 +1,5 @@
 == System Properties
+
 Chronicle Threads reads several system properties at start up.
 These values tune event loops, pausing strategies, monitoring intervals and disk space checks.
 All properties may be supplied on the command line with `-D` flags.
@@ -6,7 +7,8 @@ All properties may be supplied on the command line with `-D` flags.
 NOTE: All boolean properties below are read using link:https://javadoc.io/static/net.openhft/chronicle-core/2.23ea13/net/openhft/chronicle/core/Jvm.html#getBoolean-java.lang.String-[net.openhft.chronicle.core.Jvm.getBoolean(java.lang.String)], and so are enabled if either `-Dflag` or `-Dflag=true` or `-Dflag=yes`.
 
 === Disk monitoring
-[cols=4*, options="header"]
+
+[cols=4*,options="header"]
 |===
 | Property Key | Default | Description | Java Variable Name (Type)
 | chronicle.disk.monitor.disable | `false` | Disable the background disk space monitor | _DISABLED_ (boolean)
@@ -15,7 +17,8 @@ NOTE: All boolean properties below are read using link:https://javadoc.io/static
 |===
 
 === Event loops
-[cols=4*, options="header"]
+
+[cols=4*,options="header"]
 |===
 | Property Key | Default | Description | Java Variable Name (Type)
 | eventloop.accept.mod | 128 | Prevent starvation by inserting new handlers every modulo iteration | _ACCEPT_HANDLER_MOD_COUNT_ (int)
@@ -26,14 +29,16 @@ NOTE: All boolean properties below are read using link:https://javadoc.io/static
 |===
 
 === Pausers
-[cols=4*, options="header"]
+
+[cols=4*,options="header"]
 |===
 | Property Key | Default | Description | Java Variable Name (Type)
 | pauser.minProcessors | 4 | Minimum number of processors required before busy pausing is used | _MIN_PROCESSORS_ (int)
 |===
 
 === Monitoring
-[cols=4*, options="header"]
+
+[cols=4*,options="header"]
 |===
 | Property Key | Default | Description | Java Variable Name (Type)
 | disableLoopBlockMonitor | `false` | Disable loop block monitoring | _ENABLE_LOOP_BLOCK_MONITOR_ (boolean)
