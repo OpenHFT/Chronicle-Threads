@@ -33,8 +33,8 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
-    private transient final ExecutorService service;
-    private transient final EventLoop parent;
+    private final transient ExecutorService service;
+    private final transient EventLoop parent;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final Pauser pauser;
     private transient volatile Thread thread = null;
@@ -184,7 +184,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
      */
     private static final class IdempotentLoopStartedEventHandler extends SimpleCloseable implements EventHandler {
 
-        private transient final EventHandler eventHandler;
+        private final transient EventHandler eventHandler;
         private final String handler;
         private boolean loopStarted = false;
 

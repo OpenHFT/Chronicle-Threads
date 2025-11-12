@@ -47,9 +47,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     private final transient Object startStopMutex = new Object();
 
     @Nullable
-    protected transient final EventLoop parent;
+    protected final transient EventLoop parent;
     @NotNull
-    protected transient final ExecutorService service;
+    protected final transient ExecutorService service;
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     protected final ConcurrentLinkedQueue<EventHandler> newHandlers = new ConcurrentLinkedQueue<>();
     protected final Pauser pauser;

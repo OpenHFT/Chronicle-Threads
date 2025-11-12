@@ -38,9 +38,9 @@ import static net.openhft.chronicle.threads.Threads.*;
 public class BlockingEventLoop extends AbstractLifecycleEventLoop implements EventLoop {
 
     @NotNull
-    private transient final EventLoop parent;
+    private final transient EventLoop parent;
     @NotNull
-    private transient final ExecutorService service;
+    private final transient ExecutorService service;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final List<Runner> runners = new CopyOnWriteArrayList<>();
     private final NamedThreadFactory threadFactory;
