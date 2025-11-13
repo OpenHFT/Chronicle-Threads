@@ -433,7 +433,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
     private static void pauseMicros(long timeToSleepMicros) {
         long endTimeNanos = System.nanoTime() + timeToSleepMicros * 1_000;
         while (System.nanoTime() < endTimeNanos) {
-            // do nothing
+            Thread.yield();
         }
     }
 }

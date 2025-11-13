@@ -33,16 +33,16 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
         MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
     }
 
-    private final String EVENT_GROUP_NAME = "test";
+    private final String eventGroupName = "test";
 
     private EventGroup createEventGroup() {
-        return EventGroup.builder().withName(EVENT_GROUP_NAME).withDaemon(true).build();
+        return EventGroup.builder().withName(eventGroupName).withDaemon(true).build();
     }
 
     private void addGoodHandlerBeforeStart(CountingHandler handler) {
 
         try (final EventLoop eventGroup = createEventGroup()) {
-            assertEquals(EVENT_GROUP_NAME, eventGroup.name());
+            assertEquals(eventGroupName, eventGroup.name());
 
             // Add the handler.
             eventGroup.addHandler(handler);

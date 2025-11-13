@@ -42,6 +42,7 @@ class PauserTest extends ThreadsTestCommon {
         try {
             pauser.pause(1, TimeUnit.MILLISECONDS);
         } catch (UnsupportedOperationException ignored) {
+            // BusyPauser does not support timed pauses; expected.
         }
         assertEquals(0, pauser.countPaused());
         pauser.unpause();
