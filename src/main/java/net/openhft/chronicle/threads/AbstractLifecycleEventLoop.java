@@ -41,6 +41,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
     protected final String name;
+    private final String nameWithSlash;
     boolean privateGroup;
 
     /**
@@ -54,13 +55,14 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      */
     protected AbstractLifecycleEventLoop(@NotNull String name) {
         this.name = name.replaceAll("/$", "");
+        this.nameWithSlash = withSlash(this.name);
 
         // event loops operate on dedicated threads but may be closed elsewhere
         singleThreadedCheckDisabled(true);
     }
 
-    protected String nameWithSlash() {
-        return withSlash(name);
+    protected final String nameWithSlash() {
+        return nameWithSlash;
     }
 
     @Override

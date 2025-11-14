@@ -113,10 +113,8 @@ public class VanillaEventLoop extends MediumEventLoop {
     @Override
     protected void loopFinishedAllHandlers() {
         super.loopFinishedAllHandlers();
-        if (!timerHandlers.isEmpty())
-            timerHandlers.forEach(Threads::loopFinishedQuietly);
-        if (!daemonHandlers.isEmpty())
-            daemonHandlers.forEach(Threads::loopFinishedQuietly);
+        finishHandlers(timerHandlers);
+        finishHandlers(daemonHandlers);
     }
 
     @Override
@@ -132,6 +130,11 @@ public class VanillaEventLoop extends MediumEventLoop {
     @Override
     protected void runDaemonHandlers() {
         runAllHandlers(daemonHandlers);
+    }
+
+    private static void finishHandlers(List<EventHandler> handlers) {
+        if (!handlers.isEmpty())
+            handlers.forEach(Threads::loopFinishedQuietly);
     }
 
     private void runAllHandlers(List<EventHandler> handlers) {

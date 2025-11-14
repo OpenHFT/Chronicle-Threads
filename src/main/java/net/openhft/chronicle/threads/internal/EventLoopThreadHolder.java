@@ -57,7 +57,7 @@ public class EventLoopThreadHolder implements ThreadHolder {
     @Override
     public void dumpThread(long startedNS, long nowNS) {
         long blockingTimeNS = nowNS - startedNS;
-        double blockingTimeMS = blockingTimeNS / 100_000 / 10.0;
+        double blockingTimeMS = Math.floor(blockingTimeNS / 100_000d) / 10d;
         if (blockingTimeMS <= 0.0)
             return;
         eventLoop.dumpRunningState(eventLoop.name() + " thread has blocked for "

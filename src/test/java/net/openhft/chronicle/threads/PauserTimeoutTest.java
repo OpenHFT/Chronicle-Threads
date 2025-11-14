@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * timeout is supplied.
  */
 class PauserTimeoutTest extends ThreadsTestCommon {
-    private Pauser[] pausersSupportTimeout = {
+    private final Pauser[] pausersSupportTimeout = {
             Pauser.balanced(),
             Pauser.sleepy(),
             new BusyTimedPauser(),
@@ -28,7 +28,7 @@ class PauserTimeoutTest extends ThreadsTestCommon {
             new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS),
 //            new MilliPauser(1)
     };
-    private Pauser[] pausersDontSupportTimeout = {
+    private final Pauser[] pausersDontSupportTimeout = {
             BusyPauser.INSTANCE};
 
     /**

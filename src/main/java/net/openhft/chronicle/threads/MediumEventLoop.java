@@ -32,7 +32,7 @@ import static net.openhft.chronicle.threads.Threads.*;
  * The main loop runs on one thread and repeatedly executes HIGH then MEDIUM
  * handlers before pausing via the supplied {@link Pauser}.
  */
-public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
+public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
                     EnumSet.of(HandlerPriority.HIGH,
@@ -267,6 +267,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             } finally {
                 loopFinishedAllHandlers();
                 loopStartNS = NOT_IN_A_LOOP;
+                thread = null;
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
@@ -369,7 +370,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     // Unrolled to avoid megamorphic call chains.
-    @SuppressWarnings("fallthrough")
+    @SuppressWarnings({"fallthrough", "DefaultNotLastCaseInSwitch", "java:S4524", "java:S1141"})
     private boolean runAllMediumHandler() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
@@ -425,7 +426,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     // Unrolled to reduce megamorphic calls and keep the JIT hot.
-    @SuppressWarnings("fallthrough")
+    @SuppressWarnings({"fallthrough", "java:S4524", "java:S1141", "DefaultNotLastCaseInSwitch"})
     protected boolean runAllHandlers() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
@@ -545,7 +546,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         return result;
     }
 
-    @SuppressWarnings("fallthrough")
+    @SuppressWarnings({"fallthrough", "java:S3776"})
     protected void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
         switch (t1.alias()) {
@@ -622,7 +623,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             // Better to log that a blockage was found (and that the user has paid for a slow getStackTrace())
             final long timeToTakeStackTraceMillis = (System.nanoTime() - startTimeNanos) / 1_000_000;
             out.setLength(messageIndex);
-            out.append(" An accurate stack trace could not be determined (capturing the stack trace took " + timeToTakeStackTraceMillis + "ms)");
+            out.append(" An accurate stack trace could not be determined (capturing the stack trace took ").append(timeToTakeStackTraceMillis).append("ms)");
         }
         Jvm.perf().on(getClass(), out.toString());
     }
@@ -680,20 +681,16 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     private void shutdownService() {
-        LockSupport.unpark(thread);
-        if (privateGroup) {
-            service.shutdownNow();
-            return;
-        }
-
-        Threads.shutdown(service, daemon);
-        if (thread != null && thread != Thread.currentThread()) {
+        Thread threadSnapshot = thread;
+        LockSupport.unpark(threadSnapshot);
+        Threads.shutdown(service, daemon || privateGroup);
+        if (threadSnapshot != null && threadSnapshot != Thread.currentThread()) {
             long startTimeMillis = System.currentTimeMillis();
             long waitUntilMs = startTimeMillis;
-            thread.interrupt();
+            threadSnapshot.interrupt();
 
             for (int i = 1; i <= 50; i++) {
-                if (!thread.isAlive())
+                if (!threadSnapshot.isAlive())
                     break;
                 // we do this loop below to protect from Jvm.pause not pausing for as long as it should
                 waitUntilMs += i;
@@ -704,9 +701,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     final StringBuilder sb = new StringBuilder();
                     long ms = System.currentTimeMillis() - startTimeMillis;
                     sb.append(name).append(": Shutting down thread is executing after ").
-                            append(ms).append("ms ").append(thread)
+                            append(ms).append("ms ").append(threadSnapshot)
                             .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
-                    Jvm.trimStackTrace(sb, thread.getStackTrace());
+                    Jvm.trimStackTrace(sb, threadSnapshot.getStackTrace());
                     Jvm.warn().on(getClass(), sb.toString());
                     dumpRunningHandlers();
                 }

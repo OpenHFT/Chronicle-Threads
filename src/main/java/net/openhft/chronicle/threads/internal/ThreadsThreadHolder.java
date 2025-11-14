@@ -111,10 +111,8 @@ public class ThreadsThreadHolder implements ThreadHolder {
      * @param timeInNS The time in nanoseconds
      * @return The time in milliseconds represented as a float with limited precision
      */
-    @SuppressWarnings(/* we mean to do the integer division first */
-            {"java:S2184", "IntegerDivisionInFloatingPointContext"})
     static double nanosecondsToMillisWithTenthsPrecision(long timeInNS) {
-        return (timeInNS / 100_000) / 10d;
+        return Math.floor(timeInNS / 100_000d) / 10d;
     }
 
     @Override

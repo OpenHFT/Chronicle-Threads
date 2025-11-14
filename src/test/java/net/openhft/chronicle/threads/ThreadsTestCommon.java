@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class ThreadsTestCommon {
     private final Map<Predicate<ExceptionKey>, String> ignoreExceptions = new LinkedHashMap<>();
-    private Map<Predicate<ExceptionKey>, String> expectedExceptions = new LinkedHashMap<>();
+    private final Map<Predicate<ExceptionKey>, String> expectedExceptions = new LinkedHashMap<>();
     private ThreadDump threadDump;
     private Map<ExceptionKey, Integer> exceptions;
 
@@ -116,13 +116,8 @@ public class ThreadsTestCommon {
         assertReferencesReleased();
         checkThreadDump();
         checkExceptions();
-
-        tearDown();
     }
 
     void preAfter() throws InterruptedException {
-    }
-
-    private void tearDown() {
     }
 }

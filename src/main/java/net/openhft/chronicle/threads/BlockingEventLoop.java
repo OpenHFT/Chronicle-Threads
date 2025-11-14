@@ -38,7 +38,7 @@ import static net.openhft.chronicle.threads.Threads.*;
 public class BlockingEventLoop extends AbstractLifecycleEventLoop implements EventLoop {
 
     @NotNull
-    private final transient EventLoop parent;
+    private final EventLoop parent;
     @NotNull
     private final transient ExecutorService service;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
@@ -147,9 +147,10 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 '}';
     }
 
+    @SuppressWarnings("ForLoopReplaceableByForEach")
     @Override
     public boolean isRunningOnThread(Thread thread) {
-        for (int i=0; i < runners.size(); i++) {
+        for (int i = 0; i < runners.size(); i++) {
             if (thread == runners.get(i).thread()) {
                 return true;
             }

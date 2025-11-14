@@ -21,7 +21,7 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
  */
 public class SingleAndMultiThreadedExample {
 
-    private AtomicLong multiThreadedValue = new AtomicLong();
+    private final AtomicLong multiThreadedValue = new AtomicLong();
     private long singleThreadedValue;
 
     /**

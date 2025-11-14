@@ -182,15 +182,20 @@ public class LongPauser implements Pauser, TimingPauser {
      * @param delayNs pause duration in nanoseconds
      */
     void doPause(long delayNs) {
-        thread = Thread.currentThread();
+        final Thread threadSnapshot = Thread.currentThread();
+        thread = threadSnapshot;
         pausing.set(true);
         long elapsed = 0;
-        if (!thread.isInterrupted()) {
-            final long start = System.nanoTime();
-            LockSupport.parkNanos(delayNs);
-            elapsed = System.nanoTime() - start;
+        try {
+            if (!threadSnapshot.isInterrupted()) {
+                final long start = System.nanoTime();
+                LockSupport.parkNanos(delayNs);
+                elapsed = System.nanoTime() - start;
+            }
+        } finally {
+            pausing.set(false);
+            thread = null;
         }
-        pausing.set(false);
         timePaused += elapsed;
     }
 
