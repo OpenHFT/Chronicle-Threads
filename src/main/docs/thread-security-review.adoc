@@ -2,6 +2,7 @@
 :toc:
 :sectnums:
 :lang: en-GB
+:source-highlighter: rouge
 
 == Handler Admission and Privilege Escalation
 
