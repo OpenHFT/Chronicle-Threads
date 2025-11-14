@@ -1,0 +1,68 @@
+= Chronicle Threads - Functional Requirements Summary
+:toc:
+:lang: en-GB
+:source-highlighter: rouge
+
+== Purpose
+
+This document provides a summary view of the functional requirements for Chronicle Threads.
+It organises key `THR-FN-*` requirements from `src/main/docs/project-requirements.adoc` into domains and links them to tests, benchmarks and decision records.
+The detailed specification, including examples and non-functional targets, remains in `project-requirements.adoc`.
+
+== Domain Overview
+
+[cols="1,3,3",options="header"]
+|===
+| Tag range | Domain | Notes
+| THR-FN-001 .. THR-FN-003 | Event loop lifecycle and configuration | Builders, start and close behaviour, non-restartable loops.
+| THR-FN-004 .. THR-FN-008 | Handler management and execution contract | Dynamic registration, priorities, serial execution, self-deregistration.
+| THR-FN-010 .. THR-FN-012 | Idle strategies and pausers | Built-in pausers, custom pausers, adaptive back-off.
+| THR-FN-015, THR-FN-017 | Thread affinity and NUMA considerations | Binding event loops to cores and NUMA-aware configuration.
+|===
+
+== Event loop lifecycle and configuration (THR-FN-001 .. THR-FN-003)
+
+[cols="1,4,3",options="header"]
+|===
+| ID | Requirement (summary) | Verification and references
+| THR-FN-001 | Provide builder-style APIs (for example `EventLoopBuilder`, `EventGroupBuilder`) for fluent and immutable configuration of event loops and groups. | Unit and integration tests that construct event loops and groups via builders and confirm configuration; examples in `project-requirements.adoc`.
+| THR-FN-002 | Support idempotent `start()` and graceful `close()` operations on `EventLoop` and `EventGroup`, ensuring active handlers complete and resources are released. | Tests that start and close loops and groups in various orders, checking for idempotence and correct shutdown; usage patterns documented in the functional specification.
+| THR-FN-003 | Reject or ignore attempts to restart an `EventLoop` or `EventGroup` after it has been closed, as loops are not restartable. | Tests that attempt to restart closed loops and verify that behaviour is deterministic and documented; notes in `project-requirements.adoc`.
+|===
+
+== Handler management and execution contract (THR-FN-004 .. THR-FN-008)
+
+[cols="1,4,3",options="header"]
+|===
+| ID | Requirement (summary) | Verification and references
+| THR-FN-004 | Allow clients to add `EventHandler` instances to a running `EventGroup` at runtime. | Tests that register handlers after an event group has started and verify they are invoked; examples in the functional specification.
+| THR-FN-005 | Require each `EventHandler` to declare a `HandlerPriority`, which influences execution order and loop assignment. | Tests that configure handlers with different priorities and observe scheduling behaviour; reference `HandlerPriority` in the Java API.
+| THR-FN-006 | Invoke each handler's `action()` method serially on the dedicated event loop thread, except for priorities that use their own threading model (such as `BLOCKING` or `CONCURRENT`). | Tests and benchmarks that assume single-threaded handler execution, including scenarios reused by Chronicle Queue and Network; rationale captured in the Chronicle Threads decision log.
+| THR-FN-007 | Require `action()` to return a boolean flag indicating whether useful work was performed, guiding the pauser and scheduling decisions. | Tests that verify pauser behaviour in response to sequences of `true` and `false` returns from handlers.
+| THR-FN-008 | Allow handlers to request self-deregistration by throwing `InvalidEventHandlerException` from `action()`. | Tests that install handlers, trigger self-deregistration and confirm they are no longer invoked, while the loop continues to run.
+|===
+
+== Idle strategies and pausers (THR-FN-010 .. THR-FN-012)
+
+[cols="1,4,3",options="header"]
+|===
+| ID | Requirement (summary) | Verification and references
+| THR-FN-010 | Provide a set of standard `Pauser` strategies selectable via `PauserMode` (for example `BUSY`, `TIMED_BUSY`, `YIELDING`, `BALANCED`, `MILLI`, `SLEEPY`). | Tests that instantiate event loops with different `PauserMode` values and verify behaviour; documentation in `README.adoc` and `project-requirements.adoc`.
+| THR-FN-011 | Allow applications to supply custom `Pauser` implementations through configuration, such as builder methods on `EventGroupBuilder`. | Tests that plug in custom pausers and verify they integrate correctly with the loop lifecycle.
+| THR-FN-012 | Provide adaptive pausers (such as `LongPauser`) that can be configured for different back-off strategies, including spin, yield and sleep phases. | Tests and benchmarks that configure adaptive pausers with different parameters and measure their effect; performance targets described in the functional specification.
+|===
+
+== Thread affinity and NUMA considerations (THR-FN-015, THR-FN-017)
+
+[cols="1,4,3",options="header"]
+|===
+| ID | Requirement (summary) | Verification and references
+| THR-FN-015 | Provide mechanisms to bind event loop threads to specific CPU cores using Chronicle Affinity. | Integration tests and examples that pin event loops to cores and verify affinity via diagnostic output; documentation in `project-requirements.adoc` and Chronicle Affinity guides.
+| THR-FN-017 | Allow configuration patterns that support NUMA-aware placement of event loops and handler workloads. | Scenario tests and documentation that illustrate NUMA-aware configurations and their intended effects on latency and throughput.
+|===
+
+== Relationship to decision log
+
+- `src/main/adoc/decision-log.adoc` captures the rationale behind key functional choices, including the single-threaded event loop model, pauser defaults and background monitors.
+- When functional behaviour changes in ways that affect these requirements, update both this summary and the project-level specification, and record the rationale in the decision log.
+
