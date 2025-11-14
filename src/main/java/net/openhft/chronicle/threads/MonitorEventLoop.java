@@ -32,7 +32,7 @@ import static net.openhft.chronicle.threads.Threads.shutdownDaemon;
  * <p>The loop waits for {@link #MONITOR_INITIAL_DELAY_MS} milliseconds after startup before
  * invoking any handlers.</p>
  */
-public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runnable {
+public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runnable, EventLoop {
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
@@ -56,7 +56,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
 
     @Override
     protected void performStart() {
-        service.submit(this);
+        service.execute(this);
     }
 
     @Override

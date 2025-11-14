@@ -42,7 +42,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
     protected final String name;
     private final String nameWithSlash;
-    boolean privateGroup;
+    volatile boolean privateGroup;
 
     /**
      * Create an instance with the supplied name.
@@ -61,7 +61,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         singleThreadedCheckDisabled(true);
     }
 
-    protected final String nameWithSlash() {
+    protected String nameWithSlash() {
         return nameWithSlash;
     }
 

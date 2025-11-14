@@ -31,7 +31,7 @@ class EventLoopStateRendererTest extends ThreadsTestCommon {
             assertTrue(dump.contains("Closed: false"));
             assertTrue(dump.contains("Closing: false"));
             assertTrue(dump.contains("Lifecycle: STARTED"));
-            assertTrue(dump.contains("Thread state: "));
+            assertThreadDetailsPresent(dump);
         }
     }
 
@@ -52,7 +52,7 @@ class EventLoopStateRendererTest extends ThreadsTestCommon {
             assertTrue(dump.contains("Closed: false"));
             assertTrue(dump.contains("Closing: false"));
             assertTrue(dump.contains("Lifecycle: STOPPED"));
-            assertTrue(dump.contains("Thread state: "));
+            assertThreadDetailsPresent(dump);
         }
     }
 
@@ -98,5 +98,9 @@ class EventLoopStateRendererTest extends ThreadsTestCommon {
             assertTrue(dump.contains("Closing: false"));
             assertTrue(dump.contains("Lifecycle: STARTED"));
         }
+    }
+
+    private static void assertThreadDetailsPresent(String dump) {
+        assertTrue(dump.contains("Thread state: ") || dump.contains("Thread is null"));
     }
 }

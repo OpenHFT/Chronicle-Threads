@@ -107,7 +107,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                 return;
             }
         }
-        DiskAttributes da = diskAttributesMap.computeIfAbsent(fs, DiskAttributes::new);
+        diskAttributesMap.computeIfAbsent(fs, DiskAttributes::new);
 
         final long tookUs = (timeProvider.currentTimeNanos() - start) / 1_000;
         if (tookUs > TIME_TAKEN_WARN_THRESHOLD_US)
@@ -183,8 +183,11 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                 timeNextCheckedMS = now + (unallocatedBytes >> 20);
             }
             long time = System.nanoTime() - start;
-            if (time > 1_000_000)
-                Jvm.perf().on(getClass(), "Took " + time / 10_000 / 100.0 + " ms to check the disk space of " + fileStore);
+            if (time > 1_000_000) {
+                long hundredths = time / 10_000;
+                double millis = hundredths / 100.0;
+                Jvm.perf().on(getClass(), "Took " + millis + " ms to check the disk space of " + fileStore);
+            }
         }
     }
 

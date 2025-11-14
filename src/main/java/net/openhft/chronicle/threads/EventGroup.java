@@ -54,7 +54,7 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * eg.start();
  * </pre>
  */
-public class EventGroup extends AbstractLifecycleEventLoop {
+public class EventGroup extends AbstractLifecycleEventLoop implements EventLoop {
 
     public static final int CONC_THREADS = Jvm.getInteger("eventGroup.conc.threads",
             Jvm.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
@@ -332,9 +332,7 @@ public class EventGroup extends AbstractLifecycleEventLoop {
                 String coreState = core == null
                         ? "Core loop not configured"
                         : EventLoopStateRenderer.INSTANCE.render("Core", core);
-                String monitorState = monitor == null
-                        ? "Monitor loop not configured"
-                        : EventLoopStateRenderer.INSTANCE.render("Monitor", monitor);
+                String monitorState = EventLoopStateRenderer.INSTANCE.render("Monitor", monitor);
                 String message = format("Timed out waiting %,dms for %s to start%n%s%n%n%s%n%n%s",
                         waitTime,
                         waitfor.name(),

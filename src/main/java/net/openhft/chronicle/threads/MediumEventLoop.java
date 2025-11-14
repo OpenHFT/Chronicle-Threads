@@ -32,7 +32,7 @@ import static net.openhft.chronicle.threads.Threads.*;
  * The main loop runs on one thread and repeatedly executes HIGH then MEDIUM
  * handlers before pausing via the supplied {@link Pauser}.
  */
-public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable {
+public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
                     EnumSet.of(HandlerPriority.HIGH,
@@ -253,8 +253,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 // Make sure nobody's adding a handler while we do this
                 synchronized (addHandlerMutex) {
                     thread = Thread.currentThread();
-                    if (thread == null)
-                        throw new NullPointerException();
                     loopStartedAllHandlers();
                 }
                 runLoop();

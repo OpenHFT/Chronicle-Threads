@@ -94,7 +94,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         try {
             final Runner runner = new Runner(handler, pauserSupplier.get());
             runners.add(runner);
-            service.submit(runner);
+            service.execute(runner);
 
         } catch (RejectedExecutionException e) {
             if (!service.isShutdown())

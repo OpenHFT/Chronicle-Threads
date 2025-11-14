@@ -66,7 +66,6 @@ public class VanillaEventLoop extends MediumEventLoop {
     }
 
     public static void closeAll(@NotNull final List<EventHandler> handlers) {
-        // do not remove the handler here, remove all at end instead
         Closeable.closeQuietly(handlers);
     }
 
