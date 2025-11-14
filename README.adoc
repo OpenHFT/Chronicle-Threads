@@ -155,6 +155,11 @@ determines which of its child event loops the `EventHandler` is installed on.
 The second use of `HandlerPriority` is to enable each (child) event loop to determine how often each
 `EventHandler` is called e.g. `HandlerPriority.HIGH` handlers are executed more than `HandlerPriority.MEDIUM` handlers.
 
+== Requirements and Decisions
+
+The functional requirements for Chronicle Threads are captured in link:src/main/adoc/project-requirements.adoc[project-requirements.adoc].
+Architectural and operational decisions, including event-loop threading and disk-space monitoring policies, are captured in link:src/main/adoc/decision-log.adoc[decision-log.adoc].
+
 == Pausers
 
 Chronicle Threads provides a number of implementations of the
