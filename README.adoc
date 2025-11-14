@@ -4,6 +4,8 @@ Chronicle Software
 :toc: macro
 :toclevels: 2
 :icons: font
+:lang: en-GB
+:source-highlighter: rouge
 
 image:https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg[caption="",link=https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads]
 image:https://javadoc.io/badge2/net.openhft/chronicle-threads/javadoc.svg[link="https://www.javadoc.io/doc/net.openhft/chronicle-threads/latest/index.html"]
@@ -15,7 +17,7 @@ image::docs/images/Thread Affinity_line.png[width=20%]
 
 toc::[]
 
-== This Library
+== Overview
 
 This library provides high performance event loop implementations and utility functions to help with threading and concurrency.
 
@@ -78,6 +80,11 @@ public final class ExampleEventHandler implements EventHandler {
 ==== Adding to event loop
 
 call the `addHandler` method of the event loop, see also <<Start event loop>>
+
+== Links
+
+* link:src/main/docs/project-requirements.adoc[Project requirements]
+* link:src/main/adoc/decision-log.adoc[Decision log]
 
 [source,java]
 ----

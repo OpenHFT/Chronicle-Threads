@@ -1,14 +1,20 @@
+= Chronicle Threads System Properties
+:toc:
+:lang: en-GB
+:source-highlighter: rouge
+
 == System Properties
 
-Chronicle Threads reads several system properties at start up.
+Chronicle Threads reads several system properties at start-up.
 These values tune event loops, pausing strategies, monitoring intervals and disk space checks.
 All properties may be supplied on the command line with `-D` flags.
 
-NOTE: All boolean properties below are read using link:https://javadoc.io/static/net.openhft/chronicle-core/2.23ea13/net/openhft/chronicle/core/Jvm.html#getBoolean-java.lang.String-[net.openhft.chronicle.core.Jvm.getBoolean(java.lang.String)], and so are enabled if either `-Dflag` or `-Dflag=true` or `-Dflag=yes`.
+NOTE: All boolean properties below are read using `net.openhft.chronicle.core.Jvm.getBoolean(String)`.
+A property is considered enabled if it is present (for example `-Dflag`) or set to `true`/`yes`.
 
 === Disk monitoring
 
-[cols=4*,options="header"]
+[cols="2a,1,3a,2a",options="header"]
 |===
 | Property Key | Default | Description | Java Variable Name (Type)
 | chronicle.disk.monitor.disable | `false` | Disable the background disk space monitor (see decision link:src/main/adoc/decision-log.adoc#THR-OPS-003[THR-OPS-003]) | _DISABLED_ (boolean)
@@ -18,7 +24,7 @@ NOTE: All boolean properties below are read using link:https://javadoc.io/static
 
 === Event loops
 
-[cols=4*,options="header"]
+[cols="2a,1,3a,2a",options="header"]
 |===
 | Property Key | Default | Description | Java Variable Name (Type)
 | eventloop.accept.mod | 128 | Prevent starvation by inserting new handlers every modulo iteration | _ACCEPT_HANDLER_MOD_COUNT_ (int)
@@ -30,7 +36,7 @@ NOTE: All boolean properties below are read using link:https://javadoc.io/static
 
 === Pausers
 
-[cols=4*,options="header"]
+[cols="2a,1,3a,2a",options="header"]
 |===
 | Property Key | Default | Description | Java Variable Name (Type)
 | pauser.minProcessors | 4 | Minimum number of processors required before busy pausing is used | _MIN_PROCESSORS_ (int)
@@ -38,7 +44,7 @@ NOTE: All boolean properties below are read using link:https://javadoc.io/static
 
 === Monitoring
 
-[cols=4*,options="header"]
+[cols="2a,1,3a,2a",options="header"]
 |===
 | Property Key | Default | Description | Java Variable Name (Type)
 | disableLoopBlockMonitor | `false` | Disable loop block monitoring | _ENABLE_LOOP_BLOCK_MONITOR_ (boolean)
