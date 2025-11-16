@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Chronicle-Threads specific SpotBugs suppressions.
+  Use sparingly; each entry must document the rationale so future reviewers
+  can revisit the decision when behaviour changes.
+-->
+<FindBugsFilter>
+
+    <!-- AT_STALE_THREAD_WRITE_OF_PRIMITIVE: privateGroup toggled at bootstrap and read after start; lifecycle state provides ordering -->
+    <Match>
+        <Bug pattern="AT_STALE_THREAD_WRITE_OF_PRIMITIVE"/>
+        <Class name="net.openhft.chronicle.threads.AbstractLifecycleEventLoop"/>
+        <Field name="privateGroup"/>
+    </Match>
+
+    <!-- EI_EXPOSE_REP2: EventGroup owns its builder-supplied priority set -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="net.openhft.chronicle.threads.EventGroup"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+
+    <!-- RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: waitToStart checks monitor/core consistently; redundant branch is harmless -->
+    <Match>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+        <Class name="net.openhft.chronicle.threads.EventGroup"/>
+        <Method name="waitToStart"/>
+    </Match>
+
+    <!-- AT_NONATOMIC* hits in LongPauser: pause stats intentionally approximate; increments guarded by pausing flag -->
+    <Match>
+        <Bug pattern="AT_NONATOMIC_64BIT_PRIMITIVE"/>
+        <Class name="net.openhft.chronicle.threads.LongPauser"/>
+    </Match>
+    <Match>
+        <Bug pattern="AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE"/>
+        <Class name="net.openhft.chronicle.threads.LongPauser"/>
+    </Match>
+
+    <!-- Equivalent warnings in MilliPauser: pause accounting remains best-effort -->
+    <Match>
+        <Bug pattern="AT_NONATOMIC_64BIT_PRIMITIVE"/>
+        <Class name="net.openhft.chronicle.threads.MilliPauser"/>
+    </Match>
+    <Match>
+        <Bug pattern="AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE"/>
+        <Class name="net.openhft.chronicle.threads.MilliPauser"/>
+    </Match>
+
+    <!-- EI_EXPOSE_REP: MediumEventLoop exposes its worker thread for monitoring/diagnostics -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="net.openhft.chronicle.threads.MediumEventLoop"/>
+        <Method name="thread"/>
+    </Match>
+
+    <!-- SF_SWITCH_FALLTHROUGH/HSM/HSM etc. in Medium/Vanilla loops are intentional for priority chaining -->
+    <Match>
+        <Bug pattern="SF_SWITCH_FALLTHROUGH"/>
+        <Class name="net.openhft.chronicle.threads.MediumEventLoop"/>
+    </Match>
+    <Match>
+        <Bug pattern="SF_SWITCH_FALLTHROUGH"/>
+        <Class name="net.openhft.chronicle.threads.VanillaEventLoop"/>
+    </Match>
+    <Match>
+        <Bug pattern="HSM_HIDING_METHOD"/>
+        <Class name="net.openhft.chronicle.threads.VanillaEventLoop"/>
+        <Method name="closeAll"/>
+    </Match>
+
+    <!-- DiskSpaceMonitor intentional: blocking values read under single-threaded executor -->
+    <Match>
+        <Bug pattern="DLS_DEAD_LOCAL_STORE"/>
+        <Class name="net.openhft.chronicle.threads.DiskSpaceMonitor"/>
+    </Match>
+    <Match>
+        <Bug pattern="ICAST_IDIV_CAST_TO_DOUBLE"/>
+        <Class name="net.openhft.chronicle.threads.DiskSpaceMonitor$DiskAttributes"/>
+    </Match>
+
+    <!-- EI_EXPOSE_REP2 in Monitor/Blocking loops: parent/event-loop references kept for lifecycle coordination -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="net.openhft.chronicle.threads.MonitorEventLoop"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="net.openhft.chronicle.threads.BlockingEventLoop"/>
+    </Match>
+
+    <!-- Misc behaviours used by tests (return-value ignoring, redundant interfaces) -->
+    <Match>
+        <Bug pattern="RI_REDUNDANT_INTERFACES"/>
+        <Class name="net.openhft.chronicle.threads.BlockingEventLoop"/>
+    </Match>
+    <Match>
+        <Bug pattern="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE"/>
+        <Class name="net.openhft.chronicle.threads.BlockingEventLoop"/>
+    </Match>
+    <Match>
+        <Bug pattern="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE"/>
+        <Class name="net.openhft.chronicle.threads.MonitorEventLoop"/>
+    </Match>
+
+</FindBugsFilter>
