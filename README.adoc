@@ -83,8 +83,16 @@ call the `addHandler` method of the event loop, see also <<Start event loop>>
 
 == Links
 
-* link:src/main/docs/project-requirements.adoc[Project requirements]
+* link:src/main/docs/project-requirements.adoc[Project requirements (summary view)]
+* link:src/main/adoc/project-requirements.adoc[Project requirements (full specification)]
+* link:src/main/docs/functional-requirements.adoc[Functional requirements catalogue]
+* link:src/main/docs/architecture-overview.adoc[Architecture overview]
+* link:src/main/docs/operational-controls.adoc[Operational controls]
+* link:src/main/docs/thread-safety-guide.adoc[Thread-safety guide]
+* link:src/main/docs/thread-security-review.adoc[Security review]
+* link:src/main/docs/thread-performance-targets.adoc[Performance targets]
 * link:src/main/adoc/decision-log.adoc[Decision log]
+* link:systemProperties.adoc[System properties reference]
 
 [source,java]
 ----
@@ -166,6 +174,42 @@ The second use of `HandlerPriority` is to enable each (child) event loop to dete
 
 The functional requirements for Chronicle Threads are captured in link:src/main/adoc/project-requirements.adoc[project-requirements.adoc].
 Architectural and operational decisions, including event-loop threading and disk-space monitoring policies, are captured in link:src/main/adoc/decision-log.adoc[decision-log.adoc].
+
+== Advanced Usage Example
+
+The following example shows how two `EventGroup` instances can be used to separate a latency-critical trading pipeline from slower operational tasks in the same JVM.
+
+[source,java]
+----
+// Latency-sensitive trading group on isolated cores
+EventGroup tradingGroup = EventGroup.builder()
+        .withName("trading-eg")
+        .withPauserMode(PauserMode.BUSY)
+        .withBinding("2-3") // bind to isolated cores for low jitter
+        .build();
+
+tradingGroup.addHandler(new OrderBookHandler());
+tradingGroup.addHandler(new RiskCheckHandler());
+
+// Operational / housekeeping group on shared cores
+EventGroup opsGroup = EventGroup.builder()
+        .withName("ops-eg")
+        .withPauserMode(PauserMode.BALANCED)
+        .withBinding("4-5") // less aggressive CPU usage
+        .build();
+
+opsGroup.addHandler(new MetricsExportHandler());
+opsGroup.addHandler(new DiskSpaceMonitorHandler());
+
+tradingGroup.start();
+opsGroup.start();
+
+// On shutdown
+opsGroup.close();
+tradingGroup.close();
+----
+
+The architecture overview (link:src/main/docs/architecture-overview.adoc[architecture-overview.adoc]) and operational controls (link:src/main/docs/operational-controls.adoc[operational-controls.adoc]) explain how to choose bindings, pausers and monitoring settings for such topologies.
 
 == Pausers
 

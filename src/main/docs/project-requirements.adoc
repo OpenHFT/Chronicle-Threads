@@ -142,10 +142,10 @@ _THR-NF-P-031_ *CPU Utilisation:*
 [cols="1,4,3",options="header"]
 |===
 |ID |Requirement |Artefact(s)
-|THR-DOC-032 |Publish an architecture overview that illustrates loop composition, handler routing, and affinity guidance, keeping it aligned with the functional catalogue. |link:thread-architecture-overview.adoc[thread-architecture-overview.adoc]
-|THR-DOC-033 |Maintain an operational controls playbook detailing CPU isolation, monitoring thresholds, and configuration precedence so operators can enforce safe defaults. |link:thread-operational-controls.adoc[thread-operational-controls.adoc]
+|THR-DOC-032 |Publish an architecture overview that illustrates loop composition, handler routing, and affinity guidance, keeping it aligned with the functional catalogue. |link:architecture-overview.adoc[architecture-overview.adoc]
+|THR-DOC-033 |Maintain an operational controls playbook detailing CPU isolation, monitoring thresholds, and configuration precedence so operators can enforce safe defaults. |link:operational-controls.adoc[operational-controls.adoc]
 |THR-DOC-034 |Record security considerations for handler admission, affinity, telemetry integrity, and dependency posture, updating the review after material changes. |link:thread-security-review.adoc[thread-security-review.adoc]
-|THR-DOC-035 |Provide a thread-safety guide that explains confinement rules, hand-off patterns, and testing practices for event loop handlers. |link:thread-thread-safety-guide.adoc[thread-thread-safety-guide.adoc]
+|THR-DOC-035 |Provide a thread-safety guide that explains confinement rules, hand-off patterns, and testing practices for event loop handlers. |link:thread-safety-guide.adoc[thread-safety-guide.adoc]
 |THR-TEST-036 |Automate benchmark and soak tests that demonstrate compliance with latency, jitter, throughput, and allocation targets. |link:thread-performance-targets.adoc[thread-performance-targets.adoc]
 |===
 
@@ -174,11 +174,11 @@ During bursts, it processes events with low latency.
 * `net.openhft.chronicle.core.threads.HandlerPriority` Javadoc (Definitive list of handler priorities)
 * `net.openhft.chronicle.threads.PauserMode` Javadoc (Definitive list of pauser modes)
 * Chronicle Affinity library documentation (For details on CPU binding syntax and capabilities)
-* `thread-architecture-overview.adoc` (Runtime topology)
-* `thread-operational-controls.adoc` (Operational safeguards)
+* `architecture-overview.adoc` (Runtime topology)
+* `operational-controls.adoc` (Operational safeguards)
 * `thread-performance-targets.adoc` (Benchmark methodology)
 * `thread-security-review.adoc` (Security posture)
-* `thread-thread-safety-guide.adoc` (Confinement practices)
+* `thread-safety-guide.adoc` (Confinement practices)
 
 [[open-issues]]
 == Open Issues / Future Enhancements

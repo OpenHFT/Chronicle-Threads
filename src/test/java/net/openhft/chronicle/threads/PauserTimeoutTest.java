@@ -26,7 +26,7 @@ class PauserTimeoutTest extends ThreadsTestCommon {
             new BusyTimedPauser(),
             new YieldingPauser(0),
             new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS),
-//            new MilliPauser(1)
+            // new MilliPauser(1)
     };
     private final Pauser[] pausersDontSupportTimeout = {
             BusyPauser.INSTANCE};
