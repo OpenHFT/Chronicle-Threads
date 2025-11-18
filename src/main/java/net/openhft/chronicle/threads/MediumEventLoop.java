@@ -373,49 +373,43 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
         try {
-            switch (handlers.length) {
-                default:
-                    for (int i = handlers.length - 1; i >= 4; i--) {
-                        try {
-                            busy |= handlers[i].action();
-                        } catch (Exception e) {
-                            handleExceptionMediumHandler(handlers[i], e);
-                        }
-                    }
-                    // fallthrough.
+            final int length = handlers.length;
 
-                case 4:
-                    try {
-                        busy |= handlers[3].action();
-                    } catch (Exception e) {
-                        handleExceptionMediumHandler(handlers[3], e);
-                    }
-                    // fall through
-                case 3:
-                    try {
-                        busy |= handlers[2].action();
-                    } catch (Exception e) {
-                        handleExceptionMediumHandler(handlers[2], e);
-                    }
-                    // fall through
-                case 2:
-                    try {
-                        busy |= handlers[1].action();
-                    } catch (Exception e) {
-                        handleExceptionMediumHandler(handlers[1], e);
-                    }
-                    // fall through
-                case 1: {
-                    try {
-                        busy |= handlers[0].action();
-                    } catch (Exception e) {
-                        handleExceptionMediumHandler(handlers[0], e);
-                    }
-                    break;
+            for (int i = length - 1; i >= 4; i--) {
+                try {
+                    busy |= handlers[i].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[i], e);
                 }
-                case 0:
-                    break;
+            }
 
+            if (length >= 4) {
+                try {
+                    busy |= handlers[3].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[3], e);
+                }
+            }
+            if (length >= 3) {
+                try {
+                    busy |= handlers[2].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[2], e);
+                }
+            }
+            if (length >= 2) {
+                try {
+                    busy |= handlers[1].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[1], e);
+                }
+            }
+            if (length >= 1) {
+                try {
+                    busy |= handlers[0].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[0], e);
+                }
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
@@ -424,7 +418,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     // Unrolled to reduce megamorphic calls and keep the JIT hot.
-    @SuppressWarnings({"fallthrough", "java:S4524", "java:S1141", "DefaultNotLastCaseInSwitch"})
+    @SuppressWarnings({"java:S4524", "java:S1141"})
     protected boolean runAllHandlers() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
@@ -432,54 +426,48 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             // run HIGH handler
             busy |= callHighHandler();
 
-            switch (handlers.length) {
-                default:
-                    for (int i = handlers.length - 1; i >= 4; i--) {
-                        busy |= callHighHandler();
-                        try {
-                            busy |= handlers[i].action();
-                        } catch (Exception e) {
-                            handleExceptionMediumHandler(handlers[i], e);
-                        }
-                    }
-                    // fallthrough.
+            final int length = handlers.length;
 
-                case 4:
-                    busy |= callHighHandler();
-                    try {
-                        busy |= handlers[3].action();
-                    } catch (Exception e) {
-                        handleExceptionMediumHandler(handlers[3], e);
-                    }
-                    // fall through
-                case 3:
-                    busy |= callHighHandler();
-                    try {
-                        busy |= handlers[2].action();
-                    } catch (Exception e) {
-                        handleExceptionMediumHandler(handlers[2], e);
-                    }
-                    // fall through
-                case 2:
-                    busy |= callHighHandler();
-                    try {
-                        busy |= handlers[1].action();
-                    } catch (Exception e) {
-                        handleExceptionMediumHandler(handlers[1], e);
-                    }
-                    // fall through
-                case 1: {
-                    busy |= callHighHandler();
-                    try {
-                        busy |= handlers[0].action();
-                    } catch (Exception e) {
-                        handleExceptionMediumHandler(handlers[0], e);
-                    }
-                    break;
+            for (int i = length - 1; i >= 4; i--) {
+                busy |= callHighHandler();
+                try {
+                    busy |= handlers[i].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[i], e);
                 }
-                case 0:
-                    break;
+            }
 
+            if (length >= 4) {
+                busy |= callHighHandler();
+                try {
+                    busy |= handlers[3].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[3], e);
+                }
+            }
+            if (length >= 3) {
+                busy |= callHighHandler();
+                try {
+                    busy |= handlers[2].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[2], e);
+                }
+            }
+            if (length >= 2) {
+                busy |= callHighHandler();
+                try {
+                    busy |= handlers[1].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[1], e);
+                }
+            }
+            if (length >= 1) {
+                busy |= callHighHandler();
+                try {
+                    busy |= handlers[0].action();
+                } catch (Exception e) {
+                    handleExceptionMediumHandler(handlers[0], e);
+                }
             }
 
             // run HIGH handler again
@@ -553,19 +541,16 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     break;
                 } else {
                     Jvm.warn().on(getClass(), "Only one high handler supported was " + highHandler + ", treating " + handler + " as MEDIUM");
-                    // fall through to MEDIUM
+                    // Treat as MEDIUM handler.
+                    addMediumHandler(handler);
+                    break;
                 }
 
             case REPLICATION:
             case CONCURRENT:
             case DAEMON:
             case MEDIUM: {
-                if (!mediumHandlers.contains(handler)) {
-                    clearUsedByThread(handler);
-                    handler.eventLoop(parent != null ? parent : this);
-                    mediumHandlers.add(handler);
-                    updateMediumHandlersArray();
-                }
+                addMediumHandler(handler);
                 break;
             }
 
@@ -574,6 +559,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     Jvm.warn().on(getClass(), "Handler " + handler.getClass() + " ignored");
                     return;
                 }
+                throw new IllegalArgumentException("Cannot add a " + handler.priority() + " task to a busy waiting thread");
 
             case BLOCKING:
             case TIMER:
@@ -590,6 +576,15 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     updateMediumHandlersArray();
                 }
             }
+        }
+    }
+
+    private void addMediumHandler(@NotNull final EventHandler handler) {
+        if (!mediumHandlers.contains(handler)) {
+            clearUsedByThread(handler);
+            handler.eventLoop(parent != null ? parent : this);
+            mediumHandlers.add(handler);
+            updateMediumHandlersArray();
         }
     }
 

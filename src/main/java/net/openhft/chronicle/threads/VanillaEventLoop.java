@@ -65,10 +65,6 @@ public class VanillaEventLoop extends MediumEventLoop {
         this.priorities = EnumSet.copyOf(priorities);
     }
 
-    public static void closeAll(@NotNull final List<EventHandler> handlers) {
-        Closeable.closeQuietly(handlers);
-    }
-
     private static void clearUsedByThread(@NotNull EventHandler handler) {
         if (handler instanceof AbstractCloseable)
             ((AbstractCloseable) handler).singleThreadedCheckReset();
@@ -155,7 +151,6 @@ public class VanillaEventLoop extends MediumEventLoop {
      * Routes new handlers to the appropriate queue. TIMER handlers are placed
      * in {@code timerHandlers} and DAEMON handlers go to {@code daemonHandlers}.
      */
-    @SuppressWarnings("fallthrough")
     @Override
     protected void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
@@ -165,33 +160,20 @@ public class VanillaEventLoop extends MediumEventLoop {
                     break;
                 } else {
                     Jvm.warn().on(getClass(), "Only one high handler supported was " + highHandler + ", treating " + handler + " as MEDIUM");
-                    // fall through to MEDIUM
+                    addMediumHandler(handler);
+                    break;
                 }
 
             case MEDIUM:
-                if (!mediumHandlers.contains(handler)) {
-                    clearUsedByThread(handler);
-                    eventLoopQuietly(parent != null ? parent : this, handler);
-                    mediumHandlers.add(handler);
-                    mediumHandlers.sort(Comparator.comparing(EventHandler::priority).reversed());
-                    updateMediumHandlersArray();
-                }
+                addMediumHandler(handler);
                 break;
 
             case TIMER:
-                if (!timerHandlers.contains(handler)) {
-                    clearUsedByThread(handler);
-                    eventLoopQuietly(parent != null ? parent : this, handler);
-                    timerHandlers.add(handler);
-                }
+                addTimerHandler(handler);
                 break;
 
             case DAEMON:
-                if (!daemonHandlers.contains(handler)) {
-                    clearUsedByThread(handler);
-                    eventLoopQuietly(parent != null ? parent : this, handler);
-                    daemonHandlers.add(handler);
-                }
+                addDaemonHandler(handler);
                 break;
 
             default:
@@ -250,5 +232,31 @@ public class VanillaEventLoop extends MediumEventLoop {
             return;
         Jvm.debug().on(getClass(), "Handlers still running after being closed, handlerCount=" + handlerCount);
         collect.forEach(h -> Jvm.debug().on(getClass(), "\t" + h));
+    }
+
+    private void addMediumHandler(@NotNull final EventHandler handler) {
+        if (!mediumHandlers.contains(handler)) {
+            clearUsedByThread(handler);
+            eventLoopQuietly(parent != null ? parent : this, handler);
+            mediumHandlers.add(handler);
+            mediumHandlers.sort(Comparator.comparing(EventHandler::priority).reversed());
+            updateMediumHandlersArray();
+        }
+    }
+
+    private void addTimerHandler(@NotNull final EventHandler handler) {
+        if (!timerHandlers.contains(handler)) {
+            clearUsedByThread(handler);
+            eventLoopQuietly(parent != null ? parent : this, handler);
+            timerHandlers.add(handler);
+        }
+    }
+
+    private void addDaemonHandler(@NotNull final EventHandler handler) {
+        if (!daemonHandlers.contains(handler)) {
+            clearUsedByThread(handler);
+            eventLoopQuietly(parent != null ? parent : this, handler);
+            daemonHandlers.add(handler);
+        }
     }
 }

@@ -18,7 +18,7 @@ class ThreadsTest extends ThreadsTestCommon {
     void shouldDumpStackTracesForStuckDelegatedExecutors() {
         final AtomicBoolean running = new AtomicBoolean(true);
         final ExecutorService service = Executors.newSingleThreadExecutor(new NamedThreadFactory("non-daemon-test"));
-        service.submit(() -> {
+        service.execute(() -> {
             while (running.get()) {
                 Jvm.pause(10L);
             }
@@ -35,7 +35,7 @@ class ThreadsTest extends ThreadsTestCommon {
     void shouldDumpStackTracesForStuckDaemonDelegatedExecutors() {
         final AtomicBoolean running = new AtomicBoolean(true);
         final ExecutorService service = Executors.newSingleThreadExecutor(new NamedThreadFactory("daemon-test"));
-        service.submit(() -> {
+        service.execute(() -> {
             while (running.get()) {
                 Jvm.pause(10L);
             }
@@ -58,7 +58,7 @@ class ThreadsTest extends ThreadsTestCommon {
                         )
                 )
         );
-        service.submit(() -> {
+        service.execute(() -> {
             while (running.get()) {
                 Jvm.pause(10L);
             }

@@ -108,7 +108,7 @@ public class ThreadsTestCommon {
     @AfterEach
     public void afterChecks() throws InterruptedException {
         preAfter();
-        SystemTimeProvider.CLOCK = SystemTimeProvider.INSTANCE;
+        resetSystemTimeProviderClock();
         CleaningThread.performCleanup(Thread.currentThread());
 
         System.gc();
@@ -119,5 +119,20 @@ public class ThreadsTestCommon {
     }
 
     void preAfter() throws InterruptedException {
+    }
+
+    /**
+     * Test-only helper to adjust the initial monitor delay in a single place.
+     * This keeps static mutations out of instance lifecycle methods for SpotBugs.
+     */
+    protected static void setMonitorInitialDelayMs(int delayMillis) {
+        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = delayMillis;
+    }
+
+    /**
+     * Resets the global SystemTimeProvider clock to the default instance.
+     */
+    protected static void resetSystemTimeProviderClock() {
+        SystemTimeProvider.CLOCK = SystemTimeProvider.INSTANCE;
     }
 }

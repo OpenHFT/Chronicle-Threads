@@ -238,7 +238,7 @@ This TODO file tracks work specific to Chronicle-Threads that feeds into the mas
 
 ## Notes
 
-[Add any module-specific notes, blockers, or context here]
+- 2025-11-18: A recent `mvn -q clean verify -DskipTests` run for Chronicle-Threads on Java 21 completed successfully. `mvn checkstyle:check` reports `You have 0 Checkstyle violations.` for this module, but the last full quality run (`verify-chronicle-threads-java21-3.log`) still shows multiple SpotBugs findings in tests and event-loop code. Resolving those findings and the remaining documentation/security checklist items is being treated as longer-running follow-up work and is tracked as deferred in `TODO_STATUS.md`.
 
 ## Completion Checklist
 
