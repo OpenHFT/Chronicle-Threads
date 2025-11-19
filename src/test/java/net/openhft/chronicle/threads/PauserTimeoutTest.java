@@ -20,15 +20,15 @@ import static org.junit.jupiter.api.Assertions.fail;
  * timeout is supplied.
  */
 class PauserTimeoutTest extends ThreadsTestCommon {
-    private Pauser[] pausersSupportTimeout = {
+    private final Pauser[] pausersSupportTimeout = {
             Pauser.balanced(),
             Pauser.sleepy(),
             new BusyTimedPauser(),
             new YieldingPauser(0),
             new LongPauser(0, 0, 1, 10, TimeUnit.MILLISECONDS),
-//            new MilliPauser(1)
+            // new MilliPauser(1)
     };
-    private Pauser[] pausersDontSupportTimeout = {
+    private final Pauser[] pausersDontSupportTimeout = {
             BusyPauser.INSTANCE};
 
     /**
@@ -42,12 +42,16 @@ class PauserTimeoutTest extends ThreadsTestCommon {
         int timeoutNS = 100_000_000;
         for (Pauser p : pausersSupportTimeout) {
             long start = System.nanoTime();
-            do try {
-                p.pause(timeoutNS, TimeUnit.NANOSECONDS);
-            } catch (TimeoutException e) {
-                fail(p + " timed out");
+            do {
+                try {
+                    p.pause(timeoutNS, TimeUnit.NANOSECONDS);
+                } catch (TimeoutException e) {
+                    fail(p + " timed out");
+                }
             } while (System.nanoTime() < start + timeoutNS / 2);
-            while (System.nanoTime() < start + timeoutNS * 5 / 4) ;
+            while (System.nanoTime() < start + timeoutNS * 5 / 4) {
+                Thread.yield();
+            }
             try {
                 p.pause(timeoutNS, TimeUnit.NANOSECONDS);
             } catch (TimeoutException e) {

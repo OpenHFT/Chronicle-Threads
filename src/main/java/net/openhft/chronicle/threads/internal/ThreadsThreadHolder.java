@@ -78,7 +78,8 @@ public class ThreadsThreadHolder implements ThreadHolder {
 
     @Override
     public void monitorThreadDelayed(long actionCallDelayNS) {
-        logConsumer.accept("Monitor thread for " + getName() + " cpuId: " + Affinity.getCpu() + " was delayed by " + actionCallDelayNS / 100000 / 10.0 + " ms");
+        logConsumer.accept("Monitor thread for " + getName() + " cpuId: " + Affinity.getCpu()
+                + " was delayed by " + nanosecondsToMillisWithTenthsPrecision(actionCallDelayNS) + " ms");
     }
 
     @Override

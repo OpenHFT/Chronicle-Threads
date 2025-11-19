@@ -64,6 +64,8 @@ public class ThreadMonitorHarness implements ThreadMonitor {
 
         // Record lastActionCall time on every call to prevent false-positive "monitorThreadDelayed" reports
         long actionCallDelay = nowNS - this.lastActionCall;
+        if (actionCallDelay < 0)
+            actionCallDelay = 0;
         this.lastActionCall = nowNS;
 
         if (startedNS == 0 || startedNS == NOT_IN_A_LOOP) {

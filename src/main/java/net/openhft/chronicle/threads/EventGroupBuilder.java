@@ -83,7 +83,7 @@ public class EventGroupBuilder implements Builder<EventLoop> {
                 concurrentThreadsNum,
                 defaultBinding(concurrentBinding),
                 concurrentPauserSupplier,
-                priorities,
+                EnumSet.copyOf(priorities),
                 blockingPauserSupplier);
         eventGroup.privateGroup(privateGroup);
         return eventGroup;
@@ -250,7 +250,7 @@ public class EventGroupBuilder implements Builder<EventLoop> {
      * @return this builder
      */
     public EventGroupBuilder withPriorities(Set<HandlerPriority> priorities) {
-        this.priorities = priorities;
+        this.priorities = EnumSet.copyOf(priorities);
         return this;
     }
 

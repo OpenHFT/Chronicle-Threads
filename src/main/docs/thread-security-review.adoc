@@ -2,6 +2,35 @@
 :toc:
 :sectnums:
 :lang: en-GB
+:source-highlighter: rouge
+
+This document summarises security considerations for Chronicle Threads.
+It is aligned with the shared standards in `Chronicle-Quality-Rules/src/main/docs/security-review.adoc` and `Chronicle-Quality-Rules/src/main/docs/architectural-standards.adoc`.
+
+== Trust Zone and Responsibilities
+
+Chronicle Threads is a *Foundation (Zone C)* module in the Chronicle stack, as defined in `Chronicle-Quality-Rules/src/main/docs/architectural-standards.adoc`.
+It provides scheduling, pauser and monitoring infrastructure that higher-level modules such as Chronicle Queue, Chronicle Network and Chronicle Services depend on.
+Within this trust zone Chronicle Threads focuses on:
+
+* predictable execution and resource usage for event loops and pausers;
+* clear boundaries around what it does **not** do (for example networking, cryptography and business-level access control);
+* avoiding behaviours that would undermine the security guarantees of modules built on top of it.
+
+The remainder of this document expands on these responsibilities and their interaction with ISO 27001 themes.
+
+== Security Model Overview
+
+Chronicle Threads is a foundational library that orchestrates threads, event loops, pausers and monitoring.
+It does not accept network connections, parse untrusted payloads directly, or perform cryptographic operations; instead it hosts application-provided `EventHandler` code and integrates with other Chronicle modules.
+
+Threat boundaries therefore sit at:
+
+* Handler admission and configuration (which handlers are installed, with what privileges).
+* System properties and configuration files that influence pausers, monitoring and affinity.
+* Dependencies such as Chronicle Core and the Affinity library that perform low-level operations on behalf of Threads.
+
+The following sections describe risks and mitigations at these boundaries.
 
 == Handler Admission and Privilege Escalation
 
@@ -96,3 +125,21 @@ Mitigations ::
 Review hot-spots ::
 * Custom forks of Chronicle libraries.
 * Environments that block outbound network access, delaying vulnerability scanning updates.
+
+== Summary Against ISO 27001 Themes
+
+Secure coding and bounds checking (A.8.28) ::
+* Chronicle Threads itself does not parse external payloads; input validation and bounds checking for business data reside in callers such as Chronicle Queue or application handlers.
+* Within the module, system properties that influence behaviour are validated for type and constrained to documented ranges where applicable (for example thresholds and timeouts).
+
+Access control and privileged operations (A.8.3) ::
+* Chronicle Threads does not implement authentication or authorisation; it runs with the privileges of the hosting JVM.
+* Operational controls should ensure only trusted code can register handlers or modify JVM arguments, and that handler classes are reviewed under least-privilege principles.
+
+Cryptographic and network controls (A.8.22, A.8.24) ::
+* The module does not implement cryptography or manage keys directly, nor does it open network sockets.
+* When Chronicle Threads hosts handlers that use TLS or network stacks from other libraries, those components’ security guides and configuration must be followed.
+
+Vulnerability management (A.8.8) ::
+* Dependency versions are controlled via Chronicle BOMs; vulnerability scanning and CVE tracking are handled at the organisation level across all modules.
+* Teams using Chronicle Threads should ensure their BOM is kept current and that central security advisories are applied.

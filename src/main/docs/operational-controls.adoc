@@ -2,6 +2,18 @@
 :toc:
 :sectnums:
 :lang: en-GB
+:source-highlighter: rouge
+
+== Relationship to Other Documents
+
+This guide focuses on operational practices for deploying and running Chronicle Threads in production environments.
+It should be read alongside:
+
+* link:architecture-overview.adoc[architecture-overview.adoc] – runtime topology, event loop composition and pauser strategy.
+* link:thread-performance-targets.adoc[thread-performance-targets.adoc] – performance targets and benchmarking methodology.
+* link:thread-security-review.adoc[thread-security-review.adoc] – security considerations for handler admission, affinity and telemetry.
+* link:thread-safety-guide.adoc[thread-safety-guide.adoc] – handler confinement and testing guidance.
+* `systemProperties.adoc` – detailed system property descriptions used by the controls in this document.
 
 == CPU Isolation and Affinity Governance
 

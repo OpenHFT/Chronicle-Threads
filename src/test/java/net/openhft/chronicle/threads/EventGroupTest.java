@@ -51,12 +51,12 @@ public class EventGroupTest extends ThreadsTestCommon {
     @BeforeEach
     void handlersInit() {
         ignoreException("Monitoring a task which has finished ");
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
+        setMonitorInitialDelayMs(1);
     }
 
     @Override
     public void preAfter() throws InterruptedException {
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
+        setMonitorInitialDelayMs(10_000);
 
         for (TestHandler handler : this.handlers)
             handler.assertClosed();
@@ -326,7 +326,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     private void checkException(ExceptionType exceptionType) throws InterruptedException {
-        try (final EventLoop eventGroup = EventGroup.builder().build();) {
+        try (final EventLoop eventGroup = EventGroup.builder().build()) {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new TestHandler(hp, exceptionType));
             eventGroup.start();
@@ -461,7 +461,7 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     private static Stream<List<HandlerPriority>> egCloseParams() {
         return Stream.of(
-                Arrays.asList(HandlerPriority.MEDIUM),
+                Collections.singletonList(HandlerPriority.MEDIUM),
                 Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.HIGH),
                 Arrays.asList(HandlerPriority.TIMER, HandlerPriority.HIGH),
                 Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER),

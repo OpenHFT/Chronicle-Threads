@@ -2,11 +2,18 @@
 :toc:
 :sectnums:
 :lang: en-GB
+:source-highlighter: rouge
 
 == Scope
 
 This guide explains how Chronicle Threads enforces single-threaded handler execution and how developers should structure code that interacts with event loops.
 It expands on requirements THR-FN-006 through THR-NF-O-009 and aligns with Chronicle Core's `SingleThreadedChecked` utilities.
+
+Read this guide together with:
+
+* link:architecture-overview.adoc[architecture-overview.adoc] – for loop topology and handler placement.
+* link:thread-performance-targets.adoc[thread-performance-targets.adoc] – for performance expectations that influence safe handler design.
+* link:operational-controls.adoc[operational-controls.adoc] – for operational safeguards that rely on thread-safety guarantees.
 
 == Event Loop Ownership Model
 
