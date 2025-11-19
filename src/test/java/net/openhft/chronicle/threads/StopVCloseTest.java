@@ -36,12 +36,12 @@ public class StopVCloseTest extends ThreadsTestCommon {
     @BeforeEach
     void handlersInit() {
         ignoreException("Monitoring a task which has finished ");
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
+        setMonitorInitialDelayMs(1);
     }
 
     @Override
     public void preAfter() {
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
+        setMonitorInitialDelayMs(10_000);
     }
 
     @Test

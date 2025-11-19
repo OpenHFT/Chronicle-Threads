@@ -65,11 +65,6 @@ public class VanillaEventLoop extends MediumEventLoop {
         this.priorities = EnumSet.copyOf(priorities);
     }
 
-    public static void closeAll(@NotNull final List<EventHandler> handlers) {
-        // do not remove the handler here, remove all at end instead
-        Closeable.closeQuietly(handlers);
-    }
-
     private static void clearUsedByThread(@NotNull EventHandler handler) {
         if (handler instanceof AbstractCloseable)
             ((AbstractCloseable) handler).singleThreadedCheckReset();
@@ -113,10 +108,8 @@ public class VanillaEventLoop extends MediumEventLoop {
     @Override
     protected void loopFinishedAllHandlers() {
         super.loopFinishedAllHandlers();
-        if (!timerHandlers.isEmpty())
-            timerHandlers.forEach(Threads::loopFinishedQuietly);
-        if (!daemonHandlers.isEmpty())
-            daemonHandlers.forEach(Threads::loopFinishedQuietly);
+        finishHandlers(timerHandlers);
+        finishHandlers(daemonHandlers);
     }
 
     @Override
@@ -132,6 +125,11 @@ public class VanillaEventLoop extends MediumEventLoop {
     @Override
     protected void runDaemonHandlers() {
         runAllHandlers(daemonHandlers);
+    }
+
+    private static void finishHandlers(List<EventHandler> handlers) {
+        if (!handlers.isEmpty())
+            handlers.forEach(Threads::loopFinishedQuietly);
     }
 
     private void runAllHandlers(List<EventHandler> handlers) {

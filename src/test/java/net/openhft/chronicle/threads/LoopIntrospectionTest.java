@@ -85,7 +85,7 @@ class LoopIntrospectionTest extends ThreadsTestCommon {
         AtomicReference<Thread> monitorThread = new AtomicReference<>();
 
         int previousDelay = MonitorEventLoop.MONITOR_INITIAL_DELAY_MS;
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
+        setMonitorInitialDelayMs(1);
         try (EventGroup group = EventGroup.builder()
                 .withPriorities(EnumSet.of(HandlerPriority.HIGH, HandlerPriority.BLOCKING, HandlerPriority.MONITOR))
                 .withPauser(Pauser.balanced())
@@ -106,7 +106,7 @@ class LoopIntrospectionTest extends ThreadsTestCommon {
             assertTrue(group.isRunningOnThread(monitorThread.get()), "Group did not recognise monitor loop thread");
             assertFalse(group.isRunningOnThread(new Thread()), "Group matched unrelated thread");
         } finally {
-            MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = previousDelay;
+            setMonitorInitialDelayMs(previousDelay);
         }
     }
 

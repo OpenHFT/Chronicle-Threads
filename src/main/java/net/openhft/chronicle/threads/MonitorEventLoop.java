@@ -18,7 +18,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static net.openhft.chronicle.threads.Threads.*;
+import static net.openhft.chronicle.threads.Threads.eventLoopQuietly;
+import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
+import static net.openhft.chronicle.threads.Threads.loopStartedCall;
+import static net.openhft.chronicle.threads.Threads.shutdownDaemon;
 
 /**
  * Event loop dedicated to low-frequency monitoring tasks. Handlers added to this loop are
@@ -33,8 +36,8 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
-    private transient final ExecutorService service;
-    private transient final EventLoop parent;
+    private final transient ExecutorService service;
+    private final transient EventLoop parent;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final Pauser pauser;
     private transient volatile Thread thread = null;
@@ -53,7 +56,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
 
     @Override
     protected void performStart() {
-        service.submit(this);
+        service.execute(this);
     }
 
     @Override
@@ -73,7 +76,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
 
     private void performStop() {
         unpause();
-        Threads.shutdownDaemon(service);
+        shutdownDaemon(service);
     }
 
     @Override
@@ -92,7 +95,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     public synchronized void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
 
-        if (DEBUG_ADDING_HANDLERS)
+        if (EventLoop.DEBUG_ADDING_HANDLERS)
             Jvm.debug().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
             throw new IllegalStateException("Event Group has been closed");
@@ -126,6 +129,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             synchronized (this) {
                 handlers.forEach(Threads::loopFinishedQuietly);
             }
+            thread = null;
         }
     }
 
@@ -155,7 +159,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             EventHandler removedHandler = handlers.remove(handlerIndex);
             loopFinishedQuietly(removedHandler);
             Closeable.closeQuietly(removedHandler);
-            if (DEBUG_REMOVING_HANDLERS)
+            if (EventLoop.DEBUG_REMOVING_HANDLERS)
                 Jvm.debug().on(getClass(), "Removing " + removedHandler.priority() + " " + removedHandler + " from " + this.name);
         } catch (ArrayIndexOutOfBoundsException e) {
             if (!handlers.isEmpty()) {
@@ -184,7 +188,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
      */
     private static final class IdempotentLoopStartedEventHandler extends SimpleCloseable implements EventHandler {
 
-        private transient final EventHandler eventHandler;
+        private final transient EventHandler eventHandler;
         private final String handler;
         private boolean loopStarted = false;
 

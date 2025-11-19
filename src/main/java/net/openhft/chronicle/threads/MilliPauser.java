@@ -121,14 +121,21 @@ public class MilliPauser implements Pauser {
      * @param delayMS delay in milliseconds
      */
     void doPauseMS(long delayMS) {
-        long start = System.nanoTime();
-        thread = Thread.currentThread();
+        final Thread threadSnapshot = Thread.currentThread();
+        thread = threadSnapshot;
         pausing.set(true);
-        if (!thread.isInterrupted())
+        long elapsed = 0;
+        try {
+            if (!threadSnapshot.isInterrupted()) {
+                final long start = System.nanoTime();
             LockSupport.parkNanos(delayMS * 1_000_000L);
+                elapsed = System.nanoTime() - start;
+            }
+        } finally {
         pausing.set(false);
-        long time = System.nanoTime() - start;
-        timePaused += time;
+            thread = null;
+        }
+        timePaused += elapsed;
         countPaused++;
     }
 

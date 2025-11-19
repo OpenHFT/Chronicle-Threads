@@ -1,151 +1,184 @@
-= Chronicle Threads Decision Log
-:revnumber: 1.2
-:revdate: 2025-05-26
+= Chronicle Threads - Decision Log
 :toc:
-:source-highlighter: rouge
 :lang: en-GB
+:source-highlighter: rouge
 
-This log summarises notable architectural and technical decisions taken for the Chronicle Threads component.
-Identifiers follow the Nine-Box taxonomy (e.g., FN-Functional, NF-Non-Functional, OPS-Operational) an outline of which is referenced in the project's `AGENTS.md` document.
-Each decision record aims to provide context, the decision itself, its status, rationale, and consequences.
+This file captures component-specific architectural and operational decisions for Chronicle Threads.
+Identifiers follow the THR-<Tag>-NNN pattern from the Nine-Box taxonomy (FN, NF-P, NF-S, NF-O, TEST, DOC, OPS, UX, RISK).
+Numbers are unique within the THR scope.
 
-== Decision Log Entries
+== Decision Index
 
-=== THR-FN-001: Event Loops are Single-Threaded for Handler Execution
+* link:#THR-FN-001[THR-FN-001 Event loops are single-threaded for handler execution]
+* link:#THR-NF-P-002[THR-NF-P-002 Busy-spin pauser for latency-critical fast threads]
+* link:#THR-OPS-003[THR-OPS-003 Background disk-space monitoring]
+* link:#THR-DOC-004[THR-DOC-004 Nine-Box taxonomy for requirements and decisions]
 
-* Date: 2015-02-24
-* Context:
-** A core requirement for Chronicle Threads is to simplify concurrent programming for event-driven systems and enable predictable low-latency performance for handlers.
-** Traditional multi-threaded models for event handlers often require complex locking mechanisms, which can introduce contention, bugs, and performance bottlenecks in the "hot path".
-* Decision Statement:
-** Each `EventLoop` instance shall operate on a dedicated Java platform thread.
-** All `EventHandler` instances registered with a particular `EventLoop` (excluding `BLOCKING` or `CONCURRENT` priority handlers which have their own threading model within an `EventGroup`) are executed serially by this single thread.
-* **Alternatives Considered:**
-** *Multi-threaded Event Loops:*
-*** *Description:* Allow multiple handlers on the same loop to execute concurrently across a thread pool.
-*** *Pros:* Potential for higher throughput on a single loop if handlers are independent and can truly run in parallel.
-*** *Cons:* Requires handlers to be thread-safe, introduces complexity of locks or other concurrency primitives, makes latency less predictable due to potential contention, and increases the difficulty of reasoning about handler state.
-** *Actor Model per Handler:*
-*** *Description:* Each handler instance is an actor with its own queue and thread.
-*** *Pros:* Strong isolation.
-*** *Cons:* Higher resource consumption (threads, queues) and potentially higher message passing overhead compared to direct serialized invocation.
-* **Rationale for Decision:**
-** This model significantly simplifies `EventHandler` implementation, as developers do not need to manage thread-safety within a handler's interaction with its own state or other handlers on the same loop.
-** It promotes predictable, low-jitter latency by eliminating lock contention in the critical execution path of handlers.
-** Aligns with the common "thread-per-core" pattern used in low-latency systems.
-* **Impact & Consequences:**
-** Positive:
+== Decision Records
+
+[[THR-FN-001]]
+=== THR-FN-001 Event loops are single-threaded for handler execution
+
+Date:: 2015-02-24
+
+Context::
+* Chronicle Threads aims to simplify concurrent programming for event-driven systems while delivering predictable low-latency behaviour.
+* Traditional multi-threaded handler models often require complex locking, which introduces contention, bugs, and unpredictable pauses on the hot path.
+
+Decision Statement::
+* Each `EventLoop` instance runs on a dedicated Java platform thread.
+* All `EventHandler` instances registered with a given `EventLoop` (except handlers with `BLOCKING` or `CONCURRENT` priorities, which use their own threading model within an `EventGroup`) are executed serially by that single thread.
+
+Alternatives Considered::
+* Multi-threaded event loops::
+** Description: Execute handlers from a shared loop across a thread pool.
+** Pros: Higher potential throughput if handlers are fully independent.
+** Cons: Requires thread-safe handlers, more locking, less predictable latency, and harder reasoning about shared state.
+* Actor model per handler::
+** Description: Each handler has its own queue and dedicated thread.
+** Pros: Strong isolation between handlers.
+** Cons: Higher resource usage (threads, queues) and higher message-passing overhead than serial invocation on one loop.
+
+Rationale for Decision::
+* Single-threaded loops make handler implementation simpler by removing most intra-loop locking requirements.
+* They support low-jitter latency by avoiding lock contention in the main execution path.
+* The model aligns with a common thread-per-core pattern used in low-latency systems.
+
+Impact & Consequences::
+* Positive:
 ** Simplifies handler development and testing.
-** Improves latency predictability for handlers on a given loop.
-** Facilitates easier reasoning about application state managed by handlers.
-** Negative:
-** The throughput of a single `EventLoop` is limited by a single CPU core.
-** A misbehaving (long-running or blocking) handler on a standard event loop can starve other handlers on the same loop. (This is mitigated by `EventGroup` allowing `BLOCKING` priority handlers to run in separate, dedicated thread pools).
-* What are the trade-offs made? Single core throughput vs. simplicity and low-contention latency.
-* **Notes/Links:**
-*** This decision is fundamental to the design of `VanillaEventLoop` and `MediumEventLoop`.
+** Improves latency predictability for all handlers on a given loop.
+** Makes it easier to reason about state owned by handlers on one loop.
+* Negative:
+** Throughput of a single `EventLoop` is bounded by one CPU core.
+** A misbehaving or blocking handler on a standard loop can starve other handlers on that loop. This is mitigated by using `EventGroup` with `BLOCKING` or `CONCURRENT` handlers on separate threads or thread pools.
 
-=== THR-NF-P-002: Default to Busy-Spin Pauser for Latency-Critical "Fast Threads"
+Notes/Links::
+* Core implementation: `VanillaEventLoop`, `MediumEventLoop`.
+* Requirements: link:project-requirements.adoc[Handler management requirements, including THR-FN-006.]
 
-* Date: 2015-02-24
-* Context:
-** For "Fast Threads" (latency-critical event loops, typically pinned to isolated cores), minimizing the time taken to react to new events is paramount.
-** Traditional pausing mechanisms (yielding, sleeping) introduce variable and often significant delays when a thread needs to resume.
-* Decision Statement:
-** `EventLoop` instances configured for the highest performance (e.g., using `PauserMode.BUSY` or `PauserMode.TIMED_BUSY`) shall employ a busy-spinning (or near busy-spinning) `Pauser` strategy by default.
-** Alternative pauser modes (`YIELDING`, `BALANCED`, `SLEEPY`, `MILLI`) remain available and are recommended for less latency-sensitive loops or systems with CPU core constraints.
-* **Alternatives Considered:**
-** *Yielding Pauser as Default:*
-*** *Description:* `Thread.yield()` immediately when idle.
-*** *Pros:* More CPU-friendly than busy-spinning.
-*** *Cons:* Introduces higher and less predictable wakeup latency.
-** *Sleeping Pauser as Default:*
-*** *Description:* `LockSupport.parkNanos()` or `Thread.sleep()` immediately when idle.
-*** *Pros:* Lowest CPU usage when idle.
-*** *Cons:* Highest wakeup latency.
-** *Adaptive Pauser (e.g., `BALANCED`) as Default for all:*
-*** *Description:* Uses a mix of spinning, yielding, and sleeping.
-*** *Pros:* Good balance for general use cases.
-*** *Cons:* Not the absolute lowest latency for highly optimized fast threads compared to pure busy-spinning.
-* **Rationale for Decision:**
-** Busy-spinning keeps the thread's cache hot and avoids the overhead of context switching and OS scheduler-induced delays, leading to the lowest possible reaction time when an event becomes available.
-* **Impact & Consequences:**
-** Positive:
-** Achieves minimal event processing latency (p99.99 and tail latencies) for designated fast threads.
-** Predictable entry into event handler logic once an event is detected.
-** Negative:
-** Consumes 100% of a CPU core, even when idle. This necessitates careful system configuration, including CPU isolation (`isolcpus`) and ensuring enough cores are available for other system tasks and less critical threads.
-** If not managed properly (e.g., too many busy-spinning threads for available isolated cores), it can degrade overall system performance.
-* What are the trade-offs made? Lowest latency vs. high CPU consumption and need for careful system tuning.
-* **Notes/Links:**
-*** See `Pauser.java`, `BusyPauser.java`, and `PauserMode.java`.
-*** Documented recommendation in `README.adoc` and `project-requirements.adoc` (R4-02).
+[[THR-NF-P-002]]
+=== THR-NF-P-002 Busy-spin pauser for latency-critical fast threads
 
-=== THR-OPS-003: Background Disk Space Monitoring
+Date:: 2015-02-24
 
-* Date: 2018-05-11
-* Context:
-** Applications using Chronicle Queue or other disk-persistent Chronicle components can fail or suffer data loss if the underlying disk storage runs out of space.
-** Operations teams need early warnings to prevent such critical failures.
-* Decision Statement:
-** A background monitoring singleton (`DiskSpaceMonitor`) shall be provided within Chronicle Threads.
-** This monitor will periodically check disk usage for paths associated with Chronicle components (e.g., queue directories when they are initialized).
-** Warnings shall be logged via a `NotifyDiskLow` service (defaulting to `NotifyDiskLowLogWarn`) when free disk space drops below a configurable percentage threshold (system property: `chronicle.disk.monitor.threshold.percent`).
-* **Alternatives Considered:**
-** *No built-in monitoring:*
-*** *Description:* Require users to rely solely on external, system-level disk monitoring tools.
-*** *Pros:* Simplifies the library.
-*** *Cons:* Less integrated; users might overlook setting up adequate external monitoring tailored to Chronicle's usage patterns.
-** *More Aggressive Actions:*
-*** *Description:* e.g., halt queue appenders if disk space is critically low.
-*** *Pros:* Could prevent further writes that might lead to immediate crashes.
-*** *Cons:* May be too intrusive for a general-purpose library; such policies are better implemented at the application level. The library's role is primarily to inform.
-* **Rationale for Decision:**
-** Provides a built-in, proactive layer of defense that is easy to enable.
-** Logging warnings is a non-intrusive way to alert operations without unilaterally halting application functionality.
-** The `ServiceLoader` mechanism for `NotifyDiskLow` allows for custom notification actions if needed.
-* **Impact & Consequences:**
-** Positive:
-** Operations teams receive early warnings of potential storage exhaustion, allowing for proactive intervention.
-** Reduces the risk of unexpected application failures due to full disks.
-** Negative:
-** The monitor consumes minimal system resources (one background thread, periodic I/O for disk checks).
-** Effectiveness relies on logs being actively monitored or a custom `NotifyDiskLow` service being implemented for more active notifications.
-* What are the trade-offs made? Built-in convenience and basic safety vs. reliance on external monitoring for comprehensive operational alerting.
-* **Notes/Links:**
-*** See `DiskSpaceMonitor.java`, `NotifyDiskLow.java`, `NotifyDiskLowLogWarn.java`.
-*** Key system properties: `chronicle.disk.monitor.disable`, `chronicle.disk.monitor.threshold.percent`.
+Context::
+* For latency-critical fast threads (often pinned to isolated cores), minimising wake-up time when new work arrives is essential.
+* Standard pause strategies that yield or sleep introduce variable and often large delays before a thread resumes work.
 
-=== THR-DOC-004: Nine-Box Taxonomy Tagging for Requirements and Decisions
+Decision Statement::
+* `EventLoop` instances configured for maximum performance (for example using `PauserMode.BUSY` or `PauserMode.TIMED_BUSY`) use a busy-spinning or near busy-spinning `Pauser` by default.
+* Other pauser modes (`YIELDING`, `BALANCED`, `SLEEPY`, `MILLI`) remain available and are recommended for less latency-sensitive loops or where CPU cores are constrained.
 
-* Date: 2025-03-01
-* Context:
-** A need for a consistent and structured way to identify, categorize, and trace requirements, decisions, and potentially other project artifacts (like tests or specific code modules).
-** Previous or alternative projects might have used ad-hoc or purely sequential numbering, making it harder to understand the nature or scope of an item from its ID alone.
-* Decision Statement:
-** All functional requirements (in `project-requirements.adoc`) and architectural decisions (in this log) shall use identifiers prefixed with `THR-` followed by a tag from the Nine-Box taxonomy (e.g., `FN`, `NF-P`, `OPS`, `DOC`) and a sequential number (e.g., `THR-FN-001`).
-** The specific Nine-Box tag definitions and usage guidelines are maintained in the project's `AGENTS.md` document.
-* **Alternatives Considered:**
-** *Simple Sequential Numbering (e.g., REQ-001, DEC-001):*
-*** *Description:* Basic sequential IDs.
-*** *Pros:* Very simple to implement.
-*** *Cons:* Provides no information about the type or domain of the item from its ID.
-** *Custom Categorization Scheme:*
-*** *Description:* Develop a project-specific set of categories.
-*** *Pros:* Could be perfectly tailored.
-*** *Cons:* Requires effort to define and maintain; less transferable knowledge if team members work on other projects using different schemes.
-* **Rationale for Decision:**
-** The Nine-Box taxonomy (referenced from `AGENTS.md`) provides a pre-defined, reasonably comprehensive set of categories that are broadly applicable to software development artifacts.
-** Using this existing scheme promotes consistency if it's adopted across multiple Chronicle Software projects.
-** Tags in IDs offer immediate insight into the item's domain.
-* **Impact & Consequences:**
-** Positive:
-** Improved traceability between requirements, decisions, tests, and potentially code.
-** Easier for team members to understand the context of an identified item quickly.
-** Facilitates better organization and searching of documentation.
-** Negative:
-** Requires team members to be familiar with the Nine-Box taxonomy and apply it consistently.
-** Initial setup of the scheme and guidelines in `AGENTS.md`.
-* What are the trade-offs made? Richer categorization and traceability vs. slight learning curve for the taxonomy.
-* **Notes/Links:**
-*** The Nine-Box taxonomy details are in `AGENTS.md`.
+Alternatives Considered::
+* Yielding pauser as default::
+** Description: Call `Thread.yield()` when idle.
+** Pros: More CPU-friendly than pure busy-spin.
+** Cons: Higher and less predictable wake-up latency.
+* Sleeping pauser as default::
+** Description: Sleep or park immediately when idle.
+** Pros: Lowest CPU usage when idle.
+** Cons: Highest wake-up latency and jitter.
+* Adaptive pauser as universal default (for example `BALANCED`)::
+** Description: Combine spinning, yielding, and sleeping adaptively.
+** Pros: Good general-purpose balance.
+** Cons: Not as fast as a dedicated busy-spin for the most latency-sensitive loops.
+
+Rationale for Decision::
+* Busy-spinning keeps the thread hot on its core and avoids scheduler and context-switch overhead, giving the minimum wake-up latency when events arrive.
+* Users can explicitly opt into less aggressive pausers when CPU utilisation must be reduced.
+
+Impact & Consequences::
+* Positive:
+** Minimises p99.99 and tail latency for designated fast threads.
+** Provides predictable entry into handler code once an event is visible.
+* Negative:
+** Consumes a full CPU core even when idle, so requires careful system configuration (isolated cores, enough headroom for other work).
+** Misuse (too many busy-spinning threads) can degrade overall system performance.
+
+Notes/Links::
+* Key classes: `Pauser`, `BusyPauser`, `PauserMode`.
+* Requirements: link:project-requirements.adoc[Idle strategy and key performance targets (THR-FN-010, THR-NF-P-027..THR-NF-P-031).]
+* Additional guidance: `README.adoc` pauser section.
+
+[[THR-OPS-003]]
+=== THR-OPS-003 Background disk-space monitoring
+
+Date:: 2018-05-11
+
+Context::
+* Chronicle Queue and other disk-backed Chronicle components can fail or lose data if the underlying storage fills up.
+* Operations teams need early, component-aware warning of low disk-space conditions to act before failure.
+
+Decision Statement::
+* Chronicle Threads provides a background monitoring singleton `DiskSpaceMonitor`.
+* The monitor periodically checks disk usage for paths associated with Chronicle components (for example queue directories as they are initialised).
+* When free space falls below a configurable threshold, a `NotifyDiskLow` service (default `NotifyDiskLowLogWarn`) logs warnings. The threshold is configured via system property `chronicle.disk.monitor.threshold.percent`.
+
+Alternatives Considered::
+* No built-in monitoring::
+** Description: Rely solely on external system-level disk monitoring.
+** Pros: Keeps the library simpler.
+** Cons: External monitoring might not be tuned to Chronicle usage; users can forget to set it up.
+* More aggressive built-in actions::
+** Description: Automatically halt writers when space is critically low.
+** Pros: Could prevent writes that would immediately fail.
+** Cons: Too intrusive for a general-purpose library; better handled by application policy.
+
+Rationale for Decision::
+* A built-in monitor provides a lightweight, Chronicle-aware early warning without enforcing policy.
+* Logging is non-intrusive and keeps responsibility for operational response with the application and operations teams.
+* The `ServiceLoader` based `NotifyDiskLow` contract allows custom notification or escalation strategies.
+
+Impact & Consequences::
+* Positive:
+** Gives early warning of storage exhaustion for Chronicle workloads.
+** Reduces the risk of unexpected failures caused by full disks.
+* Negative:
+** Adds minimal overhead (one background thread plus periodic I/O).
+** Effectiveness depends on log monitoring or a custom `NotifyDiskLow` implementation.
+
+Notes/Links::
+* Key classes: `DiskSpaceMonitor`, `NotifyDiskLow`, `NotifyDiskLowLogWarn`.
+* Properties: `chronicle.disk.monitor.disable`, `chronicle.disk.monitor.threshold.percent` (see also link:../../systemProperties.adoc[system properties table].)
+
+[[THR-DOC-004]]
+=== THR-DOC-004 Nine-Box taxonomy for requirements and decisions
+
+Date:: 2025-03-01
+
+Context::
+* The project needs a consistent, structured way to identify and trace requirements, decisions, tests, and possibly code artefacts.
+* Earlier schemes using ad-hoc or simple sequential numbering made it difficult to infer scope or intent from an identifier alone.
+
+Decision Statement::
+* All functional requirements (in `project-requirements.adoc`) and architectural decisions (in this log) use identifiers prefixed with `THR-`, followed by a Nine-Box tag (for example `FN`, `NF-P`, `OPS`, `DOC`) and a sequence number (for example `THR-FN-001`).
+* The Nine-Box tag definitions and usage guidelines are maintained in `AGENTS.md`.
+
+Alternatives Considered::
+* Simple sequential numbering (for example `REQ-001`, `DEC-001`)::
+** Description: Use only numeric sequence numbers.
+** Pros: Very easy to implement and explain.
+** Cons: Conveys no information about type or domain.
+* Custom project-specific categorisation scheme::
+** Description: Invent a bespoke set of categories for Chronicle Threads only.
+** Pros: Could be tailored closely to the project.
+** Cons: Extra effort to define and maintain; less transferable knowledge for staff working across multiple Chronicle projects.
+
+Rationale for Decision::
+* The Nine-Box taxonomy already provides a broadly applicable and documented set of categories.
+* Using the same taxonomy across Chronicle projects improves consistency and makes it easier for people to move between modules.
+* Including the tag in identifiers gives immediate context about what an item represents.
+
+Impact & Consequences::
+* Positive:
+** Better traceability between requirements, decisions, tests, and code.
+** Easier for team members to understand the role of an item from its ID.
+** Supports better organisation and searching in documentation and tooling.
+* Negative:
+** Requires familiarity with the Nine-Box taxonomy and consistent application.
+** Initial documentation and training overhead (captured in `AGENTS.md`).
+
+Notes/Links::
+* Nine-Box taxonomy details and guidance: `AGENTS.md`.
+* Requirements catalogue: link:project-requirements.adoc[Functional requirements for Chronicle Threads.]

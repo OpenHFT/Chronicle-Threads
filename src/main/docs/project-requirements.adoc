@@ -1,4 +1,4 @@
-= Chronicle Threads – Functional Requirements Specification
+= Chronicle Threads - Functional Requirements Specification
 :revnumber: 1.0
 :revdate: 2025-05-25
 :sectnums:
@@ -26,7 +26,7 @@ _Out of scope_ are:
 |_EventHandler_ |Application-provided component that implements `action()`; executed by an `EventLoop`.
 |_EventGroup_ |A container that manages one or more `EventLoop`s, potentially including a dedicated monitor loop.
 |_Pauser_ |Strategy object that controls how an idle loop waits (e.g., busy-spin, yield, sleep).
-|_Fast Thread_ |A thread—usually pinned to an isolated CPU core—running a latency-critical event loop.
+|_Fast Thread_ |A thread-usually pinned to an isolated CPU core-running a latency-critical event loop.
 |_Hot Path_ / _Fast Path_ |The code execution path that is performance-critical and frequently executed, where low latency and minimal overhead are paramount.
 |_Loop-Block Monitor_ |Background handler that measures `EventHandler` run-time and logs outliers exceeding a configured threshold.
 |_NUMA_ |Non-Uniform Memory Access; a memory architecture where memory access time depends on the memory location relative to a processor.
@@ -42,7 +42,7 @@ _Out of scope_ are:
 
 == High-Level Functional Requirements
 
-=== Event‐Loop Lifecycle and Configuration
+=== Event-Loop Lifecycle and Configuration
 
 . _Creation and Configuration_
 _THR-FN-001_ The library SHALL provide builder APIs (e.g., `EventLoopBuilder`, `EventGroupBuilder`) for fluent and immutable configuration of event loops and groups.
@@ -142,10 +142,10 @@ _THR-NF-P-031_ *CPU Utilisation:*
 [cols="1,4,3",options="header"]
 |===
 |ID |Requirement |Artefact(s)
-|THR-DOC-032 |Publish an architecture overview that illustrates loop composition, handler routing, and affinity guidance, keeping it aligned with the functional catalogue. |link:thread-architecture-overview.adoc[thread-architecture-overview.adoc]
-|THR-DOC-033 |Maintain an operational controls playbook detailing CPU isolation, monitoring thresholds, and configuration precedence so operators can enforce safe defaults. |link:thread-operational-controls.adoc[thread-operational-controls.adoc]
+|THR-DOC-032 |Publish an architecture overview that illustrates loop composition, handler routing, and affinity guidance, keeping it aligned with the functional catalogue. |link:architecture-overview.adoc[architecture-overview.adoc]
+|THR-DOC-033 |Maintain an operational controls playbook detailing CPU isolation, monitoring thresholds, and configuration precedence so operators can enforce safe defaults. |link:operational-controls.adoc[operational-controls.adoc]
 |THR-DOC-034 |Record security considerations for handler admission, affinity, telemetry integrity, and dependency posture, updating the review after material changes. |link:thread-security-review.adoc[thread-security-review.adoc]
-|THR-DOC-035 |Provide a thread-safety guide that explains confinement rules, hand-off patterns, and testing practices for event loop handlers. |link:thread-thread-safety-guide.adoc[thread-thread-safety-guide.adoc]
+|THR-DOC-035 |Provide a thread-safety guide that explains confinement rules, hand-off patterns, and testing practices for event loop handlers. |link:thread-safety-guide.adoc[thread-safety-guide.adoc]
 |THR-TEST-036 |Automate benchmark and soak tests that demonstrate compliance with latency, jitter, throughput, and allocation targets. |link:thread-performance-targets.adoc[thread-performance-targets.adoc]
 |===
 
@@ -174,11 +174,11 @@ During bursts, it processes events with low latency.
 * `net.openhft.chronicle.core.threads.HandlerPriority` Javadoc (Definitive list of handler priorities)
 * `net.openhft.chronicle.threads.PauserMode` Javadoc (Definitive list of pauser modes)
 * Chronicle Affinity library documentation (For details on CPU binding syntax and capabilities)
-* `thread-architecture-overview.adoc` (Runtime topology)
-* `thread-operational-controls.adoc` (Operational safeguards)
+* `architecture-overview.adoc` (Runtime topology)
+* `operational-controls.adoc` (Operational safeguards)
 * `thread-performance-targets.adoc` (Benchmark methodology)
 * `thread-security-review.adoc` (Security posture)
-* `thread-thread-safety-guide.adoc` (Confinement practices)
+* `thread-safety-guide.adoc` (Confinement practices)
 
 [[open-issues]]
 == Open Issues / Future Enhancements

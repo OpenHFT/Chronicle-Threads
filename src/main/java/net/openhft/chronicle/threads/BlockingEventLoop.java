@@ -94,7 +94,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         try {
             final Runner runner = new Runner(handler, pauserSupplier.get());
             runners.add(runner);
-            service.submit(runner);
+            service.execute(runner);
 
         } catch (RejectedExecutionException e) {
             if (!service.isShutdown())
@@ -147,6 +147,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 '}';
     }
 
+    @SuppressWarnings("ForLoopReplaceableByForEach")
     @Override
     public boolean isRunningOnThread(Thread thread) {
         for (int i=0; i < runners.size(); i++) {

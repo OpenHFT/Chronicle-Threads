@@ -25,15 +25,15 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
     void beforeAll() {
         ignoreException("Monitoring a task which has finished ");
         // Initial delay defaults to 10secs. Set to 10ms for testing.
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10;
+        setMonitorInitialDelayMs(10);
     }
 
     @AfterEach
     void afterEach() {
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
+        setMonitorInitialDelayMs(10_000);
     }
 
-    private final String EVENT_GROUP_NAME = "test";
+    private static final String EVENT_GROUP_NAME = "test";
 
     private EventGroup createEventGroup() {
         return EventGroup.builder().withName(EVENT_GROUP_NAME).withDaemon(true).build();
