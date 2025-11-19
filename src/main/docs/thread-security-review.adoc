@@ -4,6 +4,21 @@
 :lang: en-GB
 :source-highlighter: rouge
 
+This document summarises security considerations for Chronicle Threads.
+It is aligned with the shared standards in `Chronicle-Quality-Rules/src/main/docs/security-review.adoc` and `Chronicle-Quality-Rules/src/main/docs/architectural-standards.adoc`.
+
+== Trust Zone and Responsibilities
+
+Chronicle Threads is a *Foundation (Zone C)* module in the Chronicle stack, as defined in `Chronicle-Quality-Rules/src/main/docs/architectural-standards.adoc`.
+It provides scheduling, pauser and monitoring infrastructure that higher-level modules such as Chronicle Queue, Chronicle Network and Chronicle Services depend on.
+Within this trust zone Chronicle Threads focuses on:
+
+* predictable execution and resource usage for event loops and pausers;
+* clear boundaries around what it does **not** do (for example networking, cryptography and business-level access control);
+* avoiding behaviours that would undermine the security guarantees of modules built on top of it.
+
+The remainder of this document expands on these responsibilities and their interaction with ISO 27001 themes.
+
 == Security Model Overview
 
 Chronicle Threads is a foundational library that orchestrates threads, event loops, pausers and monitoring.
