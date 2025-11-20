@@ -245,8 +245,8 @@ public class EventGroupBuilder implements Builder<EventLoop> {
     /**
      * Chooses which handler priorities the group will support. Loops for
      * priorities not included are not created. The default is all priorities.
-     * The behaviour when the set is empty is to create a group with no
-     * priorities; such a group will not accept any handlers.
+     * The behaviour when the set is empty is to create a group that retains
+     * only its monitor loop; attempts to add handlers with any other priority will fail.
      *
      * @param priorities set of priorities to enable
      * @return this builder
@@ -260,7 +260,7 @@ public class EventGroupBuilder implements Builder<EventLoop> {
      * Convenience overload to build a priority set from the given arguments.
      *
      * @param firstPriority first priority in the set
-     * @param priorities remaining priorities
+     * @param priorities    remaining priorities
      * @return this builder
      */
     public EventGroupBuilder withPriorities(HandlerPriority firstPriority, HandlerPriority... priorities) {

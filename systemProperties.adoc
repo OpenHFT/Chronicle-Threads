@@ -17,8 +17,8 @@ A property is considered enabled if it is present (for example `-Dflag`) or set 
 [cols="2a,1,3a,2a",options="header"]
 |===
 | Property Key | Default | Description | Java Variable Name (Type)
-| chronicle.disk.monitor.disable | `false` | Disable the background disk space monitor (see decision link:src/main/adoc/decision-log.adoc#THR-OPS-003[THR-OPS-003]) | _DISABLED_ (boolean)
-| chronicle.disk.monitor.threshold.percent | 5% | Issue warnings when free space drops below this percentage (see decision link:src/main/adoc/decision-log.adoc#THR-OPS-003[THR-OPS-003]) | _thresholdPercentage_ (int)
+| chronicle.disk.monitor.disable | `false` | Disable the background disk space monitor (see decision link:src/main/docs/decision-log.adoc#THR-OPS-003[THR-OPS-003]) | _DISABLED_ (boolean)
+| chronicle.disk.monitor.threshold.percent | 5% | Issue warnings when free space drops below this percentage (see decision link:src/main/docs/decision-log.adoc#THR-OPS-003[THR-OPS-003]) | _thresholdPercentage_ (int)
 | disk.monitor.deleted.warning | `false` | Warn if disk space cannot be determined | _WARN_DELETED_ (boolean)
 |===
 

@@ -84,14 +84,14 @@ call the `addHandler` method of the event loop, see also <<Start event loop>>
 == Links
 
 * link:src/main/docs/project-requirements.adoc[Project requirements (summary view)]
-* link:src/main/adoc/project-requirements.adoc[Project requirements (full specification)]
+* link:src/main/docs/project-requirements.adoc[Project requirements (full specification)]
 * link:src/main/docs/functional-requirements.adoc[Functional requirements catalogue]
 * link:src/main/docs/architecture-overview.adoc[Architecture overview]
 * link:src/main/docs/operational-controls.adoc[Operational controls]
 * link:src/main/docs/thread-safety-guide.adoc[Thread-safety guide]
 * link:src/main/docs/thread-security-review.adoc[Security review]
 * link:src/main/docs/thread-performance-targets.adoc[Performance targets]
-* link:src/main/adoc/decision-log.adoc[Decision log]
+* link:src/main/docs/decision-log.adoc[Decision log]
 * link:systemProperties.adoc[System properties reference]
 
 [source,java]
@@ -170,10 +170,14 @@ determines which of its child event loops the `EventHandler` is installed on.
 The second use of `HandlerPriority` is to enable each (child) event loop to determine how often each
 `EventHandler` is called e.g. `HandlerPriority.HIGH` handlers are executed more than `HandlerPriority.MEDIUM` handlers.
 
+An `EventGroup` is configured with a set of supported handler priorities (by default all priorities).
+Loops are only created for enabled priorities and attempts to add a handler whose priority has no corresponding loop result in an `IllegalStateException`.
+If the configured priority set is empty, only the monitor loop is present and handlers with any other priority are rejected.
+
 == Requirements and Decisions
 
-The functional requirements for Chronicle Threads are captured in link:src/main/adoc/project-requirements.adoc[project-requirements.adoc].
-Architectural and operational decisions, including event-loop threading and disk-space monitoring policies, are captured in link:src/main/adoc/decision-log.adoc[decision-log.adoc].
+The functional requirements for Chronicle Threads are captured in link:src/main/docs/project-requirements.adoc[project-requirements.adoc].
+Architectural and operational decisions, including event-loop threading and disk-space monitoring policies, are captured in link:src/main/docs/decision-log.adoc[decision-log.adoc].
 
 == Advanced Usage Example
 
