@@ -339,7 +339,9 @@ public class EventGroup extends AbstractLifecycleEventLoop implements EventLoop 
                         coreState,
                         monitorState,
                         renderThreadDump());
-                throw new IllegalStateException(message, e);
+                TimeoutException te = new TimeoutException(message);
+                te.initCause(e);
+                throw Jvm.rethrow(te);
             }
         }
     }
