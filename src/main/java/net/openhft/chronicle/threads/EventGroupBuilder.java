@@ -73,7 +73,7 @@ public class EventGroupBuilder implements Builder<EventLoop> {
      */
     @SuppressWarnings("deprecation")
     @Override
-    public EventGroup build() {
+    public @NotNull EventGroup build() {
         EventGroup eventGroup = new EventGroup(daemon,
                 pauserOrDefault(),
                 replicationPauser,

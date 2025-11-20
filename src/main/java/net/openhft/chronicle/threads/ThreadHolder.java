@@ -18,9 +18,8 @@ public interface ThreadHolder {
      * Indicates whether the monitored thread is still running.
      *
      * @return {@code true} if the thread has not terminated
-     * @throws InvalidEventHandlerException if the holder can no longer be queried
      */
-    boolean isAlive() throws InvalidEventHandlerException;
+    boolean isAlive();
 
     /**
      * Called once the thread has ended so monitoring can be stopped or logged.

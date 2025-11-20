@@ -73,6 +73,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
+    @SuppressWarnings("InstantiatingAThreadWithDefaultRunMethod")
     @Timeout(5)
     @Test
     void testSimpleEventGroupTest() throws InterruptedException {
@@ -387,6 +388,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                             assertTrue(EventLoop.inEventLoop(), priority.name());
                             priorities.add(priority);
                         } catch (Throwable t) {
+                            //noinspection CallToPrintStackTrace
                             t.printStackTrace();
                         }
                         throw new InvalidEventHandlerException("done");
@@ -450,13 +452,13 @@ public class EventGroupTest extends ThreadsTestCommon {
             final TestHandler handler = new TestHandler(handlerPriority);
             eventGroup.addHandler(handler);
         }
-        handlers.forEach(handler -> assertEquals(handler.loopStartedNS.get(), 0, handler.priority + " was loopStarted before loop started, priorities=" + priorities));
+        handlers.forEach(handler -> assertEquals(0, handler.loopStartedNS.get(), handler.priority + " was loopStarted before loop started, priorities=" + priorities));
         eventGroup.start();
-        handlers.forEach(handler -> assertEquals(handler.loopFinishedNS.get(), 0, handler.priority + " was loopFinished before loop finished, priorities=" + priorities));
+        handlers.forEach(handler -> assertEquals(0, handler.loopFinishedNS.get(), handler.priority + " was loopFinished before loop finished, priorities=" + priorities));
         Jvm.pause(1000);
-        handlers.forEach(handler -> assertNotEquals(handler.loopStartedNS.get(), 0, handler.priority + " was not loopStarted when loop started, priorities=" + priorities));
+        handlers.forEach(handler -> assertNotEquals(0, handler.loopStartedNS.get(), handler.priority + " was not loopStarted when loop started, priorities=" + priorities));
         eventGroup.close();
-        handlers.forEach(handler -> assertNotEquals(handler.loopFinishedNS.get(), 0, handler.priority + " was not loopFinished when loop finished, priorities=" + priorities));
+        handlers.forEach(handler -> assertNotEquals(0, handler.loopFinishedNS.get(), handler.priority + " was not loopFinished when loop finished, priorities=" + priorities));
     }
 
     private static Stream<List<HandlerPriority>> egCloseParams() {
