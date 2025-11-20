@@ -63,8 +63,8 @@ The detailed specification, including examples and non-functional targets, remai
 
 == Relationship to decision log
 
-- `src/main/adoc/decision-log.adoc` captures the rationale behind key functional choices, including the single-threaded event loop model, pauser defaults and background monitors.
-- When functional behaviour changes in ways that affect these requirements, update both this summary and the project-level specification, and record the rationale in the decision log.
+* `src/main/adoc/decision-log.adoc` captures the rationale behind key functional choices, including the single-threaded event loop model, pauser defaults and background monitors.
+* When functional behaviour changes in ways that affect these requirements, update both this summary and the project-level specification, and record the rationale in the decision log.
 
 == Relationship to tests
 
