@@ -13,6 +13,7 @@ Numbers are unique within the THR scope.
 * link:#THR-NF-P-002[THR-NF-P-002 Busy-spin pauser for latency-critical fast threads]
 * link:#THR-OPS-003[THR-OPS-003 Background disk-space monitoring]
 * link:#THR-DOC-004[THR-DOC-004 Nine-Box taxonomy for requirements and decisions]
+* link:#THR-FN-005[THR-FN-005 EventGroup priority sets gate handler registration]
 
 == Decision Records
 
@@ -182,3 +183,47 @@ Impact & Consequences::
 Notes/Links::
 * Nine-Box taxonomy details and guidance: `AGENTS.md`.
 * Requirements catalogue: link:project-requirements.adoc[Functional requirements for Chronicle Threads.]
+
+[[THR-FN-005]]
+=== THR-FN-005 EventGroup priority sets gate handler registration
+
+Date:: 2025-03-01
+
+Context::
+* `EventGroup` coordinates multiple child loops and routes handlers based on their declared `HandlerPriority`.
+* Not all deployments require every priority; some groups should expose a restricted set of priorities or be effectively disabled for application handlers.
+* Earlier behaviour allowed handlers to be added even when the group had not been configured explicitly with a corresponding priority set, making it harder to reason about which handlers were admissible.
+
+Decision Statement::
+* `EventGroup` instances are configured with a set of supported handler priorities.
+* Loops are only materialised for the priorities included in this set; other loops are omitted.
+* Attempts to register a handler whose `HandlerPriority` has no corresponding loop (for example because that priority is not in the configured set) fail fast with an `IllegalStateException`.
+* A group configured with an empty priority set retains only its monitor loop; attempts to add handlers with any other priority are rejected.
+
+Alternatives Considered::
+* Implicit support for all priorities::
+** Description: Treat all priorities as supported unless explicitly disabled, materialising loops lazily on first handler registration.
+** Pros: Minimal configuration, potentially simpler for small deployments.
+** Cons: Harder to predict resource usage and topology; accidental handler registration can silently create extra loops and threads.
+* Soft failure for unsupported priorities::
+** Description: Drop or log handlers whose priorities are not supported instead of throwing.
+** Pros: Avoids exceptions in misconfigured systems.
+** Cons: Silent misconfiguration is dangerous; handlers may never run with little or no visibility.
+
+Rationale for Decision::
+* An explicit priority set makes `EventGroup` topology predictable and keeps resource allocation under operator control.
+* Failing fast when a handler targets an unsupported priority surfaces configuration errors early in development and testing.
+* Retaining only the monitor loop when the set is empty supports scenarios where an `EventGroup` instance is used purely for monitoring infrastructure rather than application handlers.
+
+Impact & Consequences::
+* Positive:
+** Clearer reasoning about which handlers can attach to a given group.
+** Better alignment between configuration (builder calls) and the underlying loop topology.
+** Easier to construct priority-limited or monitor-only groups without surprising background loops.
+* Negative:
+** A stricter contract means some previously permissive configurations now fail fast and require explicit updates to their configured priority sets.
+** Callers that expect to use priorities that are not enabled for a given group must update their configuration or routing.
+
+Notes/Links::
+* Requirements: link:project-requirements.adoc[THR-FN-004 and THR-FN-005 handler management requirements].
+* Key types: `EventGroup`, `EventGroupBuilder.withPriorities(java.util.Set)`, `HandlerPriority`.

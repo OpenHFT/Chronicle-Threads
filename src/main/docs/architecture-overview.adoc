@@ -57,7 +57,8 @@ Each loop is single-threaded for handler execution (THR-FN-006) and is categoris
 ....
 
 Handlers attach to the loop whose priority matches their declared `HandlerPriority`.
-An `EventGroup` materialises blocking and monitor loops only when required.
+An `EventGroup` materialises loops for the priorities included in its configured priority set and omits others; blocking and concurrent loops are only created when required by configuration.
+If the configured priority set is empty only the monitor loop is present and attempts to add a handler with any other priority are rejected.
 Applications can deploy multiple `EventGroup` instances in the same JVM to isolate subsystems whilst sharing pauser implementations.
 
 == Handler Lifecycle and Serial Execution
