@@ -7,6 +7,8 @@ import net.openhft.chronicle.core.threads.EventLoop;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import java.util.concurrent.TimeoutException;
+
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EventGroupBadAffinityTest extends ThreadsTestCommon {
@@ -21,7 +23,7 @@ class EventGroupBadAffinityTest extends ThreadsTestCommon {
         expectException("Cannot parse 'xxx'");
         ignoreException("Timed out waiting for start!");
         try (final EventLoop eventGroup = EventGroup.builder().withBinding("xxx").build()) {
-            assertThrows(IllegalStateException.class, eventGroup::start);
+            assertThrows(TimeoutException.class, eventGroup::start);
         }
     }
 }
