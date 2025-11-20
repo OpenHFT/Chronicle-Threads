@@ -36,7 +36,7 @@ The detailed specification, including examples and non-functional targets, remai
 |===
 | ID | Requirement (summary) | Verification and references
 | THR-FN-004 | Allow clients to add `EventHandler` instances to a running `EventGroup` at runtime. | `EventGroupHandlerTest`, `EventGroupTest` and `EventGroupStressTest` register handlers after groups are started and confirm they are invoked; examples in the functional specification.
-| THR-FN-005 | Require each `EventHandler` to declare a `HandlerPriority`, which influences execution order and loop assignment. | Verified indirectly via `EventGroupTest`, `MediumEventLoopTest` and `BlockingEventLoopTest`, which route handlers to different loops and assert expected scheduling behaviour; reference `HandlerPriority` Javadoc.
+| THR-FN-005 | Require each `EventHandler` to declare a `HandlerPriority`, which influences execution order and loop assignment; `EventGroup` instances configure a set of supported priorities and reject handlers whose priority has no corresponding loop. | Verified indirectly via `EventGroupTest`, `MediumEventLoopTest` and `BlockingEventLoopTest`, which route handlers to different loops and assert expected scheduling behaviour; reference `HandlerPriority` Javadoc and `EventGroupBuilder.withPriorities(...)` documentation.
 | THR-FN-006 | Invoke each handler's `action()` method serially on the dedicated event loop thread, except for priorities that use their own threading model (such as `BLOCKING` or `CONCURRENT`). | `VanillaEventLoopTest`, `MediumEventLoopTest`, `BlockingEventLoopTest` and `EventLoopConcurrencyStressTest` assume single-threaded handler execution and validate behaviour under contention; rationale captured in the decision log.
 | THR-FN-007 | Require `action()` to return a boolean flag indicating whether useful work was performed, guiding the pauser and scheduling decisions. | `TestEventHandlers` and `PauserTest` exercise different sequences of `true` and `false` returns and observe how pausers respond.
 | THR-FN-008 | Allow handlers to request self-deregistration by throwing `InvalidEventHandlerException` from `action()`. | `EventGroupHandlerTest` covers self-deregistration scenarios, confirming handlers are removed while the loop continues to run.
@@ -63,7 +63,7 @@ The detailed specification, including examples and non-functional targets, remai
 
 == Relationship to decision log
 
-* `src/main/adoc/decision-log.adoc` captures the rationale behind key functional choices, including the single-threaded event loop model, pauser defaults and background monitors.
+* `src/main/docs/decision-log.adoc` captures the rationale behind key functional choices, including the single-threaded event loop model, pauser defaults and background monitors.
 * When functional behaviour changes in ways that affect these requirements, update both this summary and the project-level specification, and record the rationale in the decision log.
 
 == Relationship to tests
