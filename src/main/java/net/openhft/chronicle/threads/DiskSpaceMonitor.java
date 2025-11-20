@@ -175,7 +175,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
 
             } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage.get() / 100) {
                 final double usedFraction = (double) (totalSpace - unallocatedBytes) / totalSpace;
-                final double diskSpaceFull = Math.round(usedFraction * 1000d) / 10d;
+                final double diskSpaceFull = Math.ceil(usedFraction * 1000d) / 10d;
                 notifyDiskLow.warning(diskSpaceFull, fileStore);
 
             } else {
