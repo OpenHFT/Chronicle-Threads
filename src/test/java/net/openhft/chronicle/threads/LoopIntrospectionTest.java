@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class LoopIntrospectionTest extends ThreadsTestCommon {
 
+    @SuppressWarnings("InstantiatingAThreadWithDefaultRunMethod")
     @Test
     void mediumEventLoopReportsRunningThread() throws InterruptedException {
         AtomicReference<Thread> loopThread = new AtomicReference<>();
@@ -31,18 +32,10 @@ class LoopIntrospectionTest extends ThreadsTestCommon {
             loop.start();
             Waiters.waitForCondition("Medium loop did not start", loop::isStarted, 5_000);
 
-            loop.addHandler(new EventHandler() {
-                @Override
-                public @NotNull HandlerPriority priority() {
-                    return HandlerPriority.MEDIUM;
-                }
-
-                @Override
-                public boolean action() {
-                    loopThread.compareAndSet(null, Thread.currentThread());
-                    firstInvocation.countDown();
-                    return false;
-                }
+            loop.addHandler(() -> {
+                loopThread.compareAndSet(null, Thread.currentThread());
+                firstInvocation.countDown();
+                return false;
             });
 
             assertTrue(firstInvocation.await(5, TimeUnit.SECONDS), "Handler never ran on medium loop");
@@ -78,8 +71,9 @@ class LoopIntrospectionTest extends ThreadsTestCommon {
         }
     }
 
+    @SuppressWarnings("InstantiatingAThreadWithDefaultRunMethod")
     @Test
-    void eventGroupAggregatesRunningThreadChecks() throws InterruptedException {
+    void eventGroupAggregatesRunningThreadChecks() {
         AtomicReference<Thread> highThread = new AtomicReference<>();
         AtomicReference<Thread> blockingThread = new AtomicReference<>();
         AtomicReference<Thread> monitorThread = new AtomicReference<>();
@@ -140,7 +134,7 @@ class LoopIntrospectionTest extends ThreadsTestCommon {
         }
 
         @Override
-        public boolean action() throws InvalidEventHandlerException {
+        public boolean action() {
             threadRef.compareAndSet(null, Thread.currentThread());
             return false;
         }

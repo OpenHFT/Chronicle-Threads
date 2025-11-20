@@ -57,7 +57,7 @@ public class ThreadsThreadHolder implements ThreadHolder {
     }
 
     @Override
-    public boolean isAlive() throws InvalidEventHandlerException {
+    public boolean isAlive() {
         return threadSupplier.get().isAlive();
     }
 

@@ -88,6 +88,7 @@ public class StopVCloseTest extends ThreadsTestCommon {
         }
     }
 
+    @SuppressWarnings("CallToPrintStackTrace")
     @Test
     void blockingStopped() throws InterruptedException {
         BlockingEventLoop bel = new BlockingEventLoop("blocking");

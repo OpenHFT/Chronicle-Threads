@@ -57,6 +57,7 @@ public class EventLoopThreadHolder implements ThreadHolder {
     @Override
     public void dumpThread(long startedNS, long nowNS) {
         long blockingTimeNS = nowNS - startedNS;
+        @SuppressWarnings("IntegerDivisionInFloatingPointContext")
         double blockingTimeMS = blockingTimeNS / 100_000 / 10.0;
         if (blockingTimeMS <= 0.0)
             return;

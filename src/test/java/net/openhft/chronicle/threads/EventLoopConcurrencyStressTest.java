@@ -226,6 +226,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             hasStartedEventLoop = new Semaphore(0);
         }
 
+        @SuppressWarnings("CallToPrintStackTrace")
         public void run() {
             try {
                 await(cyclicBarrier);
@@ -257,6 +258,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             hasStoppedEventLoop = new Semaphore(0);
         }
 
+        @SuppressWarnings("CallToPrintStackTrace")
         public void run() {
             try {
                 await(cyclicBarrier);
@@ -295,6 +297,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             this.stoppedAddingHandlers = new Semaphore(0);
         }
 
+        @SuppressWarnings("CallToPrintStackTrace")
         @Override
         public void run() {
             try {

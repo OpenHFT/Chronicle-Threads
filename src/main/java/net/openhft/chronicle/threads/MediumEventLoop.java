@@ -424,7 +424,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     // Unrolled to reduce megamorphic calls and keep the JIT hot.
-    @SuppressWarnings("fallthrough")
+    @SuppressWarnings({"fallthrough", "DefaultNotLastCaseInSwitch"})
     protected boolean runAllHandlers() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
