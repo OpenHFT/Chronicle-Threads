@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>The {@link #run()} loop iterates over the tracked {@link DiskAttributes}
  * entries. Each record stores a {@link FileStore}, the time for the next check
  * and the total size. When the free space is less than two hundred megabytes a
- * panic notification is sent. Otherwise the next check is delayed based on the
+ * panic notification is sent. Otherwise, the next check is delayed based on the
  * amount of free space.</p>
  */
 public enum DiskSpaceMonitor implements Runnable, Closeable {
