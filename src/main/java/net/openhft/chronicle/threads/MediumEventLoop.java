@@ -433,6 +433,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             busy |= callHighHandler();
 
             switch (handlers.length) {
+                //noinspection DefaultNotLastCaseInSwitch
                 default:
                     for (int i = handlers.length - 1; i >= 4; i--) {
                         busy |= callHighHandler();
