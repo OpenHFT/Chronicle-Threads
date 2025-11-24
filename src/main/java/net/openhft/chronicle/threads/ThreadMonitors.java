@@ -13,6 +13,14 @@ import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
+/**
+ * Factory for {@link ThreadMonitor} instances used to watch long-running threads.
+ * <p>
+ * The helpers build monitors around a supplied {@link Thread}, time source and threshold,
+ * and arrange for stack traces to be logged when the thread appears blocked or stalled
+ * for longer than the configured limit. Separate variants are provided for generic and
+ * service threads, with optional call sites for custom logging behaviour.
+ */
 public enum ThreadMonitors {
     ; // none
 
