@@ -43,7 +43,7 @@ public abstract class TimedEventHandler implements EventHandler {
      * event loop can drop this handler.
      */
     @Override
-    public boolean action() {
+    public boolean action() throws InvalidEventHandlerException {
         long now = System.nanoTime();
         if (nextRunNS <= now) {
             long delayUS = timedAction();
@@ -60,7 +60,7 @@ public abstract class TimedEventHandler implements EventHandler {
      * @return delay in micro-seconds. A negative value means the handler has
      * finished and {@code action()} should return {@code true}.
      */
-    protected abstract long timedAction();
+    protected abstract long timedAction() throws InvalidEventHandlerException;
 
     @NotNull
     @Override
