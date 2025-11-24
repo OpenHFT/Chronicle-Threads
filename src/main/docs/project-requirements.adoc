@@ -1,10 +1,10 @@
 = Chronicle Threads - Functional Requirements Specification
+:toc:
+:sectnums:
+:lang: en-GB
 :revnumber: 1.0
 :revdate: 2025-05-25
-:sectnums:
-:toc:
 :source-highlighter: rouge
-:lang: en-GB
 
 == Purpose and Scope
 

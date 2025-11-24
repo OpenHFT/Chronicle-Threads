@@ -78,5 +78,4 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
         timeProvider.advanceMillis(Duration.ofHours(24).toMillis());
         Thread.sleep(1000);
     }
-
 }

@@ -1,10 +1,10 @@
 = Chronicle Threads
 Chronicle Software
-:css-signature: demo
 :toc: macro
-:toclevels: 2
 :icons: font
 :lang: en-GB
+:toclevels: 2
+:css-signature: demo
 :source-highlighter: rouge
 
 image:https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg[caption="",link=https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads]
