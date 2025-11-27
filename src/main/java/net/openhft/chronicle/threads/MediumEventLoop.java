@@ -5,7 +5,6 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.ClosedIllegalStateException;
@@ -245,7 +244,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     @Override
-    @HotMethod
     @SuppressWarnings("try")
     public void run() {
         try {
@@ -534,7 +532,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
     }
 
-    @HotMethod
     private boolean acceptNewHandlers() {
         boolean result = false;
         EventHandler handler;

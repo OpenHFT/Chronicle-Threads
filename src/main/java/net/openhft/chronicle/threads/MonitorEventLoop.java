@@ -4,7 +4,6 @@
 package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.core.threads.EventHandler;
@@ -105,7 +104,6 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     }
 
     @Override
-    @HotMethod
     public void run() {
         throwExceptionIfClosed();
 
@@ -133,7 +131,6 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         }
     }
 
-    @HotMethod
     private boolean runHandlers() {
         boolean busy = false;
         for (int i = 0; i < handlers.size(); i++) {
