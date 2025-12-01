@@ -69,7 +69,6 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         }
         boolean diabled = Jvm.getBoolean("chronicle.disk.monitor.disable");
         if (!diabled) {
-            this.run(); // run once to initialise
             executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
             long period = Jvm.getLong("chronicle.disk.monitor.period", 10L);
             executor.scheduleAtFixedRate(this, period, period, TimeUnit.SECONDS);
