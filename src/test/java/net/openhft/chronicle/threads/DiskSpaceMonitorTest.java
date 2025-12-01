@@ -21,20 +21,16 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
 
     @BeforeEach
     void beforeEach(){
-        System.setProperty("chronicle.disk.monitor.period", "1");
-        System.setProperty("chronicle.disk.monitor.threshold.percent", "0");
         clearState();
     }
 
     @AfterEach
     void afterEach(){
-        System.getProperties().remove("chronicle.disk.monitor.period");
-        System.getProperties().remove("chronicle.disk.monitor.threshold.percent");
         clearState();
+        DiskSpaceMonitor.INSTANCE.setThresholdPercentage(5);
     }
 
     private void clearState() {
-        DiskSpaceMonitor.INSTANCE.setThresholdPercentage(0);
         DiskSpaceMonitor.INSTANCE.clear();
     }
 
@@ -48,7 +44,7 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
         // todo investigate why this fails on arm
         assumeTrue(!Jvm.isArm());
         Map<ExceptionKey, Integer> map = Jvm.recordExceptions();
-        assertEquals(0, DiskSpaceMonitor.INSTANCE.getThresholdPercentage());
+        assertEquals(5, DiskSpaceMonitor.INSTANCE.getThresholdPercentage());
         DiskSpaceMonitor.INSTANCE.setThresholdPercentage(100);
         for (int i = 0; i < 51; i++) {
             DiskSpaceMonitor.INSTANCE.pollDiskSpace(new File("."));
