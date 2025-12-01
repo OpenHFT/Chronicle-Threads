@@ -27,10 +27,10 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
     @AfterEach
     void afterEach(){
         clearState();
+        DiskSpaceMonitor.INSTANCE.setThresholdPercentage(5);
     }
 
     private void clearState() {
-        DiskSpaceMonitor.INSTANCE.setThresholdPercentage(0);
         DiskSpaceMonitor.INSTANCE.clear();
     }
 
@@ -43,9 +43,8 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
     void pollDiskSpace() {
         // todo investigate why this fails on arm
         assumeTrue(!Jvm.isArm());
-        System.setProperty("chronicle.disk.monitor.threshold.percent", "0");
         Map<ExceptionKey, Integer> map = Jvm.recordExceptions();
-        assertEquals(0, DiskSpaceMonitor.INSTANCE.getThresholdPercentage());
+        assertEquals(5, DiskSpaceMonitor.INSTANCE.getThresholdPercentage());
         DiskSpaceMonitor.INSTANCE.setThresholdPercentage(100);
         for (int i = 0; i < 51; i++) {
             DiskSpaceMonitor.INSTANCE.pollDiskSpace(new File("."));
@@ -59,6 +58,7 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
                 .mapToInt(Map.Entry::getValue)
                 .sum();
         Jvm.resetExceptionHandlers();
+        System.out.println("Disk space warnings/errors: " + count);
         // look for 5 disk space checks and some debug messages about slow disk checks.
         assertEquals(5.5, count, 1.5);
     }
