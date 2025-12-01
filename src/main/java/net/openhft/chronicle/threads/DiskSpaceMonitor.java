@@ -55,7 +55,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
     final ScheduledExecutorService executor;
-    private int thresholdPercentage = Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 5);
+    private volatile int thresholdPercentage = Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 5);
     private TimeProvider timeProvider = SystemTimeProvider.INSTANCE;
 
     DiskSpaceMonitor() {
@@ -69,7 +69,6 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         }
         boolean diabled = Jvm.getBoolean("chronicle.disk.monitor.disable");
         if (!diabled) {
-            this.run(); // run once to initialise
             executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
             long period = Jvm.getLong("chronicle.disk.monitor.period", 10L);
             executor.scheduleAtFixedRate(this, period, period, TimeUnit.SECONDS);
@@ -107,7 +106,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                 return;
             }
         }
-        DiskAttributes da = diskAttributesMap.computeIfAbsent(fs, DiskAttributes::new);
+        diskAttributesMap.computeIfAbsent(fs, DiskAttributes::new);
 
         final long tookUs = (timeProvider.currentTimeNanos() - start) / 1_000;
         if (tookUs > TIME_TAKEN_WARN_THRESHOLD_US)
