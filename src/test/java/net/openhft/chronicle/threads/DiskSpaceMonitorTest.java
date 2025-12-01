@@ -21,11 +21,15 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
 
     @BeforeEach
     void beforeEach(){
+        System.setProperty("chronicle.disk.monitor.period", "1");
+        System.setProperty("chronicle.disk.monitor.threshold.percent", "0");
         clearState();
     }
 
     @AfterEach
     void afterEach(){
+        System.getProperties().remove("chronicle.disk.monitor.period");
+        System.getProperties().remove("chronicle.disk.monitor.threshold.percent");
         clearState();
     }
 
@@ -43,7 +47,6 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
     void pollDiskSpace() {
         // todo investigate why this fails on arm
         assumeTrue(!Jvm.isArm());
-        System.setProperty("chronicle.disk.monitor.threshold.percent", "0");
         Map<ExceptionKey, Integer> map = Jvm.recordExceptions();
         assertEquals(0, DiskSpaceMonitor.INSTANCE.getThresholdPercentage());
         DiskSpaceMonitor.INSTANCE.setThresholdPercentage(100);
@@ -59,6 +62,7 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
                 .mapToInt(Map.Entry::getValue)
                 .sum();
         Jvm.resetExceptionHandlers();
+        System.out.println("Disk space warnings/errors: " + count);
         // look for 5 disk space checks and some debug messages about slow disk checks.
         assertEquals(5.5, count, 1.5);
     }
