@@ -348,7 +348,7 @@ public class EventGroup extends AbstractLifecycleEventLoop implements EventLoop 
 
     private static String renderThreadDump() {
         final Map<Thread, StackTraceElement[]> allStackTraces = Thread.getAllStackTraces();
-        StringBuilder stringBuilder = new StringBuilder();
+        StringBuilder stringBuilder = new StringBuilder(256);
         stringBuilder.append("Thread dump at time of occurrence:\n\n");
         allStackTraces.forEach((key, value) -> {
             stringBuilder.append("------- Thread '").append(key.getName()).append("'\n");

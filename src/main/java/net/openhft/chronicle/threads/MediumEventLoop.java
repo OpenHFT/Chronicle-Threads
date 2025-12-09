@@ -701,7 +701,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     Jvm.pause(i);
 
                 if (i == 35 || i == 50) {
-                    final StringBuilder sb = new StringBuilder();
+                    final StringBuilder sb = new StringBuilder(128);
                     long ms = System.currentTimeMillis() - startTimeMillis;
                     sb.append(name).append(": Shutting down thread is executing after ").
                             append(ms).append("ms ").append(threadSnapshot)

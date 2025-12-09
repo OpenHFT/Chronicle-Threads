@@ -73,7 +73,7 @@ class ThreadsTest extends ThreadsTestCommon {
 
     @Test
     void testRenderStackTrace() {
-        StackTraceElement[] stackTrace = new StackTraceElement[]{
+        StackTraceElement[] stackTrace = {
                 new StackTraceElement("com.test.Something", "doSomething", "Something.java", 123),
                 new StackTraceElement("com.test.SomethingElse", "doSomethingElse", "SomethingElse.java", 456),
                 new StackTraceElement("com.test.SomethingElseAgain", "doSomethingElseAgain", "SomethingElseAgain.java", 789),

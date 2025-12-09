@@ -42,7 +42,7 @@ class ThreadMonitorHarnessTest {
     void willCallThreadFinishedThenTerminateWhenThreadIsNoLongerAlive() {
         when(threadHolder.isAlive()).thenReturn(false);
 
-        assertThrows(InvalidEventHandlerException.class, () -> threadMonitorHarness.action());
+        assertThrows(InvalidEventHandlerException.class, threadMonitorHarness::action);
         verify(threadHolder).reportFinished();
     }
 

@@ -119,6 +119,8 @@ public class MilliPauser implements Pauser {
      *
      * @param delayMS delay in milliseconds
      */
+    @SuppressWarnings("PMD.UnusedAssignment")
+    // thread reference is used by unpause() while pause is in progress
     void doPauseMS(long delayMS) {
         final Thread threadSnapshot = Thread.currentThread();
         thread = threadSnapshot;

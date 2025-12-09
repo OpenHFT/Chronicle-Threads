@@ -21,11 +21,11 @@ public enum EventLoopStateRenderer {
         if (eventLoop == null) {
             return name + " event loop is null";
         }
-        StringBuilder builder = new StringBuilder();
-        builder.append(name).append(" event loop state\n");
-        builder.append("#toString(): ").append(eventLoop).append('\n');
-        builder.append("Closed: ").append(eventLoop.isClosed()).append('\n');
-        builder.append("Closing: ").append(eventLoop.isClosing()).append('\n');
+        StringBuilder builder = new StringBuilder(128);
+        builder.append(name).append(" event loop state\n")
+                .append("#toString(): ").append(eventLoop).append('\n')
+                .append("Closed: ").append(eventLoop.isClosed()).append('\n')
+                .append("Closing: ").append(eventLoop.isClosing()).append('\n');
         addLifecycleDetails(builder, eventLoop);
         addCoreEventLoopDetails(builder, eventLoop);
         return builder.toString();

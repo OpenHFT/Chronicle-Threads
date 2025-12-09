@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Stopping allows existing handlers to finish so the loop may be started
  * again. Closing interrupts blocking work and frees the loop's resources.
  */
-public class StopVCloseTest extends ThreadsTestCommon {
+class StopVCloseTest extends ThreadsTestCommon {
 
     @BeforeEach
     void handlersInit() {

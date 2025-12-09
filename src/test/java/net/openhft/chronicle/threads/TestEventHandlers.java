@@ -12,6 +12,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@SuppressWarnings("PMD.TestClassWithoutTestCases")
 public class TestEventHandlers {
 
     /**

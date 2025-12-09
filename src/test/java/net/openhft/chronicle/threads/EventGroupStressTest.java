@@ -79,9 +79,10 @@ class EventGroupStressTest extends ThreadsTestCommon {
         }
     }
 
+    @SuppressWarnings("PMD.TestClassWithoutTestCases")
     static class TestEventHandler implements EventHandler {
 
-        private static final HandlerPriority[] PRIORITIES = new HandlerPriority[]{
+        private static final HandlerPriority[] PRIORITIES = {
                 HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.REPLICATION, HandlerPriority.TIMER,
                 HandlerPriority.BLOCKING, HandlerPriority.DAEMON
         };

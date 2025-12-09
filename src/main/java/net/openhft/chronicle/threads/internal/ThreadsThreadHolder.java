@@ -94,7 +94,7 @@ public class ThreadsThreadHolder implements ThreadHolder {
         Thread thread = threadSupplier.get();
 
         String type = (startedNS == lastTime) ? "re-reporting" : "new report";
-        StringBuilder out = new StringBuilder()
+        StringBuilder out = new StringBuilder(160)
                 .append("THIS IS NOT AN ERROR, but a profile of the thread, ").append(description)
                 .append(" thread ").append(thread.getName())
                 .append(" interrupted ").append(thread.isInterrupted())

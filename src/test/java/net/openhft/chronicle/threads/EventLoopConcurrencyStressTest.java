@@ -227,6 +227,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
 
         @SuppressWarnings("CallToPrintStackTrace")
+        @Override
         public void run() {
             try {
                 await(cyclicBarrier);
@@ -259,6 +260,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         }
 
         @SuppressWarnings("CallToPrintStackTrace")
+        @Override
         public void run() {
             try {
                 await(cyclicBarrier);

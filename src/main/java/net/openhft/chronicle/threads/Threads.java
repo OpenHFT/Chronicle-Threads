@@ -165,9 +165,10 @@ public enum Threads {
         Jvm.pause(100);
 
         forEachThread(service, t -> {
-            StringBuilder b = new StringBuilder("**** THE " +
-                    t.getName() +
-                    " THREAD DID NOT SHUTDOWN ***\n");
+            StringBuilder b = new StringBuilder(64)
+                    .append("**** THE ")
+                    .append(t.getName())
+                    .append(" THREAD DID NOT SHUTDOWN ***\n");
             renderStackTrace(b, t.getStackTrace());
             Jvm.warn().on(Threads.class, b.toString());
         });
@@ -181,7 +182,7 @@ public enum Threads {
      */
     public static void renderStackTrace(StringBuilder stringBuilder, StackTraceElement[] stackTraceElements) {
         for (StackTraceElement s : stackTraceElements)
-            stringBuilder.append("  ").append(s).append("\n");
+            stringBuilder.append("  ").append(s).append('\n');
     }
 
     /**

@@ -181,6 +181,8 @@ public class LongPauser implements Pauser, TimingPauser {
      *
      * @param delayNs pause duration in nanoseconds
      */
+    @SuppressWarnings("PMD.UnusedAssignment")
+    // thread is read by unpause() from another thread while pause is in progress
     void doPause(long delayNs) {
         final Thread threadSnapshot = Thread.currentThread();
         thread = threadSnapshot;

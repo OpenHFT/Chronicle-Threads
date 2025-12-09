@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <li>no extra threads remain after {@code stop()}.</li>
  * </ul>
  */
-public class EventGroupTest extends ThreadsTestCommon {
+class EventGroupTest extends ThreadsTestCommon {
     private static final RuntimeException RUNTIME_EXCEPTION = new RuntimeException("some random text");
     private final List<TestHandler> handlers = new ArrayList<>();
 
@@ -349,12 +349,7 @@ public class EventGroupTest extends ThreadsTestCommon {
             closeQuietly(eventGroup); // Direct call to close causes an unsuppressable warning in Java 21+
             for (HandlerPriority hp : HandlerPriority.values()) {
                 final TestHandler handler = new TestHandler(hp);
-                try {
-                    eventGroup.addHandler(handler);
-                    fail("Should have failed " + handler);
-                } catch (IllegalStateException e) {
-                    // this is what we want
-                }
+                assertThrows(IllegalStateException.class, () -> eventGroup.addHandler(handler));
             }
             handlers.clear();
         }
@@ -479,8 +474,8 @@ public class EventGroupTest extends ThreadsTestCommon {
     void closeEventGroupInWithinAndEventLoopThrowsException(List<HandlerPriority> priorities) {
         EventGroup eg = EventGroupBuilder.builder().build();
         try {
-            Map<HandlerPriority, AtomicBoolean> eventHandlerFinishedForPriority = new HashMap<>();
-            Map<HandlerPriority, AtomicBoolean> exceptionThrownInHandlerForPriority = new HashMap<>();
+            Map<HandlerPriority, AtomicBoolean> eventHandlerFinishedForPriority = new EnumMap<>(HandlerPriority.class);
+            Map<HandlerPriority, AtomicBoolean> exceptionThrownInHandlerForPriority = new EnumMap<>(HandlerPriority.class);
 
             for (final HandlerPriority priority : priorities) {
 
@@ -625,6 +620,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
+    @SuppressWarnings("PMD.TestClassWithoutTestCases")
     class TestHandler extends SimpleCloseable implements EventHandler, Closeable {
         final CountDownLatch installed = new CountDownLatch(1);
         final CountDownLatch started = new CountDownLatch(1);
