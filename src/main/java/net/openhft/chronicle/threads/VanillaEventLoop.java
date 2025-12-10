@@ -127,6 +127,9 @@ public class VanillaEventLoop extends MediumEventLoop {
         runAllHandlers(daemonHandlers);
     }
 
+    /**
+     * Notifies handlers that the loop has finished processing.
+     */
     private static void finishHandlers(List<EventHandler> handlers) {
         if (!handlers.isEmpty())
             handlers.forEach(Threads::loopFinishedQuietly);

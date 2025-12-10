@@ -56,6 +56,9 @@ public class ThreadsThreadHolder implements ThreadHolder {
         this.logConsumer = logConsumer;
     }
 
+    /**
+     * Returns whether the wrapped thread is still alive.
+     */
     @Override
     public boolean isAlive() {
         return threadSupplier.get().isAlive();
