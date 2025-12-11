@@ -26,14 +26,32 @@ public class NamedThreadFactory extends ThreadGroup implements ThreadFactory {
     private final StackTrace createdHere;
     private final boolean inEventLoop;
 
+    /**
+     * Creates a factory with the given thread group name.
+     *
+     * @param name prefix for the thread group and threads
+     */
     public NamedThreadFactory(String name) {
         this(name, null, null);
     }
 
+    /**
+     * Creates a factory with an optional daemon setting.
+     *
+     * @param name   prefix for the thread group and threads
+     * @param daemon whether created threads should be daemon threads
+     */
     public NamedThreadFactory(String name, Boolean daemon) {
         this(name, daemon, null);
     }
 
+    /**
+     * Creates a factory specifying daemon status and priority.
+     *
+     * @param name     prefix for the thread group and threads
+     * @param daemon   whether created threads should be daemon threads
+     * @param priority thread priority or {@code null} for default
+     */
     public NamedThreadFactory(String name, Boolean daemon, Integer priority) {
         this(name, daemon, priority, false);
     }

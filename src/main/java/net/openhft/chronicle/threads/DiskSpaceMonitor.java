@@ -46,11 +46,17 @@ import java.util.concurrent.atomic.AtomicInteger;
  * amount of free space.</p>
  */
 public enum DiskSpaceMonitor implements Runnable, Closeable {
+    /**
+     * Singleton instance driven by the scheduled executor.
+     */
     INSTANCE;
 
+    /** Name used for the scheduled executor thread. */
     public static final String DISK_SPACE_CHECKER_NAME = "disk~space~checker";
+    /** Whether to log missing file stores when they disappear mid-run. */
     static final boolean WARN_DELETED = Jvm.getBoolean("disk.monitor.deleted.warning");
     private static final boolean DISABLED = Jvm.getBoolean("chronicle.disk.monitor.disable");
+    /** Threshold in microseconds beyond which polling latency is logged. */
     public static final int TIME_TAKEN_WARN_THRESHOLD_US = Jvm.getInteger("chronicle.disk.monitor.warn.threshold.us", 250);
     private final NotifyDiskLow notifyDiskLow;
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
@@ -79,11 +85,20 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     }
 
     // used for testing purposes
+
+    /**
+     * Clears cached file store state. Intended for test isolation.
+     */
     public void clear() {
         fileStoreCacheMap.clear();
         diskAttributesMap.clear();
     }
 
+    /**
+     * Registers the disk containing the supplied file for monitoring.
+     *
+     * @param file file whose backing store should be tracked
+     */
     public void pollDiskSpace(File file) {
         if (DISABLED)
             return;
@@ -128,14 +143,29 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         }
     }
 
+    /**
+     * Returns the current percentage threshold for low-disk warnings.
+     *
+     * @return warning threshold in percent
+     */
     public int getThresholdPercentage() {
         return thresholdPercentage.get();
     }
 
+    /**
+     * Updates the percentage threshold that triggers warnings.
+     *
+     * @param thresholdPercentage new threshold in percent
+     */
     public void setThresholdPercentage(int thresholdPercentage) {
         this.thresholdPercentage.set(thresholdPercentage);
     }
 
+    /**
+     * Overrides the time source for deterministic testing.
+     *
+     * @param timeProvider replacement time provider
+     */
     @SuppressWarnings("ProtectedMemberInFinalClass")
     @VisibleForTesting
     protected void setTimeProvider(TimeProvider timeProvider) {
@@ -148,6 +178,9 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             Threads.shutdown(executor);
     }
 
+    /**
+     * Tracks per-FileStore disk space and scheduling state.
+     */
     final class DiskAttributes {
 
         private final FileStore fileStore;
@@ -155,10 +188,12 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         long timeNextCheckedMS;
         long totalSpace;
 
+        /** Create tracking information for a particular {@link FileStore}. */
         DiskAttributes(FileStore fileStore) {
             this.fileStore = fileStore;
         }
 
+        /** Checks free space for this file store and triggers notifications as needed. */
         void run() throws IOException {
             long now = timeProvider.currentTimeMillis();
             if (timeNextCheckedMS > now)
@@ -194,6 +229,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     private static class NotifyDiskLowIterator implements NotifyDiskLow {
         private final List<NotifyDiskLow> list;
 
+        /** Creates a composite notifier that forwards to the supplied implementations. */
         public NotifyDiskLowIterator(List<NotifyDiskLow> list) {
             this.list = list;
         }

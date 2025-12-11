@@ -48,6 +48,11 @@ public enum EventLoopLifecycle {
         this.stopped = stopped;
     }
 
+    /**
+     * Indicates whether the lifecycle is in a terminal stopped state.
+     *
+     * @return {@code true} when no further work should run
+     */
     public boolean isStopped() {
         return stopped;
     }

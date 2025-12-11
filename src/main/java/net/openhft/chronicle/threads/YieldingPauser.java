@@ -25,6 +25,8 @@ public class YieldingPauser implements TimingPauser {
     private long timeOutStart = Long.MAX_VALUE;
 
     /**
+     * Creates a pauser that spins briefly before yielding.
+     *
      * @param minBusy number of {@link #pause()} calls to spin before yielding.
      *                A value of {@code 0} yields immediately.
      */

@@ -17,7 +17,18 @@ import java.nio.file.FileStore;
  * currently is.</p>
  */
 public interface NotifyDiskLow {
+    /**
+     * Invoked when free space has reached a critical level.
+     *
+     * @param fileStore file store running out of space
+     */
     void panic(FileStore fileStore);
 
+    /**
+     * Invoked when free space is low but not yet critical.
+     *
+     * @param diskSpaceFullPercent percentage of space used
+     * @param fileStore            file store running low
+     */
     void warning(double diskSpaceFullPercent, FileStore fileStore);
 }

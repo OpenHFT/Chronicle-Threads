@@ -41,17 +41,33 @@ import java.util.concurrent.TimeoutException;
  */
 public interface Pauser {
 
+    /**
+     * Minimum processors expected before favouring busy pausers.
+     */
     int MIN_PROCESSORS = Jvm.getInteger("pauser.minProcessors", 4);
 
+    /** Whether the runtime is constrained and should select balanced pausers. */
     boolean BALANCED = getBalanced(); // calculated once
+    /** Whether the runtime is too small for busy pausers and should sleep more. */
     boolean SLEEPY = getSleepy();  // calculated once
+    /** Minimum busy duration used by balanced pausers in microseconds. */
     int MIN_BUSY = Integer.getInteger("balances.minBusy", OS.isWindows() ? 100_000 : 10_000);
 
+    /**
+     * Determines if the host has few enough processors to warrant the balanced pauser.
+     *
+     * @return {@code true} if balanced pausers should be preferred
+     */
     static boolean getBalanced() {
         int procs = AffinityLock.cpuLayout().cpus();
         return procs < MIN_PROCESSORS * 2;
     }
 
+    /**
+     * Determines if the host should fall back to the sleepy pauser strategy.
+     *
+     * @return {@code true} when the machine has fewer than {@link #MIN_PROCESSORS} cores
+     */
     static boolean getSleepy() {
         int procs = AffinityLock.cpuLayout().cpus();
         return procs < MIN_PROCESSORS;
@@ -211,6 +227,10 @@ public interface Pauser {
 
     /**
      * use {@link TimingPauser#pause(long, TimeUnit)} instead
+     *
+     * @param timeout  maximum time to pause
+     * @param timeUnit time unit of the timeout
+     * @throws TimeoutException if the timeout elapses
      */
     default void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
         throw new UnsupportedOperationException(this + " is not stateful, use a " + TimingPauser.class.getSimpleName());

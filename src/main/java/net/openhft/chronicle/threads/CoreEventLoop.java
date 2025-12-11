@@ -57,5 +57,10 @@ public interface CoreEventLoop extends EventLoop {
      */
     boolean isRunningOnThread(Thread thread);
 
+    /**
+     * Marks the loop as private so close checks allow shutdown from its own thread.
+     *
+     * @param privateGroup {@code true} when the loop belongs to an isolated group
+     */
     void privateGroup(boolean privateGroup);
 }

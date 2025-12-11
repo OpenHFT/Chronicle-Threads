@@ -32,7 +32,11 @@ import static net.openhft.chronicle.threads.Threads.shutdownDaemon;
  * invoking any handlers.</p>
  */
 public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runnable, EventLoop {
+    /**
+     * System property key controlling the initial monitor delay.
+     */
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
+    /** Initial delay in milliseconds before monitoring begins. */
     static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
     private final transient ExecutorService service;
@@ -41,10 +45,23 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     private final Pauser pauser;
     private transient volatile Thread thread = null;
 
+    /**
+     * Creates a monitor loop using the parent's name as a prefix.
+     *
+     * @param parent parent loop or {@code null} if standalone
+     * @param pauser pauser controlling monitor polling frequency
+     */
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
     }
 
+    /**
+     * Creates a monitor loop with a specific name suffix.
+     *
+     * @param parent parent loop or {@code null} if standalone
+     * @param name   label appended to the thread name
+     * @param pauser pauser controlling monitor polling frequency
+     */
     public MonitorEventLoop(final EventLoop parent, final String name, final Pauser pauser) {
         super(name + (withSlash(parent == null ? "" : parent.name())) + "event~loop~monitor");
         this.parent = parent;

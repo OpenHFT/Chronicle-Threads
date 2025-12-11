@@ -46,6 +46,13 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     private final NamedThreadFactory threadFactory;
     private final Supplier<Pauser> pauserSupplier;
 
+    /**
+     * Creates a blocking event loop using a parent loop and custom pauser supplier.
+     *
+     * @param parent parent event loop
+     * @param name   loop name
+     * @param pauser pauser supplier for handler threads
+     */
     public BlockingEventLoop(@NotNull final EventLoop parent,
                              @NotNull final String name,
                              @NotNull final Supplier<Pauser> pauser) {
@@ -56,6 +63,11 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         this.pauserSupplier = pauser;
     }
 
+    /**
+     * Creates a blocking event loop that manages its own threads with a balanced pauser.
+     *
+     * @param name loop name
+     */
     public BlockingEventLoop(@NotNull final String name) {
         super(name);
         this.parent = this;

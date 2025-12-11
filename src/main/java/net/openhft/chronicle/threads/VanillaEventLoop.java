@@ -30,6 +30,9 @@ import static net.openhft.chronicle.threads.Threads.loopStartedCall;
  * interval and DAEMON handlers run when the loop is otherwise idle.
  */
 public class VanillaEventLoop extends MediumEventLoop {
+    /**
+     * Allowed handler priorities supported by the vanilla loop.
+     */
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
                     EnumSet.of(HandlerPriority.HIGH,

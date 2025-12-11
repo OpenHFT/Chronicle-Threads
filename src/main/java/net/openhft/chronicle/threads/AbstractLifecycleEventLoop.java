@@ -39,8 +39,13 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      * tests don't block forever. This time should be kept as "effectively forever".
      */
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
+    /**
+     * Tracks the current lifecycle state of this loop.
+     */
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
+    /** Identifier for this event loop. */
     protected final String name;
+    /** Whether this loop belongs to a private event group. */
     volatile boolean privateGroup;
 
     /**
@@ -59,6 +64,11 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         singleThreadedCheckDisabled(true);
     }
 
+    /**
+     * Returns the loop name ensuring it ends with a slash.
+     *
+     * @return loop name with trailing slash when non-empty
+     */
     protected String nameWithSlash() {
         return withSlash(name);
     }
@@ -146,8 +156,19 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         }
     }
 
+    /**
+     * Checks whether the given thread is the one executing this event loop.
+     *
+     * @param thread thread to test
+     * @return true if the loop is running on the provided thread
+     */
     public abstract boolean isRunningOnThread(Thread thread);
 
+    /**
+     * Returns whether the loop has entered the STARTED state.
+     *
+     * @return true if started
+     */
     protected boolean isStarted() {
         return lifecycle.get() == EventLoopLifecycle.STARTED;
     }
@@ -161,6 +182,11 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         return n.isEmpty() ? n : n + "/";
     }
 
+    /**
+     * Marks this loop as belonging to a private group (relaxes close checks).
+     *
+     * @param privateGroup whether the loop belongs to a private group
+     */
     public void privateGroup(boolean privateGroup) {
         this.privateGroup = privateGroup;
     }

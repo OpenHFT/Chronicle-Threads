@@ -13,6 +13,12 @@ import java.nio.file.FileStore;
  * and {@link #warning(double, FileStore)} emits a warning.
  */
 public class NotifyDiskLowLogWarn implements NotifyDiskLow {
+    /**
+     * Creates a logger-backed low-disk notifier.
+     */
+    public NotifyDiskLowLogWarn() {
+    }
+
     @Override
     public void panic(FileStore fileStore) {
         Jvm.error().on(DiskSpaceMonitor.class, "your disk " + fileStore + " is almost full, " +

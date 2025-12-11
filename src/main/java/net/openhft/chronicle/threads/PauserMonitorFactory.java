@@ -29,6 +29,11 @@ public interface PauserMonitorFactory {
      */
     EventHandler pauserMonitor(Pauser pauser, String description, int seconds);
 
+    /**
+     * Loads the first available factory from the classpath or returns a no-op fallback.
+     *
+     * @return resolved {@link PauserMonitorFactory}
+     */
     static PauserMonitorFactory load() {
         final Iterator<PauserMonitorFactory> iterator = ServiceLoader.load(PauserMonitorFactory.class).iterator();
         return iterator.hasNext() ?

@@ -17,8 +17,18 @@ import java.util.concurrent.TimeoutException;
  */
 public class BusyTimedPauser implements Pauser, TimingPauser {
 
+    /**
+     * NanoTime of first pause after reset.
+     */
     private long time = Long.MAX_VALUE;
+    /** Number of pause calls made. */
     private long countPaused = 0;
+
+    /**
+     * Creates a pauser that busy-spins while supporting timed pauses for monitoring.
+     */
+    public BusyTimedPauser() {
+    }
 
     /**
      * Always returns {@code true}, indicating that this pauser predominantly keeps the thread busy.
@@ -103,4 +113,3 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
         return "PauserMode.timedBusy";
     }
 }
-

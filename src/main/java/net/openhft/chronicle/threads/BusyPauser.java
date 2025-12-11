@@ -16,6 +16,9 @@ import java.util.concurrent.TimeoutException;
  * while waiting. No state is kept, so most lifecycle methods are no-ops.
  */
 public enum BusyPauser implements Pauser {
+    /**
+     * Singleton instance used by {@link Pauser#busy()}.
+     */
     INSTANCE;
 
     /**

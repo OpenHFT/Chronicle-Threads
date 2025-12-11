@@ -12,6 +12,9 @@ import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
  * or unexpected thread termination.
  */
 public interface ThreadHolder {
+    /**
+     * Maximum permitted timing error in nanoseconds when monitoring.
+     */
     int TIMING_ERROR = Jvm.getInteger("threads.timing.error", 80_000_000);
 
     /**
@@ -56,6 +59,8 @@ public interface ThreadHolder {
 
     /**
      * Descriptive name used in log output.
+     *
+     * @return name of the monitored thread or loop
      */
     String getName();
 

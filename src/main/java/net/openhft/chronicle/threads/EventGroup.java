@@ -56,6 +56,9 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  */
 public class EventGroup extends AbstractLifecycleEventLoop implements EventLoop {
 
+    /**
+     * Default number of concurrent event loop threads.
+     */
     public static final int CONC_THREADS = Jvm.getInteger("eventGroup.conc.threads",
             Jvm.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Jvm.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500L);
@@ -82,6 +85,21 @@ public class EventGroup extends AbstractLifecycleEventLoop implements EventLoop 
     private final Pauser replicationPauser;
     private VanillaEventLoop replication;
 
+    /**
+     * Builds an EventGroup with the supplied configuration. Prefer {@link EventGroupBuilder}.
+     *
+     * @param daemon                 whether worker threads should be daemon threads
+     * @param pauser                 pauser used by the core event loop
+     * @param replicationPauser      pauser used by the replication loop
+     * @param binding                CPU affinity for the core loop
+     * @param bindingReplication     CPU affinity for the replication loop
+     * @param name                   base name for threads
+     * @param concThreadsNum         number of concurrent event loops to provision
+     * @param concBinding            CPU affinity for concurrent loops
+     * @param concPauserSupplier     supplier for concurrent pausers
+     * @param priorities             handler priorities enabled for this group
+     * @param blockingPauserSupplier supplier for the blocking loop pauser
+     */
     @Deprecated(/* Instead use EventGroupBuilder. TODO: make package-private and undeprecate in x.28, as only EventGroupBuilder should be using */)
     @SuppressWarnings({"this-escape", "deprecation"})
     public EventGroup(final boolean daemon,
@@ -258,6 +276,9 @@ public class EventGroup extends AbstractLifecycleEventLoop implements EventLoop 
      * Adds a monitor that logs a stack trace if the core loop runs longer than
      * the supplied time limit. The {@code timeOfStart} supplier should return
      * the time the action began in nano-seconds.
+     *
+     * @param timeLimitNS time limit in nanoseconds
+     * @param timeOfStart supplier returning when the monitored task began
      */
     public void setupTimeLimitMonitor(final long timeLimitNS, final LongSupplier timeOfStart) {
         throwExceptionIfClosed();
@@ -274,6 +295,11 @@ public class EventGroup extends AbstractLifecycleEventLoop implements EventLoop 
     /**
      * Installs a {@link ThreadMonitor} on the monitor loop to observe a thread
      * for long running tasks.
+     *
+     * @param description   label for log entries
+     * @param timeLimitNS   threshold in nanoseconds for detecting long tasks
+     * @param timeSupplier  supplies the start time of the monitored work
+     * @param threadSupplier supplies the thread being monitored
      */
     public void addTimingMonitor(final String description,
                                  final long timeLimitNS,

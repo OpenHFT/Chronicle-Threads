@@ -32,34 +32,51 @@ import static net.openhft.chronicle.threads.Threads.*;
  * handlers before pausing via the supplied {@link Pauser}.
  */
 public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
+    /**
+     * Handler priorities accepted by this loop.
+     */
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
             Collections.unmodifiableSet(
                     EnumSet.of(HandlerPriority.HIGH,
                             HandlerPriority.MEDIUM));
+    /** Marker used when the loop is not bound to a CPU. */
     public static final int NO_CPU = -1;
 
+    /** Shared empty handler array to avoid repeated allocations. */
     protected static final EventHandler[] NO_EVENT_HANDLERS = {};
     /**
      * This ensures only a single non-event-loop thread can add a handler at a time
      */
     private final transient Object addHandlerMutex = new Object();
+    /** Guards start/stop so lifecycle transitions are serialised. */
     private final transient Object startStopMutex = new Object();
 
+    /** Parent event loop, or {@code null} when standalone. */
     @Nullable
     protected final transient EventLoop parent;
+    /** Single-threaded executor that drives this loop. */
     @NotNull
     protected final transient ExecutorService service;
+    /** Medium priority handlers currently active. */
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
+    /** Handlers waiting to be added to the loop thread. */
     protected final ConcurrentLinkedQueue<EventHandler> newHandlers = new ConcurrentLinkedQueue<>();
+    /** Strategy for pausing when no handlers are busy. */
     protected final Pauser pauser;
+    /** Whether the worker thread should run as a daemon. */
     protected final boolean daemon;
+    /** CPU affinity binding description. */
     private final String binding;
 
+    /** Snapshot of {@link #mediumHandlers} for fast iteration. */
     @NotNull
     protected EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
+    /** Currently configured HIGH priority handler. */
     protected EventHandler highHandler = EventHandlers.NOOP;
 
+    /** Timestamp when the current loop iteration started or {@link #NOT_IN_A_LOOP}. */
     protected volatile long loopStartNS;
+    /** Thread running this event loop. */
     @Nullable
     protected volatile Thread thread = null;
 
@@ -89,11 +106,21 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         singleThreadedCheckDisabled(true);
     }
 
+    /**
+     * Closes every handler in the provided list.
+     *
+     * @param handlers handlers to close quietly
+     */
     public static void closeAll(@NotNull final List<EventHandler> handlers) {
         // do not remove the handler here, remove all at end instead
         Closeable.closeQuietly(handlers);
     }
 
+    /**
+     * Resets thread ownership tracking for handlers that implement {@link AbstractCloseable}.
+     *
+     * @param handler handler whose thread ownership should be cleared
+     */
     private static void clearUsedByThread(@NotNull EventHandler handler) {
         if (handler instanceof AbstractCloseable)
             ((AbstractCloseable) handler).singleThreadedCheckReset();
@@ -103,6 +130,12 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         return "MediumEventLoop has been " + offendingProperty;
     }
 
+    /**
+     * Removes a handler from a list, closing it first.
+     *
+     * @param handler  handler to remove
+     * @param handlers list from which the handler is removed
+     */
     protected static void removeHandler(final EventHandler handler, @NotNull final List<EventHandler> handlers) {
         // Close the handler before removing it from the list
         loopFinishedQuietly(handler);
@@ -193,7 +226,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     /**
-     * Add a handler in the appropriate way given the thread adding the handler and the state of the loop
+     * Add a handler in the appropriate way given the thread adding the handler and the state of the loop.
+     *
+     * @param handler handler to be added
      */
     protected void addHandlerInternal(@NotNull EventHandler handler) {
         if (thread == null) {
@@ -271,6 +306,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         }
     }
 
+    /** Invoked on the loop thread to signal {@link EventHandler#loopStarted()}. */
     protected void loopStartedAllHandlers() {
         if (loopStartedCall(this, highHandler)) {
             removeHighHandler();
@@ -280,6 +316,11 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         updateMediumHandlersArray();
     }
 
+    /**
+     * Calls {@link EventHandler#loopStarted()} for every handler in the list.
+     *
+     * @param eventHandlerList handlers that will be notified
+     */
     protected void loopStartedForHandlerList(@NotNull List<EventHandler> eventHandlerList) {
         List<EventHandler> removeHandlers = new ArrayList<>();
         for (EventHandler handler : eventHandlerList) {
@@ -295,6 +336,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         }
     }
 
+    /** Invoked when the loop thread is about to exit to finish all handlers. */
     protected void loopFinishedAllHandlers() {
         loopFinishedQuietly(highHandler);
         if (!mediumHandlers.isEmpty())
@@ -347,14 +389,21 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         }
     }
 
+    /**
+     * Interval in milliseconds between timer handler executions.
+     *
+     * @return timer interval in milliseconds
+     */
     protected long timerIntervalMS() {
         return Long.MAX_VALUE / 2;
     }
 
+    /** Execute any timer handlers. Overridden in subclasses. */
     protected void runTimerHandlers() {
         // Do nothing unless overridden
     }
 
+    /** Execute daemon handlers when the loop is otherwise idle. */
     protected void runDaemonHandlers() {
         // Do nothing unless overridden
     }
@@ -422,6 +471,12 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     // Unrolled to reduce megamorphic calls and keep the JIT hot.
+
+    /**
+     * Executes the HIGH handler and all MEDIUM handlers in priority order.
+     *
+     * @return {@code true} if any handler reported work
+     */
     @SuppressWarnings({"fallthrough", "DefaultNotLastCaseInSwitch"})
     protected boolean runAllHandlers() {
         boolean busy = false;
@@ -500,9 +555,12 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         return true;
     }
 
-   protected void removeHighHandler() {
-       if (DEBUG_REMOVING_HANDLERS)
-           Jvm.debug().on(getClass(), "Removing " + highHandler.priority() + " " + highHandler + " from " + this.name);
+    /**
+     * Removes and closes the current HIGH handler.
+     */
+    protected void removeHighHandler() {
+        if (DEBUG_REMOVING_HANDLERS)
+            Jvm.debug().on(getClass(), "Removing " + highHandler.priority() + " " + highHandler + " from " + this.name);
         Threads.loopFinishedQuietly(highHandler);
         Closeable.closeQuietly(highHandler);
         highHandler = EventHandlers.NOOP;
@@ -515,6 +573,14 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         }
     }
 
+    /**
+     * Handles an exception thrown by a handler.
+     *
+     * @param eventLoop loop reporting the error
+     * @param handler   handler that threw
+     * @param t         failure encountered
+     * @return {@code true} when the handler should be removed
+     */
     protected boolean handle(EventLoop eventLoop, EventHandler handler, Throwable t) {
         if (!(t instanceof InvalidEventHandlerException)) {
             Jvm.warn().on(eventLoop.getClass(), "Exception thrown by handler " + handler, t);
@@ -542,6 +608,11 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         return result;
     }
 
+    /**
+     * Adds a handler once the loop thread is running.
+     *
+     * @param handler handler to install
+     */
     @SuppressWarnings("fallthrough")
     protected void addNewHandler(@NotNull final EventHandler handler) {
         final HandlerPriority t1 = handler.priority();
@@ -594,6 +665,12 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     /**
      * This check/assignment needs to be atomic
      */
+    /**
+     * Installs a HIGH priority handler if none is currently set.
+     *
+     * @param handler handler to promote to HIGH priority
+     * @return {@code true} if the handler was accepted
+     */
     protected boolean updateHighHandler(@NotNull EventHandler handler) {
         if (highHandler == EventHandlers.NOOP || highHandler == handler) {
             eventLoopQuietly(parent != null ? parent : this, handler);
@@ -626,24 +703,38 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         Jvm.perf().on(getClass(), out.toString());
     }
 
+    /**
+     * Returns the number of handlers excluding daemon handlers.
+     *
+     * @return count of non-daemon handlers
+     */
     public int nonDaemonHandlerCount() {
         return (highHandler == EventHandlers.NOOP ? 0 : 1) +
                 mediumHandlers.size();
     }
 
+    /**
+     * Returns the total number of handlers tracked by this loop.
+     *
+     * @return number of handlers including daemons
+     */
     public int handlerCount() {
         return nonDaemonHandlerCount();
     }
 
+    /** Closes and clears all handlers including any pending additions. */
     protected void closeAllHandlers() {
         Closeable.closeQuietly(highHandler);
         closeAll(mediumHandlers);
         newHandlers.forEach(eventHandler -> {
                     Jvm.startup().on(getClass(), "Handler in newHandler was not accepted before close " + eventHandler);
                     Closeable.closeQuietly(eventHandler);
-                });
+        });
     }
 
+    /**
+     * Emits debug output for any handlers still running during shutdown.
+     */
     public void dumpRunningHandlers() {
         final int handlerCount = handlerCount();
         if (handlerCount <= 0)

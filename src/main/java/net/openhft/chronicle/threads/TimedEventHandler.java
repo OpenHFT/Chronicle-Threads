@@ -33,6 +33,12 @@ public abstract class TimedEventHandler implements EventHandler {
     private long nextRunNS = 0;
 
     /**
+     * Constructs a timed handler with no additional initialisation.
+     */
+    protected TimedEventHandler() {
+    }
+
+    /**
      * Executes the handler when the scheduled time has arrived.
      * <p>
      * If {@code System.nanoTime()} is greater than or equal to
@@ -59,6 +65,7 @@ public abstract class TimedEventHandler implements EventHandler {
      *
      * @return delay in micro-seconds. A negative value means the handler has
      * finished and {@code action()} should return {@code true}.
+     * @throws InvalidEventHandlerException if the handler has become invalid
      */
     protected abstract long timedAction() throws InvalidEventHandlerException;
 

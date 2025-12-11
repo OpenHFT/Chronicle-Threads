@@ -269,6 +269,9 @@ public class EventGroupBuilder implements Builder<EventLoop> {
 
     /**
      * Signifies this a private EventGroup, which will not be shared and can be shutdown independently.
+     *
+     * @param privateGroup whether the group is private
+     * @return this builder
      */
     public EventGroupBuilder withPrivateGroup(boolean privateGroup) {
         this.privateGroup = privateGroup;
