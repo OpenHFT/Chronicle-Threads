@@ -48,8 +48,8 @@ class BlockingEventLoopTest extends ThreadsTestCommon {
             while (!wasStoppedSuccessfully.get()) {
                 pauser.pause(1, TimeUnit.SECONDS);
             }
-            assertTrue(wasStoppedSuccessfully.get());
-            assertFalse(Thread.currentThread().isInterrupted());
+            assertTrue(wasStoppedSuccessfully.get(), "handler interrupted and observed stop");
+            assertFalse(Thread.currentThread().isInterrupted(), "test thread not interrupted");
         }
     }
 

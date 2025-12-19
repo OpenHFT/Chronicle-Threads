@@ -45,7 +45,7 @@ class EventLoopsTest extends ThreadsTestCommon {
             Jvm.setWarnExceptionHandler(eh);
             EventLoops.stopAll(null, Arrays.asList(null, null, null), null);
             // Should silently accept nulls
-            assertTrue(sb.toString().isEmpty());
+            assertTrue(sb.toString().isEmpty(), "stopAll ignores nulls without warning");
         } finally {
             Jvm.setWarnExceptionHandler(exceptionHandler);
         }
@@ -56,11 +56,11 @@ class EventLoopsTest extends ThreadsTestCommon {
     void stopAllWillBlockUntilTheLastEventLoopStops() {
         try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
              final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker")) {
-            doTest(blockingEventLoop, mediumEventLoop);
+            assertTrue(doTest(blockingEventLoop, mediumEventLoop), "stopAll completed after blocked loop was released");
         }
     }
 
-    private static void doTest(BlockingEventLoop blockingEventLoop, MediumEventLoop mediumEventLoop) {
+    private static boolean doTest(BlockingEventLoop blockingEventLoop, MediumEventLoop mediumEventLoop) {
         blockingEventLoop.start();
         mediumEventLoop.start();
 
@@ -74,21 +74,26 @@ class EventLoopsTest extends ThreadsTestCommon {
         }
 
         AtomicBoolean stoppedEm = new AtomicBoolean(false);
-        new Thread(() -> {
+        Thread stopAllThread = new Thread(() -> {
             EventLoops.stopAll(mediumEventLoop, Arrays.asList(null, Collections.singleton(blockingEventLoop)));
             stoppedEm.set(true);
-        }).start();
-        long endTime = System.currentTimeMillis() + 300;
-        while (System.currentTimeMillis() < endTime) {
-            assertFalse(stoppedEm.get());
+        });
+        stopAllThread.start();
+        long blockUntilMs = System.currentTimeMillis() + 300;
+        while (System.currentTimeMillis() < blockUntilMs) {
+            assertFalse(stoppedEm.get(), "stopAll blocks until blocked loop is released");
         }
         semaphore.release();
-        while (System.currentTimeMillis() < endTime) {
-            if (stoppedEm.get()) {
-                break;
-            }
+        long stopAllTimeoutMs = System.currentTimeMillis() + 5_000;
+        while (!stoppedEm.get() && System.currentTimeMillis() < stopAllTimeoutMs) {
             Jvm.pause(1);
         }
+        try {
+            stopAllThread.join(1_000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return stoppedEm.get();
     }
 
     private static Stream<EventLoop> eventLoopsToClose() {
@@ -134,14 +139,14 @@ class EventLoopsTest extends ThreadsTestCommon {
                 Jvm.pause(10);
             }
 
-            assertTrue(el.isAlive());
-            assertFalse(el.isStopped());
-            assertFalse(el.isClosed());
-            assertFalse(el.isClosing());
+            assertTrue(el.isAlive(), "event loop remains alive after close attempt from its own thread");
+            assertFalse(el.isStopped(), "event loop not stopped after close attempt from its own thread");
+            assertFalse(el.isClosed(), "event loop not closed after close attempt from its own thread");
+            assertFalse(el.isClosing(), "event loop not closing after close attempt from its own thread");
         } finally {
             el.close();
 
-            assertTrue(el.isClosed());
+            assertTrue(el.isClosed(), "event loop closed in cleanup");
         }
 
     }

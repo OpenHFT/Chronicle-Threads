@@ -11,6 +11,6 @@ class ThreadsThreadHolderTest extends net.openhft.chronicle.threads.ThreadsTestC
 
     @Test
     void testNanosecondsToMillisWithTenthsPrecision() {
-        assertEquals(1.2d, ThreadsThreadHolder.nanosecondsToMillisWithTenthsPrecision(1_234_567), 0.000000001);
+        assertEquals(1.2d, ThreadsThreadHolder.nanosecondsToMillisWithTenthsPrecision(1_234_567), 0.000000001, "nanoseconds to millis rounding");
     }
 }

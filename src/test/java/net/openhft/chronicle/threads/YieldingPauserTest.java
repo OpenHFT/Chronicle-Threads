@@ -23,7 +23,7 @@ class YieldingPauserTest extends ThreadsTestCommon {
                 try {
                     tp.pause(pauseTimeMillis, TimeUnit.MILLISECONDS);
                     if (System.currentTimeMillis() - start > 200)
-                        fail();
+                        fail("pause did not time out within expected bounds");
                 } catch (TimeoutException e) {
                     final long time = System.currentTimeMillis() - start;
                     // delta used to be 5 for Linux but occasionally we see it blow in Continuous Integration
@@ -31,7 +31,7 @@ class YieldingPauserTest extends ThreadsTestCommon {
                     // org.opentest4j.AssertionFailedError: expected: <100.0> but was: <126.0>
                     int delta = 30;
                     // please don't add delta to pauseTimeMillis below - it makes this test flakier on Windows
-                    assertEquals(pauseTimeMillis, time, delta);
+                    assertEquals(pauseTimeMillis, time, delta, "pause timeout within tolerance");
                     tp.reset();
                     break;
                 }

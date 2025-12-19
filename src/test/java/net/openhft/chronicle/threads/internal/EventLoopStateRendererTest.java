@@ -15,7 +15,7 @@ class EventLoopStateRendererTest extends ThreadsTestCommon {
 
     @Test
     void isNullSafe() {
-        assertEquals("Foo event loop is null", EventLoopStateRenderer.INSTANCE.render("Foo", null));
+        assertEquals("Foo event loop is null", EventLoopStateRenderer.INSTANCE.render("Foo", null), "null-safe render");
     }
 
     @Test
@@ -27,10 +27,10 @@ class EventLoopStateRendererTest extends ThreadsTestCommon {
             }
             final String dump = EventLoopStateRenderer.INSTANCE.render("Medium", mediumEventLoop);
             Jvm.startup().on(EventLoopStateRendererTest.class, dump);
-            assertTrue(dump.contains("Medium event loop state"));
-            assertTrue(dump.contains("Closed: false"));
-            assertTrue(dump.contains("Closing: false"));
-            assertTrue(dump.contains("Lifecycle: STARTED"));
+            assertTrue(dump.contains("Medium event loop state"), "started MediumEventLoop dump should contain 'Medium event loop state' header");
+            assertTrue(dump.contains("Closed: false"), "started MediumEventLoop should show Closed: false");
+            assertTrue(dump.contains("Closing: false"), "started MediumEventLoop should show Closing: false");
+            assertTrue(dump.contains("Lifecycle: STARTED"), "started MediumEventLoop should show Lifecycle: STARTED");
             assertThreadDetailsPresent(dump);
         }
     }
@@ -48,10 +48,10 @@ class EventLoopStateRendererTest extends ThreadsTestCommon {
             }
             final String dump = EventLoopStateRenderer.INSTANCE.render("Medium", mediumEventLoop);
             Jvm.startup().on(EventLoopStateRendererTest.class, dump);
-            assertTrue(dump.contains("Medium event loop state"));
-            assertTrue(dump.contains("Closed: false"));
-            assertTrue(dump.contains("Closing: false"));
-            assertTrue(dump.contains("Lifecycle: STOPPED"));
+            assertTrue(dump.contains("Medium event loop state"), "stopped MediumEventLoop dump should contain 'Medium event loop state' header");
+            assertTrue(dump.contains("Closed: false"), "stopped MediumEventLoop should show Closed: false");
+            assertTrue(dump.contains("Closing: false"), "stopped MediumEventLoop should show Closing: false");
+            assertTrue(dump.contains("Lifecycle: STOPPED"), "stopped MediumEventLoop should show Lifecycle: STOPPED");
             assertThreadDetailsPresent(dump);
         }
     }
@@ -61,10 +61,10 @@ class EventLoopStateRendererTest extends ThreadsTestCommon {
         try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "foobar", Pauser.sleepy(), true, "any")) {
             final String dump = EventLoopStateRenderer.INSTANCE.render("Medium", mediumEventLoop);
             Jvm.startup().on(EventLoopStateRendererTest.class, dump);
-            assertTrue(dump.contains("Medium event loop state"));
-            assertTrue(dump.contains("Closed: false"));
-            assertTrue(dump.contains("Closing: false"));
-            assertTrue(dump.contains("Lifecycle: NEW"));
+            assertTrue(dump.contains("Medium event loop state"), "unstarted MediumEventLoop dump should contain 'Medium event loop state' header");
+            assertTrue(dump.contains("Closed: false"), "unstarted MediumEventLoop should show Closed: false");
+            assertTrue(dump.contains("Closing: false"), "unstarted MediumEventLoop should show Closing: false");
+            assertTrue(dump.contains("Lifecycle: NEW"), "unstarted MediumEventLoop should show Lifecycle: NEW");
         }
     }
 
@@ -77,10 +77,10 @@ class EventLoopStateRendererTest extends ThreadsTestCommon {
             }
             final String dump = EventLoopStateRenderer.INSTANCE.render("Monitor", monitorEventLoop);
             Jvm.startup().on(EventLoopStateRendererTest.class, dump);
-            assertTrue(dump.contains("Monitor event loop state"));
-            assertTrue(dump.contains("Closed: false"));
-            assertTrue(dump.contains("Closing: false"));
-            assertTrue(dump.contains("Lifecycle: STARTED"));
+            assertTrue(dump.contains("Monitor event loop state"), "MonitorEventLoop dump should contain 'Monitor event loop state' header");
+            assertTrue(dump.contains("Closed: false"), "MonitorEventLoop should show Closed: false");
+            assertTrue(dump.contains("Closing: false"), "MonitorEventLoop should show Closing: false");
+            assertTrue(dump.contains("Lifecycle: STARTED"), "MonitorEventLoop should show Lifecycle: STARTED");
         }
     }
 
@@ -93,14 +93,14 @@ class EventLoopStateRendererTest extends ThreadsTestCommon {
             }
             final String dump = EventLoopStateRenderer.INSTANCE.render("EG", eventGroup);
             Jvm.startup().on(EventLoopStateRendererTest.class, dump);
-            assertTrue(dump.contains("EG event loop state"));
-            assertTrue(dump.contains("Closed: false"));
-            assertTrue(dump.contains("Closing: false"));
-            assertTrue(dump.contains("Lifecycle: STARTED"));
+            assertTrue(dump.contains("EG event loop state"), "EventGroup dump should contain 'EG event loop state' header");
+            assertTrue(dump.contains("Closed: false"), "EventGroup should show Closed: false");
+            assertTrue(dump.contains("Closing: false"), "EventGroup should show Closing: false");
+            assertTrue(dump.contains("Lifecycle: STARTED"), "EventGroup should show Lifecycle: STARTED");
         }
     }
 
     private static void assertThreadDetailsPresent(String dump) {
-        assertTrue(dump.contains("Thread state: ") || dump.contains("Thread is null"));
+        assertTrue(dump.contains("Thread state: ") || dump.contains("Thread is null"), "dump contains thread details");
     }
 }

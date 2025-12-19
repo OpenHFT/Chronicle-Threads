@@ -84,6 +84,7 @@ class ThreadsTest extends ThreadsTestCommon {
                 "  com.test.Something.doSomething(Something.java:123)\n" +
                         "  com.test.SomethingElse.doSomethingElse(SomethingElse.java:456)\n" +
                         "  com.test.SomethingElseAgain.doSomethingElseAgain(SomethingElseAgain.java:789)\n",
-                stringBuilder.toString());
+                stringBuilder.toString(),
+                "stack trace rendering");
     }
 }

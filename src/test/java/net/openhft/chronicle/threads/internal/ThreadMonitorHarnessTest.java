@@ -42,7 +42,7 @@ class ThreadMonitorHarnessTest {
     void willCallThreadFinishedThenTerminateWhenThreadIsNoLongerAlive() {
         when(threadHolder.isAlive()).thenReturn(false);
 
-        assertThrows(InvalidEventHandlerException.class, threadMonitorHarness::action);
+        assertThrows(InvalidEventHandlerException.class, threadMonitorHarness::action, "monitor should terminate with exception when monitored thread is no longer alive");
         verify(threadHolder).reportFinished();
     }
 
@@ -50,7 +50,7 @@ class ThreadMonitorHarnessTest {
     void willResetTimersOnFirstIteration() throws InvalidEventHandlerException {
         when(threadHolder.startedNS()).thenReturn(System.nanoTime());
 
-        assertFalse(threadMonitorHarness.action());
+        assertFalse(threadMonitorHarness.action(), "monitor should not report delay on first iteration while initializing timers");
 
         verify(threadHolder).resetTimers();
     }
@@ -59,7 +59,7 @@ class ThreadMonitorHarnessTest {
     void willAbortCheckingWhenLoopStartedTimeIsZero() throws InvalidEventHandlerException {
         when(threadHolder.startedNS()).thenReturn(0L);
 
-        assertFalse(threadMonitorHarness.action());
+        assertFalse(threadMonitorHarness.action(), "monitor should skip delay checking when loop has not yet recorded a start time");
 
         verify(threadHolder, never()).shouldLog(anyLong());
     }
@@ -68,7 +68,7 @@ class ThreadMonitorHarnessTest {
     void willAbortCheckingWhenLoopStartedTimeIsNotInALoop() throws InvalidEventHandlerException {
         when(threadHolder.startedNS()).thenReturn(NOT_IN_A_LOOP);
 
-        assertFalse(threadMonitorHarness.action());
+        assertFalse(threadMonitorHarness.action(), "monitor should skip delay checking when thread is not currently executing in a loop");
 
         verify(threadHolder, never()).shouldLog(anyLong());
     }
@@ -78,9 +78,9 @@ class ThreadMonitorHarnessTest {
         AtomicLong loopStartedTime = new AtomicLong(System.nanoTime());
         when(threadHolder.startedNS()).thenAnswer(iom -> loopStartedTime.incrementAndGet());
 
-        assertFalse(threadMonitorHarness.action());
-        assertFalse(threadMonitorHarness.action());
-        assertFalse(threadMonitorHarness.action());
+        assertFalse(threadMonitorHarness.action(), "monitor should not report delay on first action call while detecting loop start time change");
+        assertFalse(threadMonitorHarness.action(), "monitor should not report delay on subsequent action call when loop start time keeps changing");
+        assertFalse(threadMonitorHarness.action(), "monitor should not report delay on subsequent action call when loop start time keeps changing");
 
         verify(threadHolder, times(3)).resetTimers();
     }
@@ -89,9 +89,9 @@ class ThreadMonitorHarnessTest {
     void willNotResetTimersWhenLoopStartedTimeHasNotChanged() throws InvalidEventHandlerException {
         when(threadHolder.startedNS()).thenReturn(System.nanoTime());
 
-        assertFalse(threadMonitorHarness.action()); // this will trigger a reset because it's the first iteration
-        assertFalse(threadMonitorHarness.action());
-        assertFalse(threadMonitorHarness.action());
+        assertFalse(threadMonitorHarness.action(), "monitor should not report delay on first iteration while initializing timers");
+        assertFalse(threadMonitorHarness.action(), "monitor should not report delay on subsequent action call when loop start time remains stable");
+        assertFalse(threadMonitorHarness.action(), "monitor should not report delay on subsequent action call when loop start time remains stable");
 
         verify(threadHolder, times(1)).resetTimers();
     }
@@ -108,7 +108,7 @@ class ThreadMonitorHarnessTest {
         long actionCallDelayNs = TIMING_TOLERANCE_NS + 1;
 
         when(timeSupplier.getAsLong()).thenReturn(firstCallTime + actionCallDelayNs);
-        assertTrue(threadMonitorHarness.action());
+        assertTrue(threadMonitorHarness.action(), "monitor should report delay when action call duration exceeds timing tolerance threshold");
         verify(threadHolder).monitorThreadDelayed(actionCallDelayNs);
     }
 
@@ -122,7 +122,7 @@ class ThreadMonitorHarnessTest {
         threadMonitorHarness.action();
 
         when(threadHolder.shouldLog(nowTime)).thenReturn(false);
-        assertFalse(threadMonitorHarness.action());
+        assertFalse(threadMonitorHarness.action(), "monitor should not dump thread state when logging is suppressed by shouldLog policy");
         verify(threadHolder, never()).dumpThread(anyLong(), anyLong());
     }
 
@@ -137,7 +137,7 @@ class ThreadMonitorHarnessTest {
         threadMonitorHarness.action();
 
         when(threadHolder.shouldLog(anyLong())).thenReturn(true);
-        assertFalse(threadMonitorHarness.action());
+        assertFalse(threadMonitorHarness.action(), "monitor should return false after dumping thread state to prevent continuous reporting");
         verify(threadHolder).dumpThread(loopStartedTime, nowTime);
     }
 }

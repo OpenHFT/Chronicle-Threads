@@ -15,7 +15,7 @@ import java.util.concurrent.*;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
-import static net.openhft.chronicle.threads.TestEventHandlers.*;
+import static net.openhft.chronicle.threads.EventHandlerFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -46,7 +46,7 @@ abstract class AbstractEventLoopTest extends ThreadsTestCommon {
                                 throw new RuntimeException(e);
                             }
                         });
-                assertEquals(2, eventLoop.handlerCount());
+                assertEquals(2, eventLoop.handlerCount(), "both handlers added before start");
             }
         }
     }
@@ -81,49 +81,65 @@ abstract class AbstractEventLoopTest extends ThreadsTestCommon {
 
                 Waiters.waitForCondition("Not all handlers arrived in the loop",
                         () -> eventLoop.handlerCount() == 3, 1000);
+                assertEquals(3, eventLoop.handlerCount(), "all handlers registered");
             }
         }
-        assertTrue(true); // If we reach here, the test passed
     }
 
     @Test
     void addingFirstPriorityHandlerBeforeStart() {
-        addingHandlerBeforeStart(new CountingHandler(firstPriority()));
+        CountingHandler handler = new CountingHandler(firstPriority());
+        addingHandlerBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "handler closed (priority=" + handler.priority + ")");
     }
 
     @Test
     void addingSecondPriorityHandlerBeforeStart() {
-        addingHandlerBeforeStart(new CountingHandler(secondPriority()));
+        CountingHandler handler = new CountingHandler(secondPriority());
+        addingHandlerBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "handler closed (priority=" + handler.priority + ")");
     }
 
     @Test
     void addingFirstPriorityHandlerAfterStart() {
-        addingHandlerAfterStart(new CountingHandler(firstPriority()));
+        CountingHandler handler = new CountingHandler(firstPriority());
+        addingHandlerAfterStart(handler);
+        assertEquals(1, handler.closeCalled(), "handler closed (priority=" + handler.priority + ")");
     }
 
     @Test
     void addingSecondPriorityHandlerAfterStart() {
-        addingHandlerAfterStart(new CountingHandler(secondPriority()));
+        CountingHandler handler = new CountingHandler(secondPriority());
+        addingHandlerAfterStart(handler);
+        assertEquals(1, handler.closeCalled(), "handler closed (priority=" + handler.priority + ")");
     }
 
     @Test
     void throwingFirstPriorityHandlerAddedBeforeStart() {
-        throwingHandlerAddedBeforeStart(new ThrowingHandler(firstPriority(), false, false));
+        ThrowingHandler handler = new ThrowingHandler(firstPriority(), false, false);
+        throwingHandlerAddedBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "throwing handler closed (priority=" + handler.priority + ")");
     }
 
     @Test
     void throwingSecondPriorityHandlerAddedBeforeStart() {
-        throwingHandlerAddedBeforeStart(new ThrowingHandler(secondPriority(), false, false));
+        ThrowingHandler handler = new ThrowingHandler(secondPriority(), false, false);
+        throwingHandlerAddedBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "throwing handler closed (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingFirstPriorityHandlerAddedAfterStart() {
-        throwingHandlerAddingAfterStart(new ThrowingHandler(firstPriority(), false, false));
+        ThrowingHandler handler = new ThrowingHandler(firstPriority(), false, false);
+        throwingHandlerAddingAfterStart(handler);
+        assertEquals(1, handler.closeCalled(), "throwing handler closed (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingSecondPriorityHandlerAddedAfterStart() {
-        throwingHandlerAddingAfterStart(new ThrowingHandler(secondPriority(), false, false));
+        ThrowingHandler handler = new ThrowingHandler(secondPriority(), false, false);
+        throwingHandlerAddingAfterStart(handler);
+        assertEquals(1, handler.closeCalled(), "throwing handler closed (priority=" + handler.priority + ")");
     }
 
     @Test
@@ -138,6 +154,8 @@ abstract class AbstractEventLoopTest extends ThreadsTestCommon {
             }
         }
         ExecutorServiceUtil.shutdownAndWaitForTermination(es);
+        assertTrue(es.isShutdown(), "executor shut down");
+        assertTrue(es.isTerminated(), "executor terminated");
     }
 
     private void addingHandlerBeforeStart(CountingHandler handler) {
@@ -166,25 +184,25 @@ abstract class AbstractEventLoopTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Loop started called", () -> (handler.loopStartedCalled() > 0), 5000);
 
             // Check the handler.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(0, handler.loopFinishedCalled());
-            assertEquals(0, handler.closeCalled());
-            assertNotNull(handler.eventLoop());
+            assertEquals(1, handler.loopStartedCalled(), "loopStarted called (priority=" + handler.priority + ")");
+            assertEquals(0, handler.loopFinishedCalled(), "loopFinished not yet called (priority=" + handler.priority + ")");
+            assertEquals(0, handler.closeCalled(), "handler not yet closed (priority=" + handler.priority + ")");
+            assertNotNull(handler.eventLoop(), "eventLoop assigned (priority=" + handler.priority + ")");
 
             // Stop the loop.
             eventLoop.stop();
             Waiters.waitForCondition("Event loop stopped", eventLoop::isStopped, 5000);
 
             // Check the handler.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(1, handler.loopFinishedCalled());
-            assertEquals(0, handler.closeCalled());
+            assertEquals(1, handler.loopStartedCalled(), "loopStarted called once (priority=" + handler.priority + ")");
+            assertEquals(1, handler.loopFinishedCalled(), "loopFinished called once (priority=" + handler.priority + ")");
+            assertEquals(0, handler.closeCalled(), "close not yet called (priority=" + handler.priority + ")");
         }
 
         // Check the handler.
-        assertEquals(1, handler.loopStartedCalled());
-        assertEquals(1, handler.loopFinishedCalled());
-        assertEquals(1, handler.closeCalled());
+        assertEquals(1, handler.loopStartedCalled(), "loopStarted called once (priority=" + handler.priority + ")");
+        assertEquals(1, handler.loopFinishedCalled(), "loopFinished called once (priority=" + handler.priority + ")");
+        assertEquals(1, handler.closeCalled(), "close called once (priority=" + handler.priority + ")");
     }
 
     private void throwingHandlerAddedBeforeStart(ThrowingHandler handler) {
@@ -205,8 +223,8 @@ abstract class AbstractEventLoopTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Handler should be closed", () -> (handler.closeCalled() > 0), 5000);
             Waiters.waitForCondition("Handler should be removed", () -> (eventLoop.handlerCount() == 0), 5000);
 
-            assertTrue(eventLoop.isAlive());
-            assertTrue(eventLoop.newHandlers.isEmpty());
+            assertTrue(eventLoop.isAlive(), "eventLoop alive after handler exception");
+            assertTrue(eventLoop.newHandlers.isEmpty(), "no new handlers queued after handler removal");
 
             // Exceptions should be thrown.
             assertExceptionThrown(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
@@ -214,11 +232,11 @@ abstract class AbstractEventLoopTest extends ThreadsTestCommon {
             assertExceptionThrown(HANDLER_CLOSE_EXCEPTION_TXT);
 
             // Methods called once.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(1, handler.loopFinishedCalled());
-            assertEquals(1, handler.closeCalled());
+            assertEquals(1, handler.loopStartedCalled(), "loopStarted called once (priority=" + handler.priority + ")");
+            assertEquals(1, handler.loopFinishedCalled(), "loopFinished called once (priority=" + handler.priority + ")");
+            assertEquals(1, handler.closeCalled(), "close called once (priority=" + handler.priority + ")");
             // Handler has been removed.
-            assertEquals(0, eventLoop.handlerCount());
+            assertEquals(0, eventLoop.handlerCount(), "throwing handler removed");
 
             // Event loop is running.
             checkEventLoopAlive(eventLoop);
@@ -250,12 +268,12 @@ abstract class AbstractEventLoopTest extends ThreadsTestCommon {
             assertExceptionThrown(HANDLER_CLOSE_EXCEPTION_TXT);
 
             // Methods called once.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(1, handler.loopFinishedCalled());
-            assertEquals(1, handler.closeCalled());
+            assertEquals(1, handler.loopStartedCalled(), "loopStarted called once (priority=" + handler.priority + ")");
+            assertEquals(1, handler.loopFinishedCalled(), "loopFinished called once (priority=" + handler.priority + ")");
+            assertEquals(1, handler.closeCalled(), "close called once (priority=" + handler.priority + ")");
 
             // Handler has been removed.
-            assertEquals(0, eventLoop.handlerCount());
+            assertEquals(0, eventLoop.handlerCount(), "throwing handler removed");
 
             // Event loop is running.
             checkEventLoopAlive(eventLoop);
@@ -264,12 +282,12 @@ abstract class AbstractEventLoopTest extends ThreadsTestCommon {
 
     private void checkEventLoopAlive(MediumEventLoop eventLoop) {
         // Expect the eventLoop to continue.
-        assertTrue(eventLoop.isStarted());
-        assertTrue(eventLoop.isAlive());
-        assertFalse(eventLoop.isStopped());
-        assertFalse(eventLoop.isClosing());
-        assertFalse(eventLoop.isClosed());
-        assertTrue(Objects.requireNonNull(eventLoop.thread()).isAlive());
+        assertTrue(eventLoop.isStarted(), "eventLoop started");
+        assertTrue(eventLoop.isAlive(), "eventLoop alive");
+        assertFalse(eventLoop.isStopped(), "eventLoop not stopped");
+        assertFalse(eventLoop.isClosing(), "eventLoop not closing");
+        assertFalse(eventLoop.isClosed(), "eventLoop not closed");
+        assertTrue(Objects.requireNonNull(eventLoop.thread()).isAlive(), "eventLoop thread alive");
     }
 
     private static class NoOpHandler implements EventHandler {

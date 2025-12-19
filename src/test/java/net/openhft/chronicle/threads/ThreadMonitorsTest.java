@@ -33,9 +33,9 @@ class ThreadMonitorsTest {
 
         boolean result = monitor.action();
 
-        assertFalse(result);
-        assertEquals(1, consumer.messages.size());
-        assertTrue(consumer.messages.get(0).contains("loop"));
+        assertFalse(result, "monitor action returns false");
+        assertEquals(1, consumer.messages.size(), "logs once when enabled");
+        assertTrue(consumer.messages.get(0).contains("loop"), "log message includes thread name");
     }
 
     @Test
@@ -53,8 +53,8 @@ class ThreadMonitorsTest {
 
         boolean result = monitor.action();
 
-        assertFalse(result);
-        assertTrue(messages.isEmpty());
+        assertFalse(result, "monitor action returns false");
+        assertTrue(messages.isEmpty(), "skips logging when disabled");
     }
 
     private static final class DeterministicLongSupplier implements LongSupplier {

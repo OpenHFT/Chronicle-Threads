@@ -23,6 +23,7 @@ import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static java.util.Collections.singleton;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Stress tests that event loop implementations remain thread safe.
@@ -65,6 +66,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
                 () -> new VanillaEventLoop(null, "vanillaEventLoop", Pauser.balanced(), 1, true, null, VanillaEventLoop.ALLOWED_PRIORITIES), VanillaEventLoop.ALLOWED_PRIORITIES));
         eventLoopSuppliers.add(new EventLoopTestParameters<>(MonitorEventLoop.class,
                 () -> new MonitorEventLoop(null, "monitorEventLoop", Pauser.balanced())));
+        assertFalse(eventLoopSuppliers.isEmpty(), "eventLoop suppliers configured");
         return eventLoopSuppliers.stream().flatMap(params -> {
             List<DynamicTest> allTests = new ArrayList<>();
             for (HandlerPriority priority : params.priorities) {

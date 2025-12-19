@@ -18,8 +18,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 /**
@@ -36,20 +38,24 @@ class EventGroupStressTest extends ThreadsTestCommon {
     @Timeout(30)
     void canOverloadTheCPUWithEventGroupsSafely() {
         assumeFalse(OS.isWindows());
+        AtomicBoolean allOk = new AtomicBoolean(true);
         IntStream.range(0, NUM_PROCESSES).mapToObj(i -> JavaProcessBuilder.create(EventGroupStarterProcess.class)
                         .withProgramArguments(String.valueOf(NUM_GROUPS_PER_PROCESS))
                         .start())
                 .forEach(process -> {
                     try {
                         if (!process.waitFor(10, TimeUnit.SECONDS) || process.exitValue() != 0) {
+                            allOk.set(false);
                             Jvm.error().on(EventGroupStressTest.class, "Process didn't end or ended in error");
                             JavaProcessBuilder.printProcessOutput("event group getter", process);
                         }
                     } catch (InterruptedException e) {
+                        allOk.set(false);
                         Jvm.error().on(EventGroupStressTest.class, "Interrupted waiting for process to end");
                         Thread.currentThread().interrupt();
                     }
                 });
+        assertTrue(allOk.get(), "all child processes finished successfully");
     }
 
     static class EventGroupStarterProcess {
@@ -57,14 +63,14 @@ class EventGroupStressTest extends ThreadsTestCommon {
         public static void main(String[] args) {
             int groupsToStart = Integer.parseInt(args[0]);
             List<EventGroup> eventGroups = new ArrayList<>();
-            List<TestEventHandler> handlers = new ArrayList<>();
+            List<EventHandlerStub> handlers = new ArrayList<>();
             try {
                 for (int j = 0; j < groupsToStart; j++) {
                     final EventGroup eventGroup = EventGroup.builder().withBinding("any").build();
-                    final TestEventHandler beforeStartHandler = new TestEventHandler();
+                    final EventHandlerStub beforeStartHandler = new EventHandlerStub();
                     eventGroup.addHandler(beforeStartHandler);
                     eventGroup.start();
-                    final TestEventHandler afterStartHandler = new TestEventHandler();
+                    final EventHandlerStub afterStartHandler = new EventHandlerStub();
                     eventGroup.addHandler(afterStartHandler);
                     handlers.add(beforeStartHandler);
                     handlers.add(afterStartHandler);
@@ -79,8 +85,7 @@ class EventGroupStressTest extends ThreadsTestCommon {
         }
     }
 
-    @SuppressWarnings("PMD.TestClassWithoutTestCases")
-    static class TestEventHandler implements EventHandler {
+    static class EventHandlerStub implements EventHandler {
 
         private static final HandlerPriority[] PRIORITIES = {
                 HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.REPLICATION, HandlerPriority.TIMER,
@@ -90,7 +95,7 @@ class EventGroupStressTest extends ThreadsTestCommon {
         private final HandlerPriority priority;
         private volatile boolean loopStarted = false;
 
-        TestEventHandler() {
+        EventHandlerStub() {
             this.priority = PRIORITIES[ThreadLocalRandom.current().nextInt(PRIORITIES.length)];
         }
 

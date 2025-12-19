@@ -82,9 +82,9 @@ class StopVCloseTest extends ThreadsTestCommon {
                 if (!started.equals(allPriorities))
                     Jvm.pause(1);
             eventGroup.stop();
-            assertTrue(eventGroup.isStopped());
-            assertEquals(allPriorities, started);
-            assertEquals(allPriorities, stopped);
+            assertTrue(eventGroup.isStopped(), "eventGroup stopped");
+            assertEquals(allPriorities, started, "loopStarted observed for all priorities");
+            assertEquals(allPriorities, stopped, "loopFinished observed for all priorities");
         }
     }
 
@@ -110,6 +110,6 @@ class StopVCloseTest extends ThreadsTestCommon {
         bel.close();
         if (thread.get().isAlive())
             StackTrace.forThread(thread.get()).printStackTrace();
-        assertTrue(stopped.get());
+        assertTrue(stopped.get(), "handler finished after close");
     }
 }

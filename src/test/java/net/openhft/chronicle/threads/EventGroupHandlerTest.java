@@ -7,7 +7,7 @@ import net.openhft.chronicle.core.threads.*;
 import net.openhft.chronicle.testframework.Waiters;
 import org.junit.jupiter.api.*;
 
-import static net.openhft.chronicle.threads.TestEventHandlers.*;
+import static net.openhft.chronicle.threads.EventHandlerFixtures.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -42,7 +42,7 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
     private void addGoodHandlerBeforeStart(CountingHandler handler) {
 
         try (final EventLoop eventGroup = createEventGroup()) {
-            assertEquals(EVENT_GROUP_NAME, eventGroup.name());
+            assertEquals(EVENT_GROUP_NAME, eventGroup.name(), "event group should have the expected name configured at creation");
 
             // Add the handler.
             eventGroup.addHandler(handler);
@@ -53,10 +53,10 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Wait for handler loopStarted called:" + handler.priority, () -> (handler.loopStartedCalled() > 0), 5000);
 
             // Check the handler.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(0, handler.loopFinishedCalled());
-            assertEquals(0, handler.closeCalled());
-            assertNotNull(handler.eventLoop());
+            assertEquals(1, handler.loopStartedCalled(), "handler registered before start should have received loopStarted callback exactly once after event group start (priority=" + handler.priority + ")");
+            assertEquals(0, handler.loopFinishedCalled(), "handler registered before start should not have received loopFinished callback while event group is running (priority=" + handler.priority + ")");
+            assertEquals(0, handler.closeCalled(), "handler registered before start should not have been closed while event group is running (priority=" + handler.priority + ")");
+            assertNotNull(handler.eventLoop(), "handler registered before start should have been assigned a non-null event loop reference (priority=" + handler.priority + ")");
 
             // Stop the loop.
             eventGroup.stop();
@@ -64,21 +64,23 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Wait for handler loopFinished called:" + handler.priority, () -> (handler.loopFinishedCalled() > 0), 5000);
 
             // Check the handler.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(1, handler.loopFinishedCalled());
-            assertEquals(0, handler.closeCalled());
+            assertEquals(1, handler.loopStartedCalled(), "handler registered before start should have received loopStarted callback exactly once during its lifecycle (priority=" + handler.priority + ")");
+            assertEquals(1, handler.loopFinishedCalled(), "handler registered before start should have received loopFinished callback exactly once after event group stop (priority=" + handler.priority + ")");
+            assertEquals(0, handler.closeCalled(), "handler registered before start should not have been closed yet while inside try-with-resources block (priority=" + handler.priority + ")");
         }
 
         // Check the handler.
-        assertEquals(1, handler.loopStartedCalled());
-        assertEquals(1, handler.loopFinishedCalled());
-        assertEquals(1, handler.closeCalled());
+        assertEquals(1, handler.loopStartedCalled(), "handler should have completed loopStarted lifecycle callback exactly once after event group closed (priority=" + handler.priority + ")");
+        assertEquals(1, handler.loopFinishedCalled(), "handler should have completed loopFinished lifecycle callback exactly once after event group closed (priority=" + handler.priority + ")");
+        assertEquals(1, handler.closeCalled(), "handler should have been closed exactly once after event group disposal via try-with-resources (priority=" + handler.priority + ")");
     }
 
     @Test
     void testGoodHandlerAddedBeforeStart() {
-        for(HandlerPriority priority : HandlerPriority.values()) {
-            addGoodHandlerBeforeStart(new CountingHandler(priority));
+        for (HandlerPriority priority : HandlerPriority.values()) {
+            CountingHandler handler = new CountingHandler(priority);
+            addGoodHandlerBeforeStart(handler);
+            assertEquals(1, handler.closeCalled(), "handler registered before start should be closed exactly once after full lifecycle (priority=" + priority + ")");
         }
     }
 
@@ -95,10 +97,10 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Wait handler loopStarted called:" + handler.priority,() -> (handler.loopStartedCalled() > 0), 5000);
 
             // Check the handler.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(0, handler.loopFinishedCalled());
-            assertEquals(0, handler.closeCalled());
-            assertNotNull(handler.eventLoop());
+            assertEquals(1, handler.loopStartedCalled(), "handler registered after start should have received loopStarted callback exactly once after dynamic registration (priority=" + handler.priority + ")");
+            assertEquals(0, handler.loopFinishedCalled(), "handler registered after start should not have received loopFinished callback while event group is running (priority=" + handler.priority + ")");
+            assertEquals(0, handler.closeCalled(), "handler registered after start should not have been closed while event group is running (priority=" + handler.priority + ")");
+            assertNotNull(handler.eventLoop(), "handler registered after start should have been assigned a non-null event loop reference (priority=" + handler.priority + ")");
 
             // Stop the loop.
             eventGroup.stop();
@@ -106,21 +108,23 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Wait for handler loopFinished called:" + handler.priority, () -> (handler.loopFinishedCalled() > 0), 5000);
 
             // Check the handler.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(1, handler.loopFinishedCalled());
-            assertEquals(0, handler.closeCalled());
+            assertEquals(1, handler.loopStartedCalled(), "handler registered after start should have received loopStarted callback exactly once during its lifecycle (priority=" + handler.priority + ")");
+            assertEquals(1, handler.loopFinishedCalled(), "handler registered after start should have received loopFinished callback exactly once after event group stop (priority=" + handler.priority + ")");
+            assertEquals(0, handler.closeCalled(), "handler registered after start should not have been closed yet while inside try-with-resources block (priority=" + handler.priority + ")");
         }
 
         // Check the handler.
-        assertEquals(1, handler.loopStartedCalled());
-        assertEquals(1, handler.loopFinishedCalled());
-        assertEquals(1, handler.closeCalled());
+        assertEquals(1, handler.loopStartedCalled(), "handler added after start should have received loopStarted callback exactly once after event group closed (priority=" + handler.priority + ")");
+        assertEquals(1, handler.loopFinishedCalled(), "handler added after start should have received loopFinished callback exactly once after event group closed (priority=" + handler.priority + ")");
+        assertEquals(1, handler.closeCalled(), "handler added after start should have been closed exactly once after event group disposal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testGoodHandlerAddedAfterStart() {
-        for(HandlerPriority priority : HandlerPriority.values()) {
-            addGoodHandlerAfterStart(new CountingHandler(priority));
+        for (HandlerPriority priority : HandlerPriority.values()) {
+            CountingHandler handler = new CountingHandler(priority);
+            addGoodHandlerAfterStart(handler);
+            assertEquals(1, handler.closeCalled(), "handler registered after start should be closed exactly once after full lifecycle (priority=" + priority + ")");
         }
     }
 
@@ -146,15 +150,15 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             assertExceptionThrown(HANDLER_CLOSE_EXCEPTION_TXT);
 
             // Methods called once.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(1, handler.loopFinishedCalled());
-            assertEquals(1, handler.closeCalled());
+            assertEquals(1, handler.loopStartedCalled(), "throwing handler should have received loopStarted callback exactly once before being removed (priority=" + handler.priority + ")");
+            assertEquals(1, handler.loopFinishedCalled(), "throwing handler should have received loopFinished callback exactly once during cleanup after exception (priority=" + handler.priority + ")");
+            assertEquals(1, handler.closeCalled(), "throwing handler should have been closed exactly once after exception during removal (priority=" + handler.priority + ")");
 
             // Expect the eventLoop to continue.
-            assertTrue(eventGroup.isAlive());
-            assertFalse(eventGroup.isStopped());
-            assertFalse(eventGroup.isClosing());
-            assertFalse(eventGroup.isClosed());
+            assertTrue(eventGroup.isAlive(), "event group should remain alive and running despite handler throwing exception during loopStarted");
+            assertFalse(eventGroup.isStopped(), "event group should not be stopped after handler exception in loopStarted");
+            assertFalse(eventGroup.isClosing(), "event group should not be closing after handler exception in loopStarted");
+            assertFalse(eventGroup.isClosed(), "event group should not be closed after handler exception in loopStarted");
         }
     }
 
@@ -162,37 +166,51 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
 
     @Test
     void testThrowingHandlerAddedBeforeStartMonitor() {
-        addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.MONITOR, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.MONITOR, false, false);
+        addThrowingHandlerLoopStartedBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "MONITOR priority handler throwing exception before start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedBeforeStartHigh() {
-        addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.HIGH, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.HIGH, false, false);
+        addThrowingHandlerLoopStartedBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "HIGH priority handler throwing exception before start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedBeforeStartMedium() {
-        addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.MEDIUM, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.MEDIUM, false, false);
+        addThrowingHandlerLoopStartedBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "MEDIUM priority handler throwing exception before start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedBeforeStartTimer() {
-        addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.TIMER, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.TIMER, false, false);
+        addThrowingHandlerLoopStartedBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "TIMER priority handler throwing exception before start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedBeforeStartDaemon() {
-        addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.DAEMON, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.DAEMON, false, false);
+        addThrowingHandlerLoopStartedBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "DAEMON priority handler throwing exception before start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedBeforeStartBlocking() {
-        addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.BLOCKING, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.BLOCKING, false, false);
+        addThrowingHandlerLoopStartedBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "BLOCKING priority handler throwing exception before start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedBeforeStartConcurrent() {
-        addThrowingHandlerLoopStartedBeforeStart(new ThrowingHandler(HandlerPriority.CONCURRENT, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.CONCURRENT, false, false);
+        addThrowingHandlerLoopStartedBeforeStart(handler);
+        assertEquals(1, handler.closeCalled(), "CONCURRENT priority handler throwing exception before start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     private void addThrowingHandlerAfterEventLoopStarted(CountingHandler handler) {
@@ -214,46 +232,60 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Wait handler loopStarted called:" + handler.priority,() -> (handler.closeCalled() > 0), 5000);
 
             // Event loop is running.
-            assertTrue(eventGroup.isAlive());
-            assertFalse(eventGroup.isStopped());
-            assertFalse(eventGroup.isClosing());
-            assertFalse(eventGroup.isClosed());
+            assertTrue(eventGroup.isAlive(), "event group should remain alive and running after removing handler that threw exception in loopStarted");
+            assertFalse(eventGroup.isStopped(), "event group should not be stopped after removing handler that threw exception in loopStarted");
+            assertFalse(eventGroup.isClosing(), "event group should not be closing after removing handler that threw exception in loopStarted");
+            assertFalse(eventGroup.isClosed(), "event group should not be closed after removing handler that threw exception in loopStarted");
         }
     }
 
     @Test
     void testThrowingHandlerAddedAfterStartMonitor() {
-        addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.MONITOR, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.MONITOR, false, false);
+        addThrowingHandlerAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "MONITOR priority handler throwing exception after start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedAfterStartHigh() {
-        addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.HIGH, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.HIGH, false, false);
+        addThrowingHandlerAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "HIGH priority handler throwing exception after start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedAfterStartMedium() {
-        addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.MEDIUM, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.MEDIUM, false, false);
+        addThrowingHandlerAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "MEDIUM priority handler throwing exception after start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedAfterStartTimer() {
-        addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.TIMER, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.TIMER, false, false);
+        addThrowingHandlerAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "TIMER priority handler throwing exception after start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedAfterStartDaemon() {
-        addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.DAEMON, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.DAEMON, false, false);
+        addThrowingHandlerAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "DAEMON priority handler throwing exception after start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedAfterStartBlocking() {
-        addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.BLOCKING, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.BLOCKING, false, false);
+        addThrowingHandlerAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "BLOCKING priority handler throwing exception after start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingHandlerAddedAfterStartConcurrent() {
-        addThrowingHandlerAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.CONCURRENT, false, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.CONCURRENT, false, false);
+        addThrowingHandlerAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "CONCURRENT priority handler throwing exception after start should be closed exactly once after removal (priority=" + handler.priority + ")");
     }
 
     private void addThrowingEventLoopAfterEventLoopStarted(CountingHandler handler) {
@@ -271,59 +303,73 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Wait handler loopStarted called:" + handler.priority,() -> (handler.loopStartedCalled() > 0), 5000);
 
             // Check the handler.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(0, handler.loopFinishedCalled());
-            assertEquals(0, handler.closeCalled());
-            assertNotNull(handler.eventLoop());
+            assertEquals(1, handler.loopStartedCalled(), "handler throwing in eventLoop should have received loopStarted callback exactly once (priority=" + handler.priority + ")");
+            assertEquals(0, handler.loopFinishedCalled(), "handler throwing in eventLoop should not have received loopFinished callback while event group is running (priority=" + handler.priority + ")");
+            assertEquals(0, handler.closeCalled(), "handler throwing in eventLoop should not have been closed while event group is running (priority=" + handler.priority + ")");
+            assertNotNull(handler.eventLoop(), "handler throwing in eventLoop should have been assigned a non-null event loop reference (priority=" + handler.priority + ")");
 
             // Stop the loop.
             eventGroup.stop();
             Waiters.waitForCondition("Wait for loop stopped:" + handler.priority, eventGroup::isStopped, 5000);
 
             // Check the handler.
-            assertEquals(1, handler.loopStartedCalled());
-            assertEquals(1, handler.loopFinishedCalled());
-            assertEquals(0, handler.closeCalled());
+            assertEquals(1, handler.loopStartedCalled(), "handler throwing in eventLoop should have received loopStarted callback exactly once after stop (priority=" + handler.priority + ")");
+            assertEquals(1, handler.loopFinishedCalled(), "handler throwing in eventLoop should have received loopFinished callback exactly once after event group stop (priority=" + handler.priority + ")");
+            assertEquals(0, handler.closeCalled(), "handler throwing in eventLoop should not have been closed yet while inside try-with-resources block (priority=" + handler.priority + ")");
         }
 
         // Check the handler.
-        assertEquals(1, handler.loopStartedCalled());
-        assertEquals(1, handler.loopFinishedCalled());
-        assertEquals(1, handler.closeCalled());
+        assertEquals(1, handler.loopStartedCalled(), "handler throwing in eventLoop should have received loopStarted callback exactly once after event group closed (priority=" + handler.priority + ")");
+        assertEquals(1, handler.loopFinishedCalled(), "handler throwing in eventLoop should have received loopFinished callback exactly once after event group closed (priority=" + handler.priority + ")");
+        assertEquals(1, handler.closeCalled(), "handler throwing in eventLoop should have been closed exactly once after event group disposal (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingEventLoopAddedAfterStartMonitor() {
-        addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.MONITOR, true, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.MONITOR, true, false);
+        addThrowingEventLoopAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "MONITOR priority handler throwing exception in eventLoop should be closed exactly once after full lifecycle (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingEventLoopAddedAfterStartHigh() {
-        addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.HIGH, true, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.HIGH, true, false);
+        addThrowingEventLoopAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "HIGH priority handler throwing exception in eventLoop should be closed exactly once after full lifecycle (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingEventLoopAddedAfterStartMedium() {
-        addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.MEDIUM, true, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.MEDIUM, true, false);
+        addThrowingEventLoopAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "MEDIUM priority handler throwing exception in eventLoop should be closed exactly once after full lifecycle (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingEventLoopAddedAfterStartTimer() {
-        addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.TIMER, true, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.TIMER, true, false);
+        addThrowingEventLoopAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "TIMER priority handler throwing exception in eventLoop should be closed exactly once after full lifecycle (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingEventLoopAddedAfterStartDaemon() {
-        addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.DAEMON, true, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.DAEMON, true, false);
+        addThrowingEventLoopAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "DAEMON priority handler throwing exception in eventLoop should be closed exactly once after full lifecycle (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingEventLoopAddedAfterStartBlocking() {
-        addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.BLOCKING, true, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.BLOCKING, true, false);
+        addThrowingEventLoopAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "BLOCKING priority handler throwing exception in eventLoop should be closed exactly once after full lifecycle (priority=" + handler.priority + ")");
     }
 
     @Test
     void testThrowingEventLoopAddedAfterStartConcurrent() {
-        addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.CONCURRENT, true, false));
+        ThrowingHandler handler = new ThrowingHandler(HandlerPriority.CONCURRENT, true, false);
+        addThrowingEventLoopAfterEventLoopStarted(handler);
+        assertEquals(1, handler.closeCalled(), "CONCURRENT priority handler throwing exception in eventLoop should be closed exactly once after full lifecycle (priority=" + handler.priority + ")");
     }
 }

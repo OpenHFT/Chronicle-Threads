@@ -61,15 +61,16 @@ class LongPauserTest extends ThreadsTestCommon {
                 failedOnce = true;
             }
         }
+        assertFalse(pauser.asyncPausing(), "async pause cleared at end of test");
     }
 
     @Test
     void asyncPauseIsResetOnReset() {
         final LongPauser longPauser = new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS);
         longPauser.asyncPause();
-        assertTrue(longPauser.asyncPausing());
+        assertTrue(longPauser.asyncPausing(), "asyncPausing set after asyncPause");
         longPauser.reset();
-        assertFalse(longPauser.asyncPausing());
+        assertFalse(longPauser.asyncPausing(), "asyncPausing cleared after reset");
     }
 
     private static void testUntilUnpaused(LongPauser pauser, int n, TimeUnit timeUnit) {
@@ -77,10 +78,10 @@ class LongPauserTest extends ThreadsTestCommon {
         long start = System.nanoTime();
         while (pauser.asyncPausing()) {
             if (System.nanoTime() > start + timeNS + 100_000_000)
-                fail();
+                fail("timeout waiting for async pause to clear");
         }
         long time = System.nanoTime() - start;
         final int delta = 11_000_000;
-        assertEquals(timeNS + delta, time, delta);
+        assertEquals(timeNS + delta, time, delta, "async pause duration within tolerance");
     }
 }
