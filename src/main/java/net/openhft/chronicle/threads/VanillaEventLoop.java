@@ -68,6 +68,16 @@ public class VanillaEventLoop extends MediumEventLoop {
         this.priorities = EnumSet.copyOf(priorities);
     }
 
+    /**
+     * Closes every handler in the provided list.
+     *
+     * @param handlers handlers to close quietly
+     */
+    public static void closeAll(@NotNull final List<EventHandler> handlers) {
+        // do not remove the handler here, remove all at end instead
+        Closeable.closeQuietly(handlers);
+    }
+
     private static void clearUsedByThread(@NotNull EventHandler handler) {
         if (handler instanceof AbstractCloseable)
             ((AbstractCloseable) handler).singleThreadedCheckReset();

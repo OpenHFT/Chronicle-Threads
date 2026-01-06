@@ -44,9 +44,11 @@ public enum BusyPauser implements Pauser {
      *
      * @param timeout  timeout duration (ignored)
      * @param timeUnit unit of the timeout (ignored)
+     * @throws TimeoutException never thrown by this implementation
+     * @throws UnsupportedOperationException always thrown
      */
     @Override
-    public void pause(long timeout, TimeUnit timeUnit) {
+    public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
         throw new UnsupportedOperationException(this + " is not stateful, use a " + BusyTimedPauser.class.getSimpleName());
     }
 

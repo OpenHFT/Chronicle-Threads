@@ -33,9 +33,9 @@ public abstract class TimedEventHandler implements EventHandler {
     private long nextRunNS = 0;
 
     /**
-     * Constructs a timed handler with no additional initialisation.
+     * Creates a timed handler instance.
      */
-    protected TimedEventHandler() {
+    public TimedEventHandler() {
     }
 
     /**

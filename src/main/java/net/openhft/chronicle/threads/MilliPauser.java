@@ -107,9 +107,10 @@ public class MilliPauser implements Pauser {
      *
      * @param timeout  the maximum time to pause in the specified {@code timeUnit}
      * @param timeUnit the unit of time for {@code timeout}
+     * @throws TimeoutException never thrown by this implementation
      */
     @Override
-    public void pause(long timeout, @NotNull TimeUnit timeUnit) {
+    public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
         doPauseMS(timeUnit.toMillis(timeout));
     }
 
