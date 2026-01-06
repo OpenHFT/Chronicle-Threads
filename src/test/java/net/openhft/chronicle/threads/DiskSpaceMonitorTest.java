@@ -27,10 +27,10 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
     @AfterEach
     void afterEach(){
         clearState();
+        DiskSpaceMonitor.INSTANCE.setThresholdPercentage(5);
     }
 
     private void clearState() {
-        DiskSpaceMonitor.INSTANCE.setThresholdPercentage(0);
         DiskSpaceMonitor.INSTANCE.clear();
     }
 
@@ -59,6 +59,7 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
                 .mapToInt(Map.Entry::getValue)
                 .sum();
         Jvm.resetExceptionHandlers();
+        System.out.println("Disk space warnings/errors: " + count);
         // look for 5 disk space checks and some debug messages about slow disk checks.
         assertEquals(5.5, count, 1.5, "disk space warnings count within tolerance");
     }

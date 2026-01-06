@@ -3,7 +3,6 @@
  */
 package net.openhft.chronicle.threads;
 
-import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.OS;
 import org.jetbrains.annotations.NotNull;
@@ -59,7 +58,7 @@ public interface Pauser {
      * @return {@code true} if balanced pausers should be preferred
      */
     static boolean getBalanced() {
-        int procs = AffinityLock.cpuLayout().cpus();
+        int procs = Runtime.getRuntime().availableProcessors();
         return procs < MIN_PROCESSORS * 2;
     }
 
@@ -69,7 +68,7 @@ public interface Pauser {
      * @return {@code true} when the machine has fewer than {@link #MIN_PROCESSORS} cores
      */
     static boolean getSleepy() {
-        int procs = AffinityLock.cpuLayout().cpus();
+        int procs = Runtime.getRuntime().availableProcessors();
         return procs < MIN_PROCESSORS;
     }
 
