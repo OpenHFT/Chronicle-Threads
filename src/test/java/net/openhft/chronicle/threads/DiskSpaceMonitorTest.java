@@ -14,18 +14,18 @@ import java.io.File;
 import java.time.Duration;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.*;
 
 class DiskSpaceMonitorTest extends ThreadsTestCommon {
 
     @BeforeEach
-    void beforeEach(){
+    void beforeEach() {
         clearState();
     }
 
     @AfterEach
-    void afterEach(){
+    void afterEach() {
         clearState();
         DiskSpaceMonitor.INSTANCE.setThresholdPercentage(5);
     }

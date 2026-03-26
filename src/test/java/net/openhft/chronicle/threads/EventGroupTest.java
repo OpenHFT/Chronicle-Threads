@@ -7,7 +7,6 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.*;
 import net.openhft.chronicle.core.threads.*;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -521,9 +520,9 @@ public class EventGroupTest extends ThreadsTestCommon {
                 if (System.currentTimeMillis() > timeoutTime) {
                     final List<HandlerPriority> handlerPrioritiesThatDidntFinish = eventHandlerFinishedForPriority.keySet().stream().filter(k -> !eventHandlerFinishedForPriority.get(k).get()).collect(Collectors.toList());
                     if (handlerPrioritiesThatDidntFinish.isEmpty()) {
-                        Assertions.fail("Event group didn't throw an exception when attempting to close!");
+                        fail("Event group didn't throw an exception when attempting to close!");
                     } else {
-                        Assertions.fail("Handlers for " + handlerPrioritiesThatDidntFinish + " didn't finish");
+                        fail("Handlers for " + handlerPrioritiesThatDidntFinish + " didn't finish");
                     }
                 }
                 Jvm.pause(10);

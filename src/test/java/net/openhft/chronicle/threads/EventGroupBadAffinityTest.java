@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Timeout;
 
 import java.util.concurrent.TimeoutException;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class EventGroupBadAffinityTest extends ThreadsTestCommon {
 
