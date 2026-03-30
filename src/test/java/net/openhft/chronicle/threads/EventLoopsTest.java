@@ -49,8 +49,8 @@ class EventLoopsTest extends ThreadsTestCommon {
         }
     }
 
-    @Timeout(5_000)
     @Test
+    @Timeout(5000)
     void stopAllWillBlockUntilTheLastEventLoopStops() {
         try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
              final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker")) {
