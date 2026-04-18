@@ -1,4 +1,4 @@
-= Chronicle Threads – Functional Requirements Specification
+= Chronicle Threads - Functional Requirements Specification
 :revnumber: 1.0
 :revdate: 2025-05-25
 :toc:
@@ -28,7 +28,7 @@ ultra-low-latency, event-driven Java systems.
 |*EventHandler* |Application-provided component that implements `action()`; executed by an `EventLoop`.
 |*EventGroup* |A container that manages one or more `EventLoop`s, potentially including a dedicated monitor loop.
 |*Pauser* |Strategy object that controls how an idle loop waits (e.g., busy-spin, yield, sleep).
-|*Fast Thread* |A thread—usually pinned to an isolated CPU core—running a latency-critical event loop.
+|*Fast Thread* |A thread--usually pinned to an isolated CPU core--running a latency-critical event loop.
 |*Hot Path* / *Fast Path* |The code execution path that is performance-critical and frequently executed, where low latency and minimal overhead are paramount.
 |*Loop-Block Monitor* |Background handler that measures `EventHandler` run-time and logs outliers exceeding a configured threshold.
 |*NUMA* |Non-Uniform Memory Access; a memory architecture where memory access time depends on the memory location relative to a processor.
@@ -44,7 +44,7 @@ ultra-low-latency, event-driven Java systems.
 
 == 4 High-Level Functional Requirements
 
-=== 4.1 Event‐Loop Lifecycle and Configuration
+=== 4.1 Event-Loop Lifecycle and Configuration
 
 . *Creation and Configuration*
 *THR-FN-001* The library SHALL provide builder APIs (e.g., `EventLoopBuilder`, `EventGroupBuilder`) for fluent and immutable configuration of event loops and groups.

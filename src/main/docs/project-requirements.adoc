@@ -1,4 +1,4 @@
-= Chronicle Threads – Functional Requirements Specification
+= Chronicle Threads - Functional Requirements Specification
 :revnumber: 1.0
 :revdate: 2025-05-25
 :sectnums:
@@ -26,7 +26,7 @@ _Out of scope_ are:
 |_EventHandler_ |Application-provided component that implements `action()`; executed by an `EventLoop`.
 |_EventGroup_ |A container that manages one or more `EventLoop`s, potentially including a dedicated monitor loop.
 |_Pauser_ |Strategy object that controls how an idle loop waits (e.g., busy-spin, yield, sleep).
-|_Fast Thread_ |A thread—usually pinned to an isolated CPU core—running a latency-critical event loop.
+|_Fast Thread_ |A thread--usually pinned to an isolated CPU core--running a latency-critical event loop.
 |_Hot Path_ / _Fast Path_ |The code execution path that is performance-critical and frequently executed, where low latency and minimal overhead are paramount.
 |_Loop-Block Monitor_ |Background handler that measures `EventHandler` run-time and logs outliers exceeding a configured threshold.
 |_NUMA_ |Non-Uniform Memory Access; a memory architecture where memory access time depends on the memory location relative to a processor.
@@ -42,7 +42,7 @@ _Out of scope_ are:
 
 == High-Level Functional Requirements
 
-=== Event‐Loop Lifecycle and Configuration
+=== Event-Loop Lifecycle and Configuration
 
 . _Creation and Configuration_
 _THR-FN-001_ The library SHALL provide builder APIs (e.g., `EventLoopBuilder`, `EventGroupBuilder`) for fluent and immutable configuration of event loops and groups.
