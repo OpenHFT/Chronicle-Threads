@@ -89,7 +89,7 @@ _THR-NF-P-014_ The hot path methods `Pauser.pause()` and `Pauser.reset()` for bu
 _THR-FN-015_ The library SHALL provide mechanisms to bind `EventLoop` threads to specific CPU cores, utilizing Chronicle Affinity.
 This SHALL be configurable via builder APIs (e.g., `EventGroupBuilder.withBinding(String affinity)`).
 . _CPU Isolation Guidance_
-_THR-DOC-016_ Documentation (`README.adoc`) SHALL recommend OS-level isolation of CPU cores (e.g., using `isolcpus` on Linux) for `EventLoop` threads when latency-sensitive pausers (like `PauserMode.BUSY` or `PauserMode.TIMED_BUSY`) are used, to minimize jitter.
+_THR-DOC-016_ Documentation (`README.adoc`) SHALL recommend OS-level isolation of CPU cores (e.g., using `isolcpus` on Linux) for `EventLoop` threads when latency-sensitive pausers (like `PauserMode.BUSY` or `PauserMode.TIMED_BUSY`) are used, to minimise jitter.
 . _NUMA Awareness_
 _THR-FN-017_ Builders SHOULD allow configuration that facilitates pinning `EventLoop` threads to specific NUMA nodes.
 This is typically achieved via the `binding` string syntax provided to Chronicle Affinity, which can specify core layouts respecting NUMA topology.
@@ -125,7 +125,7 @@ While aiming for compatibility with JDK Project Loom (virtual threads) for suita
 [[key-performance-targets]]
 == Key Performance Targets
 
-These non-functional targets guide the design and optimization of Chronicle Threads for ultra-low-latency scenarios.
+These non-functional targets guide the design and optimisation of Chronicle Threads for ultra-low-latency scenarios.
 They are primarily applicable when using performance-oriented pausers (e.g., `BUSY`) on suitably configured systems (e.g., with isolated cores).
 
 _THR-NF-P-027_ *Latency:* Single-hop message processing through an event handler SHALL target <= 10 us at the 99.99th percentile on commodity x86_64 hardware with a busy pauser and isolated cores.

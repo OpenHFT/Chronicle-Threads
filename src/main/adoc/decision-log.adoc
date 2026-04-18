@@ -66,7 +66,7 @@ Each decision record aims to provide context, the decision itself, its status, r
 ** *Adaptive Pauser (e.g., `BALANCED`) as Default for all:*
 *** *Description:* Uses a mix of spinning, yielding, and sleeping.
 *** *Pros:* Good balance for general use cases.
-*** *Cons:* Not the absolute lowest latency for highly optimized fast threads compared to pure busy-spinning.
+*** *Cons:* Not the absolute lowest latency for highly optimised fast threads compared to pure busy-spinning.
 * **Rationale for Decision:**
 ** Busy-spinning keeps the thread's cache hot and avoids the overhead of context switching and OS scheduler-induced delays, leading to the lowest possible reaction time when an event becomes available.
 * **Impact & Consequences:**
@@ -142,7 +142,7 @@ Each decision record aims to provide context, the decision itself, its status, r
 ** Positive:
 ** Improved traceability between requirements, decisions, tests, and potentially code.
 ** Easier for team members to understand the context of an identified item quickly.
-** Facilitates better organization and searching of documentation.
+** Facilitates better organisation and searching of documentation.
 ** Negative:
 ** Requires team members to be familiar with the Nine-Box taxonomy and apply it consistently.
 ** Initial setup of the scheme and guidelines in `AGENTS.md`.
