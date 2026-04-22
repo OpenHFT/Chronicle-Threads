@@ -142,6 +142,7 @@ public class VanillaEventLoop extends MediumEventLoop {
                 handler.action();
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, handlers);
+                // CSCatchThrowable REVIEW catch (Throwable e) because the local fallback still begins with entering a conditional fallback branch and needs either a narrower terminal boundary or an explicit reviewed last-resort contract.
             } catch (Throwable e) {
                 if (handle(this, handler, e))
                     removeHandler(handler, handlers);

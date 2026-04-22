@@ -44,7 +44,7 @@ public abstract class TimedEventHandler implements EventHandler {
      */
     @Override
     public boolean action() throws InvalidEventHandlerException {
-        long now = System.nanoTime();
+        long now = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos();
         if (nextRunNS <= now) {
             long delayUS = timedAction();
             if (delayUS < 0)

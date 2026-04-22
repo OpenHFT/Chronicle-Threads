@@ -59,8 +59,8 @@ public class BusyTimedPauser implements Pauser, TimingPauser {
     @Override
     public void pause(long timeout, TimeUnit timeUnit) throws TimeoutException {
         if (time == Long.MAX_VALUE)
-            time = System.nanoTime();
-        if (System.nanoTime() - time > timeUnit.toNanos(timeout))
+            time = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos();
+        if (net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos() - time > timeUnit.toNanos(timeout))
             throw new TimeoutException("Pause timed out after " + timeout + " " + timeUnit);
         pause();
     }

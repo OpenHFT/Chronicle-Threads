@@ -63,6 +63,7 @@ public class EventGroup
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Jvm.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500L);
     private static final long MONITOR_INTERVAL_MS = Jvm.getLong("MONITOR_INTERVAL_MS", 100L);
     static final Integer REPLICATION_EVENT_PAUSE_TIME = Jvm.getInteger("replicationEventPauseTime", 20);
+    // CSMonitorDisableFlag REVIEW keep Jvm.getBoolean here because this runtime execution boundary still needs an explicit reviewed runtime-admission contract.
     private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
     private static final long WAIT_TO_START_MS = Jvm.getInteger("eventGroup.wait.to.start.ms", 2_000);
     private final AtomicInteger counter = new AtomicInteger();
@@ -84,6 +85,8 @@ public class EventGroup
     private final Pauser replicationPauser;
     private VanillaEventLoop replication;
 
+    // REVIEW TASK CQDeprecationJavadoc: add the missing Javadoc guidance this governance rule expects here.
+    // REVIEW TASK CQDeprecationJavadoc: add a @deprecated Javadoc tag to EventGroup explaining the replacement and removal plan.
     @Deprecated(/* Instead use EventGroupBuilder. TODO: make package-private and undeprecate in x.28, as only EventGroupBuilder should be using */)
     @SuppressWarnings({"this-escape", "deprecation"})
     public EventGroup(final boolean daemon,
@@ -130,6 +133,7 @@ public class EventGroup
             if (priorities.contains(HandlerPriority.CONCURRENT))
                 IntStream.range(0, concThreadsNum).forEach(i -> concThreads.add(null));
 
+            // CSOwnershipCheckDisable REVIEW keep singleThreadedCheckDisabled here because this lifecycle or ownership exception in EventGroup#EventGroup still needs an explicit reviewed lifecycle contract.
             singleThreadedCheckDisabled(true);
 
             closeable.clear();
@@ -316,12 +320,12 @@ public class EventGroup
     private void waitToStart(EventLoop waitfor) {
         // wait for core to start, We use a TimingPauser, previously we waited forever
         TimingPauser timeoutPauser = Pauser.sleepy();
-        long waitStartTimeMs = System.currentTimeMillis();
+        long waitStartTimeMs = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis();
         while (!waitfor.isAlive()) {
             try {
                 timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
-                long waitTime = System.currentTimeMillis() - waitStartTimeMs;
+                long waitTime = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis() - waitStartTimeMs;
                 String threadDump = renderThreadDump();
                 Jvm.error().on(EventGroup.class, format("Timed out waiting for start! (waited %,dms)%n" +
                                 "%s%n%n" +
@@ -331,12 +335,14 @@ public class EventGroup
                         EventLoopStateRenderer.INSTANCE.render("Core", core),
                         EventLoopStateRenderer.INSTANCE.render("Monitor", monitor),
                         threadDump));
+                // CSCheckedSwallowThroughRethrow REVIEW throw Jvm.rethrow(e) because this rethrow in EventGroup#waitToStart converts a checked cause into an unchecked wrapper and still needs either a declared `throws` at the enclosing method or an explicit reviewed note on why no local cleanup is performed.
                 throw Jvm.rethrow(e);
             }
         }
     }
 
     private static String renderThreadDump() {
+        // CSThreadDumpLogging REVIEW emit Thread.getAllStackTraces here because this operator-facing diagnostic in EventGroup#renderThreadDump still needs an explicit reviewed operator-diagnostic contract.
         final Map<Thread, StackTraceElement[]> allStackTraces = Thread.getAllStackTraces();
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("Thread dump at time of occurrence:\n\n");

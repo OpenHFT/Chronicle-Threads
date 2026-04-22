@@ -52,6 +52,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         super(name);
         this.parent = parent;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
+        // CSCachedThreadPoolPerHandler REVIEW keep Executors.newCachedThreadPool here because this runtime execution boundary in BlockingEventLoop#BlockingEventLoop still needs an explicit reviewed runtime-admission contract.
         this.service = Executors.newCachedThreadPool(threadFactory);
         this.pauserSupplier = pauser;
     }
@@ -60,6 +61,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         super(name);
         this.parent = this;
         this.threadFactory = new NamedThreadFactory(name, null, null, true);
+        // CSCachedThreadPoolPerHandler REVIEW keep Executors.newCachedThreadPool here because this runtime execution boundary in BlockingEventLoop#BlockingEventLoop still needs an explicit reviewed runtime-admission contract.
         this.service = Executors.newCachedThreadPool(threadFactory);
         this.pauserSupplier = Pauser::balanced;
     }
@@ -96,6 +98,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
             runners.add(runner);
             service.submit(runner);
 
+            // CSWarnAndContinue REVIEW catch (RejectedExecutionException e) because the local fallback still begins with entering a conditional fallback branch and then continues execution, and needs either fail-closed handling or an explicit reviewed degraded-mode contract.
         } catch (RejectedExecutionException e) {
             if (!service.isShutdown())
                 Jvm.warn().on(getClass(), e);
@@ -123,6 +126,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
          * It's necessary for blocking handlers to be interrupted, so they abort what they're
          * doing and run to completion immediately.
          */
+        // CSShutdownNowUse REVIEW keep service.shutdownNow here because this lifecycle or ownership exception in BlockingEventLoop#shutdownExecutorService still needs an explicit reviewed lifecycle contract.
         service.shutdownNow();
         unpause();
         Threads.shutdown(service);
@@ -184,6 +188,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 endedGracefully = true;
             } catch (InvalidEventHandlerException e) {
                 // expected and logged below.
+            // CSCatchThrowable REVIEW catch (Throwable t) because the local fallback still begins with entering a conditional fallback branch and needs either a narrower terminal boundary or an explicit reviewed last-resort contract.
             } catch (Throwable t) {
                 if (!isClosed())
                     Jvm.warn().on(handler.getClass(), asString(handler) + " threw ", t);

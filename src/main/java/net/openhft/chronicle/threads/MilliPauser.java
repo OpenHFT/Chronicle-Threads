@@ -89,7 +89,7 @@ public class MilliPauser implements Pauser {
      */
     @Override
     public void asyncPause() {
-        pauseUntilMS = System.currentTimeMillis() + pauseTimeMS;
+        pauseUntilMS = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis() + pauseTimeMS;
     }
 
     /**
@@ -99,7 +99,7 @@ public class MilliPauser implements Pauser {
      */
     @Override
     public boolean asyncPausing() {
-        return pauseUntilMS > System.currentTimeMillis();
+        return pauseUntilMS > net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis();
     }
 
     /**
@@ -121,13 +121,13 @@ public class MilliPauser implements Pauser {
      * @param delayMS delay in milliseconds
      */
     void doPauseMS(long delayMS) {
-        long start = System.nanoTime();
+        long start = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos();
         thread = Thread.currentThread();
         pausing.set(true);
         if (!thread.isInterrupted())
             LockSupport.parkNanos(delayMS * 1_000_000L);
         pausing.set(false);
-        long time = System.nanoTime() - start;
+        long time = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos() - start;
         timePaused += time;
         countPaused++;
     }

@@ -42,7 +42,9 @@ public enum Threads {
         try {
             String property = Jvm.getProperty("threads.executor.factory");
             if (property != null)
+                // CSResolvedTypeInstantiation REVIEW keep ObjectUtils.newInstance here because this type-materialization path still needs an explicit reviewed type-resolution contract.
                 instance = ObjectUtils.newInstance(property);
+                // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with logging or printing a diagnostic and needs either narrower handling or an explicit reviewed recovery contract.
         } catch (Exception e) {
             Jvm.warn().on(Threads.class, e);
         }
@@ -103,6 +105,7 @@ public enum Threads {
     public static void shutdownDaemon(@NotNull ExecutorService service) {
         // don't change this to shutdown() as it will cause test failures - allowing daemon services
         // to stop politely gives us more races e.g. you may see things that are shutting down re-connecting
+        // CSShutdownNowUse REVIEW keep service.shutdownNow here because this lifecycle or ownership exception in Threads#shutdownDaemon still needs an explicit reviewed lifecycle contract.
         service.shutdownNow();
         try {
             boolean terminated = service.awaitTermination(10, TimeUnit.MILLISECONDS);
@@ -147,6 +150,7 @@ public enum Threads {
         try {
 
             if (!service.awaitTermination(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS)) {
+                // CSShutdownNowUse REVIEW keep service.shutdownNow here because this lifecycle or ownership exception in Threads#shutdown still needs an explicit reviewed lifecycle contract.
                 service.shutdownNow();
 
                 if (!service.awaitTermination(10, TimeUnit.MILLISECONDS)) {
@@ -208,6 +212,7 @@ public enum Threads {
                 service = resolveDelegatedExecutorServices(service);
             if (!(service instanceof ThreadPoolExecutor))
                 return;
+            // CSReflectiveFieldLookup REVIEW final Set<Object> workers = Jvm.getValue(service, "workers") because this reflective or runtime-loading boundary in Threads#forEachThread still needs either an allowlisted wrapper or an explicit reviewed runtime-loading contract.
             final Set<Object> workers = Jvm.getValue(service, "workers");
             if (workers == null) {
                 Jvm.warn().on(Threads.class, "Couldn't find workers for " + service.getClass());
@@ -215,7 +220,9 @@ public enum Threads {
             }
             ReentrantLock mainLock = null;
             try {
+                // CSReflectiveFieldLookup REVIEW mainLock = Jvm.getValue(service, "mainLock") because this reflective or runtime-loading boundary in Threads#forEachThread still needs either an allowlisted wrapper or an explicit reviewed runtime-loading contract.
                 mainLock = Jvm.getValue(service, "mainLock");
+                // CSWarnAndContinue REVIEW catch (Error e) because the local fallback still begins with executing Jvm.debug().on(Threads.class, e) and then continues execution, and needs either fail-closed handling or an explicit reviewed degraded-mode contract.
             } catch (Error e) {
                 Jvm.debug().on(Threads.class, e);
             }
@@ -236,10 +243,12 @@ public enum Threads {
             }
 
             for (Object o : objects) {
+                // CSReflectiveFieldLookup REVIEW Thread t = Jvm.getValue(o, "thread") because this reflective or runtime-loading boundary in Threads#forEachThread still needs either an allowlisted wrapper or an explicit reviewed runtime-loading contract.
                 Thread t = Jvm.getValue(o, "thread");
                 if (t.getState() != State.TERMINATED)
                     consumer.accept(t);
             }
+            // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing Jvm.debug().on(Threads.class, e) and needs either narrower handling or an explicit reviewed recovery contract.
         } catch (Exception e) {
             Jvm.debug().on(Threads.class, e);
         }
@@ -263,6 +272,7 @@ public enum Threads {
             return executorService;
         }
         try {
+            // CSReflectiveFieldLookup REVIEW Field eField = Jvm.getFieldOrNull(executorService.getClass(), "e") because this reflective or runtime-loading boundary in Threads#resolveDelegatedExecutorServices still needs either an allowlisted wrapper or an explicit reviewed runtime-loading contract.
             Field eField = Jvm.getFieldOrNull(executorService.getClass(), "e");
             if (eField != null) {
                 Object eFieldValue = eField.get(executorService);
@@ -279,6 +289,7 @@ public enum Threads {
     static void eventLoopQuietly(EventLoop eventLoop, @NotNull EventHandler handler) {
         try {
             handler.eventLoop(eventLoop);
+            // CSCatchThrowable REVIEW catch (Throwable t) because the local fallback still begins with logging or printing a diagnostic and needs either a narrower terminal boundary or an explicit reviewed last-resort contract.
         } catch (Throwable t) {
             Jvm.warn().on(eventLoop.getClass(), "EventHandler::eventLoop exception", t);
         }
@@ -288,6 +299,7 @@ public enum Threads {
         try {
             handler.loopStarted();
             return false;
+            // CSCatchThrowable REVIEW catch (Throwable t) because the local fallback still begins with logging or printing a diagnostic and needs either a narrower terminal boundary or an explicit reviewed last-resort contract.
         } catch (Throwable t) {
             Jvm.warn().on(eventLoop.getClass(), "EventHandler::loopStarted exception. Removing handler", t);
             return true;
@@ -297,6 +309,7 @@ public enum Threads {
     static void loopFinishedQuietly(EventHandler eventHandler) {
         try {
             eventHandler.loopFinished();
+            // CSCatchThrowable REVIEW catch (Throwable t) because the local fallback still begins with logging or printing a diagnostic and needs either a narrower terminal boundary or an explicit reviewed last-resort contract.
         } catch (Throwable t) {
             Jvm.warn().on(Threads.class, t);
         }

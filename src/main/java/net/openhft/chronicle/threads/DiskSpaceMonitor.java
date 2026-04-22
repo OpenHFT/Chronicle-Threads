@@ -49,6 +49,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
 
     public static final String DISK_SPACE_CHECKER_NAME = "disk~space~checker";
     static final boolean WARN_DELETED = Jvm.getBoolean("disk.monitor.deleted.warning");
+    // CSMonitorDisableFlag REVIEW keep Jvm.getBoolean here because this runtime execution boundary still needs an explicit reviewed runtime-admission contract.
     private static final boolean DISABLED = Jvm.getBoolean("chronicle.disk.monitor.disable");
     public static final int TIME_TAKEN_WARN_THRESHOLD_US = Jvm.getInteger("chronicle.disk.monitor.warn.threshold.us", 250);
     private final NotifyDiskLow notifyDiskLow;
@@ -59,6 +60,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     private TimeProvider timeProvider = SystemTimeProvider.INSTANCE;
 
     DiskSpaceMonitor() {
+        // CSServiceLoaderBoundary REVIEW final ServiceLoader<NotifyDiskLow> services = ServiceLoader.load(NotifyDiskLow.class) because this reflective or runtime-loading boundary in DiskSpaceMonitor#DiskSpaceMonitor still needs either an allowlisted wrapper or an explicit reviewed runtime-loading contract.
         final ServiceLoader<NotifyDiskLow> services = ServiceLoader.load(NotifyDiskLow.class);
         if (services.iterator().hasNext()) {
             final List<NotifyDiskLow> warners = new ArrayList<>();
@@ -67,6 +69,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         } else {
             this.notifyDiskLow = new NotifyDiskLowLogWarn();
         }
+        // CSMonitorDisableFlag REVIEW keep Jvm.getBoolean here because this runtime execution boundary in DiskSpaceMonitor#DiskSpaceMonitor still needs an explicit reviewed runtime-admission contract.
         boolean diabled = Jvm.getBoolean("chronicle.disk.monitor.disable");
         if (!diabled) {
             executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
@@ -93,6 +96,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         if (fs == null) {
             if (file.exists()) {
 
+                // CSPathFromInput REVIEW keep Paths.get here because this filesystem boundary in DiskSpaceMonitor#pollDiskSpace still needs an explicit reviewed path-handling contract.
                 Path path = Paths.get(absolutePath);
                 try {
                     fs = Files.getFileStore(path);
@@ -119,6 +123,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             DiskAttributes da = iterator.next();
             try {
                 da.run();
+                // CSWarnAndContinue REVIEW catch (IOException e) because the local fallback still begins with entering a conditional fallback branch and then continues execution, and needs either fail-closed handling or an explicit reviewed degraded-mode contract.
             } catch (IOException e) {
                 if (WARN_DELETED)
                     Jvm.warn().on(getClass(), "Unable to get disk space for " + da.fileStore, e);
@@ -162,7 +167,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             if (timeNextCheckedMS > now)
                 return;
 
-            long start = System.nanoTime();
+            long start = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos();
             if (totalSpace <= 0)
                 totalSpace = fileStore.getTotalSpace();
 
@@ -179,7 +184,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                 // wait 1 ms per MB or approx 1 sec per GB free.
                 timeNextCheckedMS = now + (unallocatedBytes >> 20);
             }
-            long time = System.nanoTime() - start;
+            long time = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos() - start;
             if (time > 1_000_000)
                 Jvm.perf().on(getClass(), "Took " + time / 10_000 / 100.0 + " ms to check the disk space of " + fileStore);
         }

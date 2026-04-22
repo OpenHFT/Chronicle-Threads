@@ -56,6 +56,7 @@ public class ThreadsThreadHolder implements ThreadHolder {
         this.logConsumer = logConsumer;
     }
 
+    // CQNumericalConstraint REVIEW keep monitorThreadDelayed(long actionCallDelayNS) here because this API boundary in ThreadsThreadHolder#monitorThreadDelayed leaves numeric inputs unconstrained and still needs either validated range checks or an explicit reviewed caller contract.
     @Override
     public boolean isAlive() throws InvalidEventHandlerException {
         return threadSupplier.get().isAlive();

@@ -50,8 +50,10 @@ public enum EventLoopStateRenderer {
     private void addLifecycleDetails(StringBuilder builder, EventLoop eventLoop) {
         if (eventLoop instanceof AbstractLifecycleEventLoop) {
             try {
+                // CSReflectiveFieldLookup REVIEW final Field lifecycle = Jvm.getField(eventLoop.getClass(), "lifecycle") because this reflective or runtime-loading boundary in EventLoopStateRenderer#addLifecycleDetails still needs either an allowlisted wrapper or an explicit reviewed runtime-loading contract.
                 final Field lifecycle = Jvm.getField(eventLoop.getClass(), "lifecycle");
                 builder.append("Lifecycle: ").append(lifecycle.get(eventLoop)).append('\n');
+                // CSWarnAndContinue REVIEW catch (IllegalAccessException e) because the local fallback still begins with logging or printing a diagnostic and then continues execution, and needs either fail-closed handling or an explicit reviewed degraded-mode contract.
             } catch (IllegalAccessException e) {
                 Jvm.warn().on(EventLoopStateRenderer.class, "Error getting the lifecycle for " + eventLoop.getClass().getName());
             }

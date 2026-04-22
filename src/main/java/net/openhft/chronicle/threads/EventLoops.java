@@ -41,10 +41,12 @@ public final class EventLoops {
             for (Future<Void> voidFuture : ForkJoinPool.commonPool().invokeAll(eventLoopStoppers)) {
                 try {
                     voidFuture.get();
+                    // CSWarnAndContinue REVIEW catch (ExecutionException e) because the local fallback still begins with logging or printing a diagnostic and then continues execution, and needs either fail-closed handling or an explicit reviewed degraded-mode contract.
                 } catch (ExecutionException e) {
                     Jvm.error().on(EventLoops.class, "Error stopping event loop", e);
                 }
             }
+            // CSWarnAndContinue REVIEW catch (InterruptedException e) because the local fallback still begins with logging or printing a diagnostic and then continues execution, and needs either fail-closed handling or an explicit reviewed degraded-mode contract.
         } catch (InterruptedException e) {
             Jvm.warn().on(EventLoops.class, "Interrupted waiting for event loops to stop");
             Thread.currentThread().interrupt();

@@ -56,6 +56,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         this.name = name.replaceAll("/$", "");
 
         // event loops operate on dedicated threads but may be closed elsewhere
+        // CSOwnershipCheckDisable REVIEW keep singleThreadedCheckDisabled here because this lifecycle or ownership exception in AbstractLifecycleEventLoop#AbstractLifecycleEventLoop still needs an explicit reviewed lifecycle contract.
         singleThreadedCheckDisabled(true);
     }
 
@@ -120,11 +121,11 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      * indefinitely.</p>
      */
     protected final void awaitTermination() {
-        long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
+        long endTime = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
         while (!Thread.currentThread().isInterrupted()) {
             if (lifecycle.get() == EventLoopLifecycle.STOPPED)
                 return;
-            if (System.currentTimeMillis() > endTime) {
+            if (net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis() > endTime) {
                 Jvm.error().on(getClass(), "awaitTermination() timed out, continuing. This probably represents a bug.");
             }
             Jvm.pause(1);

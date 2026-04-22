@@ -109,8 +109,8 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         try {
             thread = Thread.currentThread();
             // don't do any monitoring for the first MONITOR_INITIAL_DELAY_MS ms
-            final long waitUntilMs = System.currentTimeMillis() + MONITOR_INITIAL_DELAY_MS;
-            while (System.currentTimeMillis() < waitUntilMs && isStarted())
+            final long waitUntilMs = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis() + MONITOR_INITIAL_DELAY_MS;
+            while (net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis() < waitUntilMs && isStarted())
                 pauser.pause();
             pauser.reset();
             while (isStarted() && !Thread.currentThread().isInterrupted()) {
@@ -120,6 +120,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
                 if (busy)
                     pauser.reset();
             }
+            // CSCatchThrowable REVIEW catch (Throwable e) because the local fallback still begins with logging or printing a diagnostic and needs either a narrower terminal boundary or an explicit reviewed last-resort contract.
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
         } finally {
@@ -142,6 +143,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
                 busy |= handler.action();
             } catch (InvalidEventHandlerException e) {
                 removeHandler(i--);
+                // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with logging or printing a diagnostic and needs either narrower handling or an explicit reviewed recovery contract.
             } catch (Exception e) {
                 Jvm.warn().on(getClass(), "Exception thrown by handler " + handler, e);
                 removeHandler(i--);
@@ -157,6 +159,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
             Closeable.closeQuietly(removedHandler);
             if (DEBUG_REMOVING_HANDLERS)
                 Jvm.debug().on(getClass(), "Removing " + removedHandler.priority() + " " + removedHandler + " from " + this.name);
+                // CSWarnAndContinue REVIEW catch (ArrayIndexOutOfBoundsException e) because the local fallback still begins with entering a conditional fallback branch and then continues execution, and needs either fail-closed handling or an explicit reviewed degraded-mode contract.
         } catch (ArrayIndexOutOfBoundsException e) {
             if (!handlers.isEmpty()) {
                 Jvm.warn().on(MonitorEventLoop.class, "Error removing handler!");

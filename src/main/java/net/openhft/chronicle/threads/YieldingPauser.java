@@ -72,14 +72,14 @@ public class YieldingPauser implements TimingPauser {
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
         if (timeOutStart == Long.MAX_VALUE)
-            timeOutStart = System.nanoTime();
+            timeOutStart = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos();
 
         ++count;
         if (count < minBusy)
             return;
         yield0();
 
-        if (System.nanoTime() - timeOutStart > timeUnit.toNanos(timeout))
+        if (net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos() - timeOutStart > timeUnit.toNanos(timeout))
             throw new TimeoutException();
         checkYieldTime();
     }
@@ -89,7 +89,7 @@ public class YieldingPauser implements TimingPauser {
      */
     void checkYieldTime() {
         if (yieldStart > 0) {
-            long time = System.nanoTime() - yieldStart;
+            long time = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos() - yieldStart;
             timePaused += time;
             countPaused++;
             yieldStart = 0;
@@ -101,7 +101,7 @@ public class YieldingPauser implements TimingPauser {
      */
     void yield0() {
         if (yieldStart == 0)
-            yieldStart = System.nanoTime();
+            yieldStart = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos();
         Thread.yield();
     }
 

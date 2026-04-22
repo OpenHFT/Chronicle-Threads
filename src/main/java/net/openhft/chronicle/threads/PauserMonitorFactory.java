@@ -30,6 +30,7 @@ public interface PauserMonitorFactory {
     EventHandler pauserMonitor(Pauser pauser, String description, int seconds);
 
     static PauserMonitorFactory load() {
+        // REVIEW TASK CSServiceLoaderMonitorProvider: move this concern behind the suggested reviewed aegis helper or another explicit boundary.
         final Iterator<PauserMonitorFactory> iterator = ServiceLoader.load(PauserMonitorFactory.class).iterator();
         return iterator.hasNext() ?
                 iterator.next() :

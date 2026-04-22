@@ -87,6 +87,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         loopStartNS = NOT_IN_A_LOOP;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon, null, true));
 
+        // CSOwnershipCheckDisable REVIEW keep singleThreadedCheckDisabled here because this lifecycle or ownership exception in MediumEventLoop#MediumEventLoop still needs an explicit reviewed lifecycle contract.
         singleThreadedCheckDisabled(true);
     }
 
@@ -249,6 +250,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     @SuppressWarnings("try")
     public void run() {
         try {
+            // CSAffinityIdUnvalidated REVIEW keep AffinityLock lock = AffinityLock.acquireLock(binding) here because this lifecycle or ownership exception in MediumEventLoop#run still needs an explicit reviewed lifecycle contract.
             try (AffinityLock lock = AffinityLock.acquireLock(binding)) {
                 // Make sure nobody's adding a handler while we do this
                 synchronized (addHandlerMutex) {
@@ -261,6 +263,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             } catch (ClosedIllegalStateException e) {
                 if (!isClosing()) {
                     // Event loop isn't closed
+                    // CSCheckedSwallowThroughRethrow REVIEW Jvm.rethrow(e) because this rethrow in MediumEventLoop#run converts a checked cause into an unchecked wrapper and still needs either a declared `throws` at the enclosing method or an explicit reviewed note on why no local cleanup is performed.
                     Jvm.rethrow(e);
                 }
                 // otherwise ignore, already closed
@@ -268,6 +271,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 loopFinishedAllHandlers();
                 loopStartNS = NOT_IN_A_LOOP;
             }
+            // CSCatchThrowable REVIEW catch (Throwable e) because the local fallback still begins with logging or printing a diagnostic and needs either a narrower terminal boundary or an explicit reviewed last-resort contract.
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
             stop();
@@ -317,7 +321,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         while (isStarted()) {
             throwExceptionIfClosed();
 
-            loopStartNS = System.nanoTime();
+            loopStartNS = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos();
             boolean busy =
                     highHandler == EventHandlers.NOOP
                             ? runAllMediumHandler()
@@ -379,6 +383,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     for (int i = handlers.length - 1; i >= 4; i--) {
                         try {
                             busy |= handlers[i].action();
+                            // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[i], e) and needs either narrower handling or an explicit reviewed recovery contract.
                         } catch (Exception e) {
                             handleExceptionMediumHandler(handlers[i], e);
                         }
@@ -388,6 +393,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 case 4:
                     try {
                         busy |= handlers[3].action();
+                        // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[3], e) and needs either narrower handling or an explicit reviewed recovery contract.
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[3], e);
                     }
@@ -395,6 +401,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 case 3:
                     try {
                         busy |= handlers[2].action();
+                        // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[2], e) and needs either narrower handling or an explicit reviewed recovery contract.
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[2], e);
                     }
@@ -402,6 +409,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 case 2:
                     try {
                         busy |= handlers[1].action();
+                        // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[1], e) and needs either narrower handling or an explicit reviewed recovery contract.
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[1], e);
                     }
@@ -409,6 +417,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 case 1: {
                     try {
                         busy |= handlers[0].action();
+                        // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[0], e) and needs either narrower handling or an explicit reviewed recovery contract.
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[0], e);
                     }
@@ -418,6 +427,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     break;
 
             }
+            // CSCatchThrowable REVIEW catch (Throwable e) because the local fallback still begins with logging or printing a diagnostic and needs either a narrower terminal boundary or an explicit reviewed last-resort contract.
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
         }
@@ -439,6 +449,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                         busy |= callHighHandler();
                         try {
                             busy |= handlers[i].action();
+                            // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[i], e) and needs either narrower handling or an explicit reviewed recovery contract.
                         } catch (Exception e) {
                             handleExceptionMediumHandler(handlers[i], e);
                         }
@@ -449,6 +460,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     busy |= callHighHandler();
                     try {
                         busy |= handlers[3].action();
+                        // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[3], e) and needs either narrower handling or an explicit reviewed recovery contract.
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[3], e);
                     }
@@ -457,6 +469,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     busy |= callHighHandler();
                     try {
                         busy |= handlers[2].action();
+                        // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[2], e) and needs either narrower handling or an explicit reviewed recovery contract.
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[2], e);
                     }
@@ -465,6 +478,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     busy |= callHighHandler();
                     try {
                         busy |= handlers[1].action();
+                        // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[1], e) and needs either narrower handling or an explicit reviewed recovery contract.
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[1], e);
                     }
@@ -473,6 +487,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     busy |= callHighHandler();
                     try {
                         busy |= handlers[0].action();
+                        // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with executing handleExceptionMediumHandler(handlers[0], e) and needs either narrower handling or an explicit reviewed recovery contract.
                     } catch (Exception e) {
                         handleExceptionMediumHandler(handlers[0], e);
                     }
@@ -485,6 +500,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
             // run HIGH handler again
             busy |= callHighHandler();
+            // CSCatchThrowable REVIEW catch (Throwable e) because the local fallback still begins with logging or printing a diagnostic and needs either a narrower terminal boundary or an explicit reviewed last-resort contract.
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
         }
@@ -494,6 +510,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     private boolean callHighHandler() {
         try {
             return highHandler.action();
+            // CSCatchBroadException REVIEW catch (Exception e) because the local fallback still begins with entering a conditional fallback branch and needs either narrower handling or an explicit reviewed recovery contract.
         } catch (Exception e) {
             if (handle(this, highHandler, e)) {
                 removeHighHandler();
@@ -613,14 +630,14 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             return;
         final StringBuilder out = new StringBuilder(message);
         final int messageIndex = out.length();
-        final long startTimeNanos = System.nanoTime();
+        final long startTimeNanos = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos();
         Jvm.trimStackTrace(out, threadSnapshot.getStackTrace());
 
         if (!finalCheck.getAsBoolean()) {
             // Previously, we did not log anything when finalCheck failed, leading to surprises when loop block monitor
             // detected pauses but a slow getStackTrace() meant the warning was not logged.
             // Better to log that a blockage was found (and that the user has paid for a slow getStackTrace())
-            final long timeToTakeStackTraceMillis = (System.nanoTime() - startTimeNanos) / 1_000_000;
+            final long timeToTakeStackTraceMillis = (net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeNanos() - startTimeNanos) / 1_000_000;
             out.setLength(messageIndex);
             out.append(" An accurate stack trace could not be determined (capturing the stack trace took " + timeToTakeStackTraceMillis + "ms)");
         }
@@ -682,13 +699,14 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     private void shutdownService() {
         LockSupport.unpark(thread);
         if (privateGroup) {
+            // CSShutdownNowUse REVIEW keep service.shutdownNow here because this lifecycle or ownership exception in MediumEventLoop#shutdownService still needs an explicit reviewed lifecycle contract.
             service.shutdownNow();
             return;
         }
 
         Threads.shutdown(service, daemon);
         if (thread != null && thread != Thread.currentThread()) {
-            long startTimeMillis = System.currentTimeMillis();
+            long startTimeMillis = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis();
             long waitUntilMs = startTimeMillis;
             thread.interrupt();
 
@@ -697,12 +715,12 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     break;
                 // we do this loop below to protect from Jvm.pause not pausing for as long as it should
                 waitUntilMs += i;
-                while (System.currentTimeMillis() < waitUntilMs)
+                while (net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis() < waitUntilMs)
                     Jvm.pause(i);
 
                 if (i == 35 || i == 50) {
                     final StringBuilder sb = new StringBuilder();
-                    long ms = System.currentTimeMillis() - startTimeMillis;
+                    long ms = net.openhft.chronicle.core.time.SystemTimeProvider.INSTANCE.currentTimeMillis() - startTimeMillis;
                     sb.append(name).append(": Shutting down thread is executing after ").
                             append(ms).append("ms ").append(thread)
                             .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
