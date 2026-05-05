@@ -129,11 +129,11 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     }
 
     public int getThresholdPercentage() {
-        return thresholdPercentage.get();
+        return thresholdPercentage;
     }
 
     public void setThresholdPercentage(int thresholdPercentage) {
-        this.thresholdPercentage.set(thresholdPercentage);
+        this.thresholdPercentage = thresholdPercentage;
     }
 
     @SuppressWarnings("ProtectedMemberInFinalClass")
@@ -173,7 +173,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
                 // if less than 200 Megabytes
                 notifyDiskLow.panic(fileStore);
 
-            } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage.get() / 100) {
+            } else if (unallocatedBytes < totalSpace * DiskSpaceMonitor.INSTANCE.thresholdPercentage / 100) {
                 final double usedFraction = (double) (totalSpace - unallocatedBytes) / totalSpace;
                 final double diskSpaceFull = Math.ceil(usedFraction * 1000d) / 10d;
                 notifyDiskLow.warning(diskSpaceFull, fileStore);
