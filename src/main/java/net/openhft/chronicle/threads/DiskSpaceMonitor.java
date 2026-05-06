@@ -56,18 +56,10 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
     final ScheduledExecutorService executor;
-    private final AtomicInteger thresholdPercentage = new AtomicInteger(
-            Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 5));
+    private volatile int thresholdPercentage = Jvm.getInteger("chronicle.disk.monitor.threshold.percent", 5);
     private TimeProvider timeProvider = SystemTimeProvider.INSTANCE;
 
     DiskSpaceMonitor() {
-        if (!Jvm.getBoolean("chronicle.disk.monitor.disable")) {
-            executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
-            executor.scheduleAtFixedRate(this, 1, 1, TimeUnit.SECONDS);
-        } else {
-            executor = null;
-        }
-
         final ServiceLoader<NotifyDiskLow> services = ServiceLoader.load(NotifyDiskLow.class);
         if (services.iterator().hasNext()) {
             final List<NotifyDiskLow> warners = new ArrayList<>();
@@ -75,6 +67,14 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
             this.notifyDiskLow = new NotifyDiskLowIterator(warners);
         } else {
             this.notifyDiskLow = new NotifyDiskLowLogWarn();
+        }
+        boolean diabled = Jvm.getBoolean("chronicle.disk.monitor.disable");
+        if (!diabled) {
+            executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
+            long period = Jvm.getLong("chronicle.disk.monitor.period", 10L);
+            executor.scheduleAtFixedRate(this, period, period, TimeUnit.SECONDS);
+        } else {
+            executor = null;
         }
     }
 
