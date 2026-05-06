@@ -107,15 +107,15 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
 
     private void canConcurrentlyAddHandlersAndStartEventLoop(EventLoopTestParameters<?> parameters, HandlerPriority priority) {
         Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
-        ExecutorService executorService = Executors.newCachedThreadPool();
+        final ExecutorService executorService = Executors.newCachedThreadPool();
         try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
             List<HandlerAdder> handlerAdders = new ArrayList<>();
             CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM_EVENT_ADDERS + 1);
             final EventLoopStarter eventLoopStarter = new EventLoopStarter(eventLoop, cyclicBarrier);
-            executorService.submit(eventLoopStarter);
+            executorService.execute(eventLoopStarter);
             for (int i = 0; i < NUM_EVENT_ADDERS; i++) {
                 final HandlerAdder handlerAdder = new HandlerAdder(eventLoop, cyclicBarrier, () -> new ControllableHandler(priority));
-                executorService.submit(handlerAdder);
+                executorService.execute(handlerAdder);
                 handlerAdders.add(handlerAdder);
             }
             // wait until the starter has started the event loop
@@ -139,10 +139,10 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             eventLoop.start();
             CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM_EVENT_ADDERS + 1);
             final EventLoopStopper eventLoopStopper = new EventLoopStopper(eventLoop, cyclicBarrier);
-            executorService.submit(eventLoopStopper);
+            executorService.execute(eventLoopStopper);
             for (int i = 0; i < NUM_EVENT_ADDERS; i++) {
                 final HandlerAdder handlerAdder = new HandlerAdder(eventLoop, cyclicBarrier, () -> new ControllableHandler(priority));
-                executorService.submit(handlerAdder);
+                executorService.execute(handlerAdder);
                 handlerAdders.add(handlerAdder);
             }
             eventLoopStopper.waitUntilEventLoopStopped();
@@ -160,10 +160,10 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             List<HandlerAdder> handlerAdders = new ArrayList<>();
             CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM_EVENT_ADDERS + 1);
             final EventLoopStarter eventLoopStarter = new EventLoopStarter(eventLoop, cyclicBarrier);
-            executorService.submit(eventLoopStarter);
+            executorService.execute(eventLoopStarter);
             for (int i = 0; i < NUM_EVENT_ADDERS; i++) {
                 final HandlerAdder handlerAdder = new HandlerAdder(eventLoop, cyclicBarrier, () -> new ControllableHandler(priority, 0));
-                executorService.submit(handlerAdder);
+                executorService.execute(handlerAdder);
                 handlerAdders.add(handlerAdder);
             }
             // wait until the starter has started the event loop
@@ -194,17 +194,17 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         Jvm.startup().on(EventLoopConcurrencyStressTest.class, "Executing test for " + parameters.eventLoopClass.getSimpleName() + " at priority " + priority);
         ExecutorService executorService = Executors.newCachedThreadPool();
         try (AbstractLifecycleEventLoop eventLoop = parameters.eventLoopSupplier.get()) {
-            List<HandlerAdder> handlerAdders = new ArrayList<>();
             eventLoop.start();
             while (!eventLoop.isStarted()) {
                 Jvm.pause(1);
             }
             CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM_EVENT_ADDERS + 1);
             final EventLoopStopper eventLoopStopper = new EventLoopStopper(eventLoop, cyclicBarrier);
-            executorService.submit(eventLoopStopper);
+            executorService.execute(eventLoopStopper);
+            List<HandlerAdder> handlerAdders = new ArrayList<>();
             for (int i = 0; i < NUM_EVENT_ADDERS; i++) {
                 final HandlerAdder handlerAdder = new HandlerAdder(eventLoop, cyclicBarrier, () -> new ControllableHandler(priority, 0));
-                executorService.submit(handlerAdder);
+                executorService.execute(handlerAdder);
                 handlerAdders.add(handlerAdder);
             }
             eventLoopStopper.waitUntilEventLoopStopped();
@@ -226,6 +226,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             hasStartedEventLoop = new Semaphore(0);
         }
 
+        @SuppressWarnings("CallToPrintStackTrace")
         public void run() {
             try {
                 await(cyclicBarrier);
@@ -257,6 +258,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             hasStoppedEventLoop = new Semaphore(0);
         }
 
+        @SuppressWarnings("CallToPrintStackTrace")
         public void run() {
             try {
                 await(cyclicBarrier);
@@ -295,6 +297,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             this.stoppedAddingHandlers = new Semaphore(0);
         }
 
+        @SuppressWarnings("CallToPrintStackTrace")
         @Override
         public void run() {
             try {
@@ -433,7 +436,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
     private static void pauseMicros(long timeToSleepMicros) {
         long endTimeNanos = System.nanoTime() + timeToSleepMicros * 1_000;
         while (System.nanoTime() < endTimeNanos) {
-            // do nothing
+            Thread.yield();
         }
     }
 }

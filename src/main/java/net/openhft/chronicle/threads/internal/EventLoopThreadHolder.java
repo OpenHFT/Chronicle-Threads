@@ -13,7 +13,6 @@ import net.openhft.chronicle.threads.ThreadHolder;
  * than the configured monitoring interval.  Each subsequent dump is spaced
  * further apart to reduce log volume while the loop remains stuck.
  */
-
 public class EventLoopThreadHolder implements ThreadHolder {
     private final CoreEventLoop eventLoop;
     private final long monitorIntervalNS;
@@ -57,6 +56,7 @@ public class EventLoopThreadHolder implements ThreadHolder {
     @Override
     public void dumpThread(long startedNS, long nowNS) {
         long blockingTimeNS = nowNS - startedNS;
+        @SuppressWarnings("IntegerDivisionInFloatingPointContext")
         double blockingTimeMS = blockingTimeNS / 100_000 / 10.0;
         if (blockingTimeMS <= 0.0)
             return;

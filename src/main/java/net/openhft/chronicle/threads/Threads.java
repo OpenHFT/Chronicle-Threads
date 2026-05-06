@@ -237,7 +237,7 @@ public enum Threads {
 
             for (Object o : objects) {
                 Thread t = Jvm.getValue(o, "thread");
-                if (t.getState() != State.TERMINATED)
+                if (t != null && t.getState() != State.TERMINATED)
                     consumer.accept(t);
             }
         } catch (Exception e) {

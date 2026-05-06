@@ -5,7 +5,6 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.annotation.HotMethod;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.ClosedIllegalStateException;
@@ -47,9 +46,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     private final transient Object startStopMutex = new Object();
 
     @Nullable
-    protected transient final EventLoop parent;
+    protected final transient EventLoop parent;
     @NotNull
-    protected transient final ExecutorService service;
+    protected final transient ExecutorService service;
     protected final List<EventHandler> mediumHandlers = new CopyOnWriteArrayList<>();
     protected final ConcurrentLinkedQueue<EventHandler> newHandlers = new ConcurrentLinkedQueue<>();
     protected final Pauser pauser;
@@ -245,7 +244,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     @Override
-    @HotMethod
     @SuppressWarnings("try")
     public void run() {
         try {
@@ -253,8 +251,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 // Make sure nobody's adding a handler while we do this
                 synchronized (addHandlerMutex) {
                     thread = Thread.currentThread();
-                    if (thread == null)
-                        throw new NullPointerException();
                     loopStartedAllHandlers();
                 }
                 runLoop();
@@ -267,6 +263,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             } finally {
                 loopFinishedAllHandlers();
                 loopStartNS = NOT_IN_A_LOOP;
+                thread = null;
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
@@ -369,7 +366,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     // Unrolled to avoid megamorphic call chains.
-    @SuppressWarnings("fallthrough")
+    @SuppressWarnings({"fallthrough", "DefaultNotLastCaseInSwitch", "java:S4524", "java:S1141"})
     private boolean runAllMediumHandler() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
@@ -425,7 +422,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     // Unrolled to reduce megamorphic calls and keep the JIT hot.
-    @SuppressWarnings("fallthrough")
+    @SuppressWarnings({"fallthrough", "DefaultNotLastCaseInSwitch"})
     protected boolean runAllHandlers() {
         boolean busy = false;
         final EventHandler[] handlers = this.mediumHandlersArray;
@@ -534,7 +531,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         this.mediumHandlersArray = mediumHandlers.toArray(NO_EVENT_HANDLERS);
     }
 
-    @HotMethod
     private boolean acceptNewHandlers() {
         boolean result = false;
         EventHandler handler;
@@ -622,7 +618,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             // Better to log that a blockage was found (and that the user has paid for a slow getStackTrace())
             final long timeToTakeStackTraceMillis = (System.nanoTime() - startTimeNanos) / 1_000_000;
             out.setLength(messageIndex);
-            out.append(" An accurate stack trace could not be determined (capturing the stack trace took " + timeToTakeStackTraceMillis + "ms)");
+            out.append(" An accurate stack trace could not be determined (capturing the stack trace took ")
+                    .append(timeToTakeStackTraceMillis)
+                    .append("ms)");
         }
         Jvm.perf().on(getClass(), out.toString());
     }

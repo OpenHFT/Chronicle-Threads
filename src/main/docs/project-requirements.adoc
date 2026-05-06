@@ -1,10 +1,10 @@
-= Chronicle Threads – Functional Requirements Specification
+= Chronicle Threads - Functional Requirements Specification
+:toc:
+:sectnums:
+:lang: en-GB
 :revnumber: 1.0
 :revdate: 2025-05-25
-:sectnums:
-:toc:
 :source-highlighter: rouge
-:lang: en-GB
 
 == Purpose and Scope
 
@@ -26,7 +26,7 @@ _Out of scope_ are:
 |_EventHandler_ |Application-provided component that implements `action()`; executed by an `EventLoop`.
 |_EventGroup_ |A container that manages one or more `EventLoop`s, potentially including a dedicated monitor loop.
 |_Pauser_ |Strategy object that controls how an idle loop waits (e.g., busy-spin, yield, sleep).
-|_Fast Thread_ |A thread—usually pinned to an isolated CPU core—running a latency-critical event loop.
+|_Fast Thread_ |A thread-usually pinned to an isolated CPU core-running a latency-critical event loop.
 |_Hot Path_ / _Fast Path_ |The code execution path that is performance-critical and frequently executed, where low latency and minimal overhead are paramount.
 |_Loop-Block Monitor_ |Background handler that measures `EventHandler` run-time and logs outliers exceeding a configured threshold.
 |_NUMA_ |Non-Uniform Memory Access; a memory architecture where memory access time depends on the memory location relative to a processor.
@@ -42,7 +42,7 @@ _Out of scope_ are:
 
 == High-Level Functional Requirements
 
-=== Event‐Loop Lifecycle and Configuration
+=== Event-Loop Lifecycle and Configuration
 
 . _Creation and Configuration_
 _THR-FN-001_ The library SHALL provide builder APIs (e.g., `EventLoopBuilder`, `EventGroupBuilder`) for fluent and immutable configuration of event loops and groups.
@@ -59,7 +59,7 @@ _THR-FN-004_ Clients SHALL be able to add an `EventHandler` to a running `EventG
 . _Handler Priority_
 _THR-FN-005_ Each `EventHandler` SHALL declare a `HandlerPriority`.
 The system SHALL support a range of priorities influencing execution order and/or loop assignment.
-(Refer to `net.openhft.chronicle.core.threads.HandlerPriority` enum for the exhaustive list of priorities, e.g., `HIGH`, `MEDIUM`, `LOW`, `TIMER`, `BLOCKING`, `REPLICATION`, `CONCURRENT`, `MONITOR`, `DAEMON`).
+(Refer to `net.openhft.chronicle.core.threads.HandlerPriority` enum for the exhaustive list of priorities, e.g., `HIGH`, `MEDIUM`, `LOW`, `TIMER`, `BLOCKING`, `REPLICATION`, `CONCURRENT`, `MONITOR`, `DAEMON`). An `EventGroup` SHALL be configured with a set of supported priorities; loops are only created for enabled priorities and attempts to add a handler whose priority has no corresponding loop SHALL be rejected.
 . _Execution Contract_
 _THR-FN-006_ An `EventHandler`'s `action()` method MUST be invoked serially on the `EventLoop`'s dedicated thread.
 _THR-FN-007_ The `action()` method MUST return a boolean: `true` if useful work was done (suggesting the handler may have more immediate work), `false` otherwise.
@@ -142,10 +142,10 @@ _THR-NF-P-031_ *CPU Utilisation:*
 [cols="1,4,3",options="header"]
 |===
 |ID |Requirement |Artefact(s)
-|THR-DOC-032 |Publish an architecture overview that illustrates loop composition, handler routing, and affinity guidance, keeping it aligned with the functional catalogue. |link:thread-architecture-overview.adoc[thread-architecture-overview.adoc]
-|THR-DOC-033 |Maintain an operational controls playbook detailing CPU isolation, monitoring thresholds, and configuration precedence so operators can enforce safe defaults. |link:thread-operational-controls.adoc[thread-operational-controls.adoc]
+|THR-DOC-032 |Publish an architecture overview that illustrates loop composition, handler routing, and affinity guidance, keeping it aligned with the functional catalogue. |link:architecture-overview.adoc[architecture-overview.adoc]
+|THR-DOC-033 |Maintain an operational controls playbook detailing CPU isolation, monitoring thresholds, and configuration precedence so operators can enforce safe defaults. |link:operational-controls.adoc[operational-controls.adoc]
 |THR-DOC-034 |Record security considerations for handler admission, affinity, telemetry integrity, and dependency posture, updating the review after material changes. |link:thread-security-review.adoc[thread-security-review.adoc]
-|THR-DOC-035 |Provide a thread-safety guide that explains confinement rules, hand-off patterns, and testing practices for event loop handlers. |link:thread-thread-safety-guide.adoc[thread-thread-safety-guide.adoc]
+|THR-DOC-035 |Provide a thread-safety guide that explains confinement rules, hand-off patterns, and testing practices for event loop handlers. |link:thread-safety-guide.adoc[thread-safety-guide.adoc]
 |THR-TEST-036 |Automate benchmark and soak tests that demonstrate compliance with latency, jitter, throughput, and allocation targets. |link:thread-performance-targets.adoc[thread-performance-targets.adoc]
 |===
 
@@ -174,11 +174,11 @@ During bursts, it processes events with low latency.
 * `net.openhft.chronicle.core.threads.HandlerPriority` Javadoc (Definitive list of handler priorities)
 * `net.openhft.chronicle.threads.PauserMode` Javadoc (Definitive list of pauser modes)
 * Chronicle Affinity library documentation (For details on CPU binding syntax and capabilities)
-* `thread-architecture-overview.adoc` (Runtime topology)
-* `thread-operational-controls.adoc` (Operational safeguards)
+* `architecture-overview.adoc` (Runtime topology)
+* `operational-controls.adoc` (Operational safeguards)
 * `thread-performance-targets.adoc` (Benchmark methodology)
 * `thread-security-review.adoc` (Security posture)
-* `thread-thread-safety-guide.adoc` (Confinement practices)
+* `thread-safety-guide.adoc` (Confinement practices)
 
 [[open-issues]]
 == Open Issues / Future Enhancements
@@ -201,7 +201,7 @@ EventGroup eg = EventGroup.builder()
         .withName("MatchingEngineGroup") // Sets the base name for the EventGroup and its child loops
         .withLoopCount(2) // Example: might influence number of certain types of loops if applicable
         .withPauserMode(PauserMode.BUSY) // Sets default pauser for core loops
-        .withPriorities(EnumSet.of(HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.MONITOR)) // Specify which handler priorities this group will support
+        .withPriorities(EnumSet.of(HandlerPriority.HIGH, HandlerPriority.MEDIUM, HandlerPriority.MONITOR)) // Specify which handler priorities this group will support; if configured with an empty set only the monitor loop is present and handlers with any other priority are rejected
         .build();
 
 // Add application-specific handlers

@@ -80,6 +80,7 @@ public class LongPauser implements Pauser, TimingPauser {
         try {
             pause(Long.MAX_VALUE, TimeUnit.SECONDS);
         } catch (TimeoutException ignored) {
+            // ignore - effectively infinite timeout should not expire
         }
     }
 
@@ -187,6 +188,7 @@ public class LongPauser implements Pauser, TimingPauser {
         if (!thread.isInterrupted())
             LockSupport.parkNanos(delayNs);
         pausing.set(false);
+        thread = null;
         long time = System.nanoTime() - start;
         timePaused += time;
     }

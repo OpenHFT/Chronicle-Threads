@@ -3,7 +3,6 @@
  */
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.io.InvalidMarshallableException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -54,18 +53,15 @@ class MediumEventLoopTest extends ThreadsTestCommon {
             try (MediumEventLoop eventLoop = new MediumEventLoop(null, "name", Pauser.balanced(), true, null)) {
                 eventLoop.start();
                 CyclicBarrier barrier = new CyclicBarrier(3);
-                eventLoop.addHandler(new EventHandler() {
-                    @Override
-                    public boolean action() throws InvalidEventHandlerException, InvalidMarshallableException {
-                        try {
-                            barrier.await();
-                            return false;
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            throw new InvalidEventHandlerException();
-                        } catch (BrokenBarrierException e) {
-                            throw new InvalidEventHandlerException();
-                        }
+                eventLoop.addHandler(() -> {
+                    try {
+                        barrier.await();
+                        return false;
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new InvalidEventHandlerException();
+                    } catch (BrokenBarrierException e) {
+                        throw new InvalidEventHandlerException();
                     }
                 });
                 IntStream.range(0, 2).parallel()

@@ -1,9 +1,11 @@
 = Chronicle Threads
 Chronicle Software
-:css-signature: demo
 :toc: macro
-:toclevels: 2
 :icons: font
+:lang: en-GB
+:toclevels: 2
+:css-signature: demo
+:source-highlighter: rouge
 
 image:https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads/badge.svg[caption="",link=https://maven-badges.herokuapp.com/maven-central/net.openhft/chronicle-threads]
 image:https://javadoc.io/badge2/net.openhft/chronicle-threads/javadoc.svg[link="https://www.javadoc.io/doc/net.openhft/chronicle-threads/latest/index.html"]
@@ -78,6 +80,19 @@ public final class ExampleEventHandler implements EventHandler {
 ==== Adding to event loop
 
 call the `addHandler` method of the event loop, see also <<Start event loop>>
+
+== Links
+
+* link:src/main/docs/project-requirements.adoc[Project requirements (summary view)]
+* link:src/main/docs/project-requirements.adoc[Project requirements (full specification)]
+* link:src/main/docs/functional-requirements.adoc[Functional requirements catalogue]
+* link:src/main/docs/architecture-overview.adoc[Architecture overview]
+* link:src/main/docs/operational-controls.adoc[Operational controls]
+* link:src/main/docs/thread-safety-guide.adoc[Thread-safety guide]
+* link:src/main/docs/thread-security-review.adoc[Security review]
+* link:src/main/docs/thread-performance-targets.adoc[Performance targets]
+* link:src/main/docs/decision-log.adoc[Decision log]
+* link:systemProperties.adoc[System properties reference]
 
 [source,java]
 ----
@@ -154,6 +169,51 @@ link:https://github.com/OpenHFT/Chronicle-Core/blob/ea/src/main/java/net/openhft
 determines which of its child event loops the `EventHandler` is installed on.
 The second use of `HandlerPriority` is to enable each (child) event loop to determine how often each
 `EventHandler` is called e.g. `HandlerPriority.HIGH` handlers are executed more than `HandlerPriority.MEDIUM` handlers.
+
+An `EventGroup` is configured with a set of supported handler priorities (by default all priorities).
+Loops are only created for enabled priorities and attempts to add a handler whose priority has no corresponding loop result in an `IllegalStateException`.
+If the configured priority set is empty, only the monitor loop is present and handlers with any other priority are rejected.
+
+== Requirements and Decisions
+
+The functional requirements for Chronicle Threads are captured in link:src/main/docs/project-requirements.adoc[project-requirements.adoc].
+Architectural and operational decisions, including event-loop threading and disk-space monitoring policies, are captured in link:src/main/docs/decision-log.adoc[decision-log.adoc].
+
+== Advanced Usage Example
+
+The following example shows how two `EventGroup` instances can be used to separate a latency-critical trading pipeline from slower operational tasks in the same JVM.
+
+[source,java,opts=novalidate]
+----
+// Latency-sensitive trading group on isolated cores
+EventGroup tradingGroup = EventGroup.builder()
+        .withName("trading-eg")
+        .withPauserMode(PauserMode.BUSY)
+        .withBinding("2-3") // bind to isolated cores for low jitter
+        .build();
+
+tradingGroup.addHandler(new OrderBookHandler());
+tradingGroup.addHandler(new RiskCheckHandler());
+
+// Operational / housekeeping group on shared cores
+EventGroup opsGroup = EventGroup.builder()
+        .withName("ops-eg")
+        .withPauserMode(PauserMode.BALANCED)
+        .withBinding("4-5") // less aggressive CPU usage
+        .build();
+
+opsGroup.addHandler(new MetricsExportHandler());
+opsGroup.addHandler(new DiskSpaceMonitorHandler());
+
+tradingGroup.start();
+opsGroup.start();
+
+// On shutdown
+opsGroup.close();
+tradingGroup.close();
+----
+
+The architecture overview (link:src/main/docs/architecture-overview.adoc[architecture-overview.adoc]) and operational controls (link:src/main/docs/operational-controls.adoc[operational-controls.adoc]) explain how to choose bindings, pausers and monitoring settings for such topologies.
 
 == Pausers
 

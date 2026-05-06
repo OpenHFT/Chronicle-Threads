@@ -7,7 +7,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -107,10 +106,9 @@ public class MilliPauser implements Pauser {
      *
      * @param timeout  the maximum time to pause in the specified {@code timeUnit}
      * @param timeUnit the unit of time for {@code timeout}
-     * @throws TimeoutException if the pause operation is not completed within the specified timeout
      */
     @Override
-    public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
+    public void pause(long timeout, @NotNull TimeUnit timeUnit) {
         doPauseMS(timeUnit.toMillis(timeout));
     }
 
@@ -127,6 +125,7 @@ public class MilliPauser implements Pauser {
         if (!thread.isInterrupted())
             LockSupport.parkNanos(delayMS * 1_000_000L);
         pausing.set(false);
+        thread = null;
         long time = System.nanoTime() - start;
         timePaused += time;
         countPaused++;

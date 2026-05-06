@@ -322,16 +322,28 @@ public class EventGroup
                 timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
                 long waitTime = System.currentTimeMillis() - waitStartTimeMs;
+                String coreState = core == null
+                        ? "Core loop not configured"
+                        : EventLoopStateRenderer.INSTANCE.render("Core", core);
+                String monitorState = EventLoopStateRenderer.INSTANCE.render("Monitor", monitor);
                 String threadDump = renderThreadDump();
                 Jvm.error().on(EventGroup.class, format("Timed out waiting for start! (waited %,dms)%n" +
                                 "%s%n%n" +
                                 "%s%n%n" +
                                 "%s%n",
                         waitTime,
-                        EventLoopStateRenderer.INSTANCE.render("Core", core),
-                        EventLoopStateRenderer.INSTANCE.render("Monitor", monitor),
+                        coreState,
+                        monitorState,
                         threadDump));
-                throw Jvm.rethrow(e);
+                String message = format("Timed out waiting %,dms for %s to start%n%s%n%n%s%n%n%s",
+                        waitTime,
+                        waitfor.name(),
+                        coreState,
+                        monitorState,
+                        threadDump);
+                TimeoutException te = new TimeoutException(message);
+                te.initCause(e);
+                throw Jvm.rethrow(te);
             }
         }
     }
@@ -388,7 +400,7 @@ public class EventGroup
 
     @Override
     public boolean runsInsideCoreLoop() {
-        return core.runsInsideCoreLoop();
+        return core != null && core.runsInsideCoreLoop();
     }
 
     @Override

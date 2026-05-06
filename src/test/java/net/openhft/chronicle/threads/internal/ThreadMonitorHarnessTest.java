@@ -31,7 +31,7 @@ class ThreadMonitorHarnessTest {
     private LongSupplier timeSupplier;
 
     @BeforeEach
-    void setUp() throws InvalidEventHandlerException {
+    void setUp() {
         threadMonitorHarness = new ThreadMonitorHarness(threadHolder, timeSupplier);
         lenient().when(threadHolder.isAlive()).thenReturn(true);
         lenient().when(threadHolder.timingToleranceNS()).thenReturn(TIMING_TOLERANCE_NS);
@@ -39,7 +39,7 @@ class ThreadMonitorHarnessTest {
     }
 
     @Test
-    void willCallThreadFinishedThenTerminateWhenThreadIsNoLongerAlive() throws InvalidEventHandlerException {
+    void willCallThreadFinishedThenTerminateWhenThreadIsNoLongerAlive() {
         when(threadHolder.isAlive()).thenReturn(false);
 
         assertThrows(InvalidEventHandlerException.class, () -> threadMonitorHarness.action());

@@ -1,0 +1,188 @@
+= Chronicle Threads Architecture Overview
+:toc:
+:sectnums:
+:lang: en-GB
+:source-highlighter: rouge
+
+== Purpose and Scope
+
+This guide explains how Chronicle Threads composes event loops, handlers, pausers, and monitoring into a cohesive runtime so that engineers can reason about placement, affinity, and operational behaviour.
+It complements the functional catalogue in `project-requirements.adoc` and provides concrete design cues for solution architects.
+
+Out of scope are detailed API signatures (covered by Javadoc), exhaustive configuration tables (see `systemProperties.adoc`), and test methodology (see `thread-performance-targets.adoc`).
+
+== Document Map
+
+Chronicle Threads’ documentation set is organised as follows:
+
+* link:project-requirements.adoc[project-requirements.adoc] – full THR requirements catalogue (functional, non-functional, operational, documentation).
+* link:functional-requirements.adoc[functional-requirements.adoc] – tabular view of key `THR-FN-*` behaviours grouped by domain.
+* link:thread-performance-targets.adoc[thread-performance-targets.adoc] – non-functional performance targets (`THR-NF-P-*`) and benchmark methodology.
+* link:operational-controls.adoc[operational-controls.adoc] – operational safeguards, CPU isolation, monitoring thresholds, configuration governance.
+* link:thread-security-review.adoc[thread-security-review.adoc] – security posture and threat model for handler admission, affinity and telemetry.
+* link:thread-safety-guide.adoc[thread-safety-guide.adoc] – confinement rules, hand-off patterns and testing strategies for handlers.
+* `README.adoc` – getting-started guide and illustrative code snippets.
+* `systemProperties.adoc` – system property reference for Chronicle Threads.
+
+This architecture overview should be read alongside the requirements catalogue and then used as the primary entry point for design discussions.
+
+== Core Components and Packages
+
+Chronicle Threads exposes a small set of core types in `net.openhft.chronicle.threads`:
+
+* `EventGroup` / `EventGroupBuilder` – configure and manage related `EventLoop` instances, including core, blocking, timer and monitor loops.
+* `EventLoop` implementations – `CoreEventLoop`, `MediumEventLoop`, `BlockingEventLoop`, `MonitorEventLoop` and `VanillaEventLoop` implement different scheduling and threading characteristics.
+* `Pauser` and implementations – `BusyPauser`, `BusyTimedPauser`, `LongPauser`, `MilliPauser`, `YieldingPauser`, `TimingPauser` provide pluggable idle strategies.
+* `PauserMode` – maps configuration-friendly names (for example `BUSY`, `TIMED_BUSY`, `BALANCED`) to concrete `Pauser` strategies.
+* Monitoring utilities – `ThreadMonitor`, `ThreadMonitors`, `PauserMonitorFactory` and `NotifyDiskLow` integrate loop health and disk space checks into the runtime.
+* Helper utilities – `Threads`, `EventLoops`, `EventHandlers`, `NamedThreadFactory` provide convenience operations for creating and managing threads and handlers.
+
+Responsibilities are deliberately narrow: event loops orchestrate handler execution, pausers decide what to do when idle, and monitoring utilities observe behaviour without enforcing business policy.
+
+== Event Loop Topologies
+
+Chronicle Threads organises work into named `EventLoop` instances that the `EventGroup` manages (THR-FN-001).
+Each loop is single-threaded for handler execution (THR-FN-006) and is categorised by handler priority (THR-FN-005).
+
+....
+ EventGroup
+   |
+   +-- CoreLoop[HIGH|MEDIUM] ---> fast path handlers (trading logic, matching)
+   |
+   +-- BlockingPool[BLOCKING] --> dedicated threads for I/O or storage waits
+   |
+   +-- TimerLoop[TIMER] ------> scheduled maintenance and time-based work
+   |
+   +-- MonitorLoop[MONITOR] -> observes loop-block latency and pauser metrics
+....
+
+Handlers attach to the loop whose priority matches their declared `HandlerPriority`.
+An `EventGroup` materialises loops for the priorities included in its configured priority set and omits others; blocking and concurrent loops are only created when required by configuration.
+If the configured priority set is empty only the monitor loop is present and attempts to add a handler with any other priority are rejected.
+Applications can deploy multiple `EventGroup` instances in the same JVM to isolate subsystems whilst sharing pauser implementations.
+
+== Handler Lifecycle and Serial Execution
+
+Handlers are added at runtime via `EventGroup.addHandler()` (THR-FN-004).
+The loop invokes each handler serially, ensuring stateful logic can remain lock-free (THR-FN-006).
+The handler signals its progress via the boolean return value of `action()` (THR-FN-007).
+Self-removal uses `InvalidEventHandlerException` (THR-FN-008); the loop removes the handler, logs through the standard `Jvm` channel, and continues running (THR-NF-O-009).
+
+Handlers should bound their execution time so that monitor loops can flag outliers reliably (THR-NF-O-018).
+Long-running work belongs on the `BLOCKING` priority where independent threads handle it.
+When reconfiguring a live loop, call `EventLoop.addHandler()` on the owning loop thread or rely on the concurrency-safe wrappers provided by `EventGroup`.
+
+== Pauser Strategy and Scheduler Interaction
+
+Pausers implement the idle strategy for each loop and are configured via builders or per-loop overrides (THR-FN-010, THR-FN-011).
+Adaptive pausers expose tuning parameters that balance busy-spin and sleeping phases (THR-FN-012) while exposing metrics for observability (THR-NF-O-013, THR-NF-O-021).
+
+* `BUSY` / `TIMED_BUSY`: Bind to isolated cores, targeting nanosecond wake-up latency (THR-DOC-016).
+* `BALANCED` / `SLEEPY`: Combine spin, yield, and park for mixed workloads.
+* Custom: Provide a bespoke `Pauser` for domain-specific throttling.
+
+Hot paths avoid allocations (THR-NF-P-014) so a pauser change cannot introduce garbage.
+Each loop records the time spent paused, supporting utilisation diagnostics.
+
+== Affinity and NUMA Alignment
+
+Affinity strings supplied via builders control how loops bind to hardware threads (THR-FN-015).
+They accept the Chronicle Affinity syntax, including NUMA-aware layouts (THR-FN-017).
+Example:
+
+----
+EventGroup eg = EventGroup.builder()
+        .withName("risk-eg")
+        .withBinding("0,2-3")
+        .build();
+----
+
+* `0` binds the primary high-priority loop to core 0.
+* `2-3` pins additional loops (e.g., MONITOR or BLOCKING) across cores 2 and 3.
+
+When multiple `EventGroup` instances coexist, coordinate bindings to avoid core contention.
+Document selected affinities alongside deployment manifests so operators can validate CPU isolation.
+
+== Monitoring Plane
+
+Each `EventGroup` provisions a monitor loop that samples execution times and resets pausers at configurable intervals (THR-NF-O-018, THR-NF-O-019, THR-OPS-020).
+The monitor loop:
+
+* Measures handler invocation duration, logging stack traces for breaches.
+* Publishes pauser metrics through configured `PauserMonitorFactory` hooks.
+* Responds to system properties that disable or tune monitoring (THR-OPS-023).
+
+The monitoring loop is not latency-critical but must keep pace with the core loops to avoid stale diagnostics.
+Ensure JVM logging levels capture WARN messages from monitor handlers in production.
+
+== Performance Characteristics
+
+Chronicle Threads is designed to meet strict non-functional performance targets (THR-NF-P-014, THR-NF-P-027..THR-NF-P-031).
+The detailed benchmarks and test methodology are documented in `thread-performance-targets.adoc`; this section summarises their architectural implications.
+
+Latency and jitter::
+Fast-path loops configured with busy pausers and isolated cores target single-hop handler latencies of <= 10 microseconds at the 99.99th percentile and tight jitter envelopes.
+Architecturally this drives the use of single-threaded loops, busy-spin pausers, and affinity-aware deployment, as described in the sections above.
+
+Throughput and utilisation::
+On suitable hardware a single fast loop is expected to process millions of simple events per second whilst keeping CPU utilisation aligned with input rate.
+Pauser strategies and monitoring hooks expose utilisation metrics so operators can confirm that loops saturate cores only when necessary.
+
+Allocation profile::
+The library aims for zero allocations in hot-path pauser calls and minimal allocations in event loop and handler invocation paths (THR-NF-P-014, THR-NF-P-030).
+Design choices such as reusable exception instances, careful logging paths, and avoidance of per-iteration object creation follow from this requirement.
+
+Benchmarking and regression control::
+Performance contracts are enforced via dedicated benchmarks and soak tests described in `thread-performance-targets.adoc`.
+Architectural changes that affect loop structure, pauser implementations or monitoring behaviour should be evaluated against these targets and referenced with the relevant THR identifiers in design discussions and pull requests.
+
+== Integration Touchpoints
+
+Chronicle Threads commonly underpins Chronicle Queue tailers, Chronicle Map maintenance tasks, and application-specific pipelines.
+When integrating:
+
+* Use `net.openhft.chronicle.core.io.Closeable` semantics to align handler lifecycle with queue appenders or tailers.
+* Combine telemetry exports with the monitor loop to funnel utilisation metrics to the estate-wide monitoring system.
+* Align handler priorities with data criticality so that core loops handle order flow while auxiliary loops manage persistence, replay, or housekeeping.
+
+Refer to `README.adoc` for code-level examples, to link:operational-controls.adoc[operational-controls.adoc] for deployment-time safeguards, and to link:thread-safety-guide.adoc[thread-safety-guide.adoc] and link:thread-security-review.adoc[thread-security-review.adoc] for ownership and security guidance.
+
+== Configuration Overview
+
+Chronicle Threads is configured through a combination of builder APIs and JVM system properties.
+Builders capture topology and pauser choices in code, while properties provide deployment-time overrides for monitoring and operational thresholds.
+
+Builder configuration::
+* `EventGroupBuilder` methods control loop naming, pauser selection (`withPauser(Pauser)` or pauser mode), affinity bindings and thread factory.
+* Application-specific configuration classes typically own an `EventGroupBuilder`, apply environment-specific defaults and then expose a built `EventGroup` to the rest of the system.
+
+System properties::
+* Loop-block monitoring is governed by properties such as `loop.block.threshold.ns`, `MONITOR_INTERVAL_MS` and `disableLoopBlockMonitor` (described in `systemProperties.adoc` and `thread-performance-targets.adoc`).
+* Disk space monitoring is controlled by `chronicle.disk.monitor.disable` and `chronicle.disk.monitor.threshold.percent`, as documented in `systemProperties.adoc` and decision THR-OPS-003.
+* Pauser behaviour can be influenced by properties like `pauserMode`, `pauser.minProcessors` and `eventGroup.conc.threads`.
+
+Configuration precedence::
+* Code-level defaults in builders provide safe baselines for development.
+* Environment-specific profiles (for example YAML, property files or Spring configuration) override builder defaults for certification and production.
+* JVM `-D` flags are reserved for exceptional or per-node tweaks and should be documented in run-books to avoid drift.
+
+== Trade-offs and Alternatives
+
+Single-threaded loops versus thread pools::
+Chronicle Threads adopts single-threaded event loops for handler execution (THR-FN-001, THR-FN-006), favouring predictable latency and simple state management over raw parallel throughput.
+The main alternative, a shared thread pool invoking handlers concurrently, offers more parallelism but at the cost of lock contention, more complex code and less deterministic tail latency.
+
+Busy-spin pausers versus balanced strategies::
+Busy pausers (for example `PauserMode.BUSY`, `PauserMode.TIMED_BUSY`) deliver the lowest wake-up latency but consume full cores (THR-NF-P-002).
+Balanced or sleepy pausers reduce CPU usage by introducing yielding and sleeping phases at the expense of slightly higher wake-up times.
+Operational controls and deployment artefacts should document which loops use which mode so that estate-level CPU planning reflects these trade-offs.
+
+Centralised monitoring versus minimal instrumentation::
+The built-in monitor loop and pauser metrics (THR-NF-O-018, THR-NF-O-021) provide rich observability but introduce a small amount of additional work per handler invocation.
+Alternatives that rely solely on external monitoring simplify the event group but make it harder to diagnose loop-block events in context.
+The chosen design keeps the monitoring plane lightweight while ensuring sufficient visibility for production incident response.
+
+Per-module thread groups versus JVM-wide executors::
+`EventGroup` instances encapsulate loop topology and pauser choices for a given subsystem instead of sharing a single global executor.
+This increases configuration surface area but lets each subsystem adopt a topology tailored to its latency, throughput and isolation needs.
+Applications can still compose multiple `EventGroup` instances to share underlying hardware where appropriate.

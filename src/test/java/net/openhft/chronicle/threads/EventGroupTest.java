@@ -51,12 +51,12 @@ public class EventGroupTest extends ThreadsTestCommon {
     @BeforeEach
     void handlersInit() {
         ignoreException("Monitoring a task which has finished ");
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 1;
+        setMonitorInitialDelayMs(1);
     }
 
     @Override
     public void preAfter() throws InterruptedException {
-        MonitorEventLoop.MONITOR_INITIAL_DELAY_MS = 10_000;
+        setMonitorInitialDelayMs(10_000);
 
         for (TestHandler handler : this.handlers)
             handler.assertClosed();
@@ -73,6 +73,7 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
     }
 
+    @SuppressWarnings("InstantiatingAThreadWithDefaultRunMethod")
     @Timeout(5)
     @Test
     void testSimpleEventGroupTest() throws InterruptedException {
@@ -326,7 +327,7 @@ public class EventGroupTest extends ThreadsTestCommon {
     }
 
     private void checkException(ExceptionType exceptionType) throws InterruptedException {
-        try (final EventLoop eventGroup = EventGroup.builder().build();) {
+        try (final EventLoop eventGroup = EventGroup.builder().build()) {
             for (HandlerPriority hp : HandlerPriority.values())
                 eventGroup.addHandler(new TestHandler(hp, exceptionType));
             eventGroup.start();
@@ -387,6 +388,7 @@ public class EventGroupTest extends ThreadsTestCommon {
                             assertTrue(EventLoop.inEventLoop(), priority.name());
                             priorities.add(priority);
                         } catch (Throwable t) {
+                            //noinspection CallToPrintStackTrace
                             t.printStackTrace();
                         }
                         throw new InvalidEventHandlerException("done");
@@ -450,18 +452,18 @@ public class EventGroupTest extends ThreadsTestCommon {
             final TestHandler handler = new TestHandler(handlerPriority);
             eventGroup.addHandler(handler);
         }
-        handlers.forEach(handler -> assertEquals(handler.loopStartedNS.get(), 0, handler.priority + " was loopStarted before loop started, priorities=" + priorities));
+        handlers.forEach(handler -> assertEquals(0, handler.loopStartedNS.get(), handler.priority + " was loopStarted before loop started, priorities=" + priorities));
         eventGroup.start();
-        handlers.forEach(handler -> assertEquals(handler.loopFinishedNS.get(), 0, handler.priority + " was loopFinished before loop finished, priorities=" + priorities));
+        handlers.forEach(handler -> assertEquals(0, handler.loopFinishedNS.get(), handler.priority + " was loopFinished before loop finished, priorities=" + priorities));
         Jvm.pause(1000);
-        handlers.forEach(handler -> assertNotEquals(handler.loopStartedNS.get(), 0, handler.priority + " was not loopStarted when loop started, priorities=" + priorities));
+        handlers.forEach(handler -> assertNotEquals(0, handler.loopStartedNS.get(), handler.priority + " was not loopStarted when loop started, priorities=" + priorities));
         eventGroup.close();
-        handlers.forEach(handler -> assertNotEquals(handler.loopFinishedNS.get(), 0, handler.priority + " was not loopFinished when loop finished, priorities=" + priorities));
+        handlers.forEach(handler -> assertNotEquals(0, handler.loopFinishedNS.get(), handler.priority + " was not loopFinished when loop finished, priorities=" + priorities));
     }
 
     private static Stream<List<HandlerPriority>> egCloseParams() {
         return Stream.of(
-                Arrays.asList(HandlerPriority.MEDIUM),
+                Collections.singletonList(HandlerPriority.MEDIUM),
                 Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.HIGH),
                 Arrays.asList(HandlerPriority.TIMER, HandlerPriority.HIGH),
                 Arrays.asList(HandlerPriority.MEDIUM, HandlerPriority.BLOCKING, HandlerPriority.TIMER),

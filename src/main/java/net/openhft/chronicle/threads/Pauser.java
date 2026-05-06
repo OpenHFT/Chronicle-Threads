@@ -265,6 +265,7 @@ public interface Pauser {
             }
         }
 
+        @SuppressWarnings("EmptyMethod")
         static void warnSleepy() {
             // Do nothing here as run-once code is in the static block above.
         }

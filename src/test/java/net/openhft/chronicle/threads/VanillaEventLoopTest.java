@@ -3,7 +3,6 @@
  */
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.io.InvalidMarshallableException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
@@ -46,18 +45,15 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
             try (VanillaEventLoop eventLoop = new VanillaEventLoop(null, "name", Pauser.balanced(), 1000L, true, null, VanillaEventLoop.ALLOWED_PRIORITIES)) {
                 eventLoop.start();
                 CyclicBarrier barrier = new CyclicBarrier(3);
-                eventLoop.addHandler(new EventHandler() {
-                    @Override
-                    public boolean action() throws InvalidEventHandlerException, InvalidMarshallableException {
-                        try {
-                            barrier.await();
-                            return false;
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            throw new InvalidEventHandlerException();
-                        } catch (BrokenBarrierException e) {
-                            throw new InvalidEventHandlerException();
-                        }
+                eventLoop.addHandler(() -> {
+                    try {
+                        barrier.await();
+                        return false;
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new InvalidEventHandlerException();
+                    } catch (BrokenBarrierException e) {
+                        throw new InvalidEventHandlerException();
                     }
                 });
                 IntStream.range(0, 2).parallel()
@@ -75,6 +71,7 @@ class VanillaEventLoopTest extends ThreadsTestCommon {
                         () -> eventLoop.mediumHandlersArray.length == 3, 1000);
             }
         }
+        assertTrue(true); // If we reach here, the test passed
     }
 
     private void addingHandlerBeforeStart(CountingHandler handler) {

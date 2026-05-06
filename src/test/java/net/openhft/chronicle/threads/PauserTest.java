@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link BusyPauser} is additionally checked to confirm it does not record
  * pause counts and rejects timed pauses.
  */
-
 class PauserTest extends ThreadsTestCommon {
 
     @Test
@@ -42,6 +41,7 @@ class PauserTest extends ThreadsTestCommon {
         try {
             pauser.pause(1, TimeUnit.MILLISECONDS);
         } catch (UnsupportedOperationException ignored) {
+            // BusyPauser does not support timed pauses; expected.
         }
         assertEquals(0, pauser.countPaused());
         pauser.unpause();
