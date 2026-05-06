@@ -51,12 +51,12 @@ public class SingleAndMultiThreadedExample {
         // example using Java Threads
         final ExecutorService executorService = newCachedThreadPool();
         final Future<?>[] futures = new Future<?>[5];
-        for (int i = 0; i < futures.length; i++) {
+        for (int i = 0; i < futures.length; i++)
             futures[i] = executorService.submit(this::addOneHundred);
-        }
-        for (Future<?> future : futures) {
+
+        for (Future<?> future : futures)
             future.get();
-        }
+
         System.out.println("multiThreadedValue=" + multiThreadedValue);
     }
 

@@ -54,7 +54,9 @@ import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
  * eg.start();
  * </pre>
  */
-public class EventGroup extends AbstractLifecycleEventLoop implements EventLoop {
+public class EventGroup
+        extends AbstractLifecycleEventLoop
+        implements EventLoop {
 
     public static final int CONC_THREADS = Jvm.getInteger("eventGroup.conc.threads",
             Jvm.getInteger("CONC_THREADS", Math.max(1, Runtime.getRuntime().availableProcessors() / 4)));
@@ -320,25 +322,25 @@ public class EventGroup extends AbstractLifecycleEventLoop implements EventLoop 
                 timeoutPauser.pause(WAIT_TO_START_MS, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
                 long waitTime = System.currentTimeMillis() - waitStartTimeMs;
+                String coreState = core == null
+                        ? "Core loop not configured"
+                        : EventLoopStateRenderer.INSTANCE.render("Core", core);
+                String monitorState = EventLoopStateRenderer.INSTANCE.render("Monitor", monitor);
                 String threadDump = renderThreadDump();
                 Jvm.error().on(EventGroup.class, format("Timed out waiting for start! (waited %,dms)%n" +
                                 "%s%n%n" +
                                 "%s%n%n" +
                                 "%s%n",
                         waitTime,
-                        EventLoopStateRenderer.INSTANCE.render("Core", core),
-                        EventLoopStateRenderer.INSTANCE.render("Monitor", monitor),
+                        coreState,
+                        monitorState,
                         threadDump));
-                String coreState = core == null
-                        ? "Core loop not configured"
-                        : EventLoopStateRenderer.INSTANCE.render("Core", core);
-                String monitorState = EventLoopStateRenderer.INSTANCE.render("Monitor", monitor);
                 String message = format("Timed out waiting %,dms for %s to start%n%s%n%n%s%n%n%s",
                         waitTime,
                         waitfor.name(),
                         coreState,
                         monitorState,
-                        renderThreadDump());
+                        threadDump);
                 TimeoutException te = new TimeoutException(message);
                 te.initCause(e);
                 throw Jvm.rethrow(te);

@@ -20,7 +20,6 @@ import java.util.concurrent.Executors;
 import static net.openhft.chronicle.threads.Threads.eventLoopQuietly;
 import static net.openhft.chronicle.threads.Threads.loopFinishedQuietly;
 import static net.openhft.chronicle.threads.Threads.loopStartedCall;
-import static net.openhft.chronicle.threads.Threads.shutdownDaemon;
 
 /**
  * Event loop dedicated to low-frequency monitoring tasks. Handlers added to this loop are
@@ -75,7 +74,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
 
     private void performStop() {
         unpause();
-        shutdownDaemon(service);
+        Threads.shutdownDaemon(service);
     }
 
     @Override

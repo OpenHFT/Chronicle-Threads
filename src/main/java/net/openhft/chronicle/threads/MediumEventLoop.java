@@ -431,7 +431,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             busy |= callHighHandler();
 
             switch (handlers.length) {
-                //noinspection DefaultNotLastCaseInSwitch
                 default:
                     for (int i = handlers.length - 1; i >= 4; i--) {
                         busy |= callHighHandler();
@@ -679,21 +678,20 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     private void shutdownService() {
-        Thread threadSnapshot = thread;
-        LockSupport.unpark(threadSnapshot);
+        LockSupport.unpark(thread);
         if (privateGroup) {
             service.shutdownNow();
             return;
         }
 
         Threads.shutdown(service, daemon);
-        if (threadSnapshot != null && threadSnapshot != Thread.currentThread()) {
+        if (thread != null && thread != Thread.currentThread()) {
             long startTimeMillis = System.currentTimeMillis();
             long waitUntilMs = startTimeMillis;
-            threadSnapshot.interrupt();
+            thread.interrupt();
 
             for (int i = 1; i <= 50; i++) {
-                if (!threadSnapshot.isAlive())
+                if (!thread.isAlive())
                     break;
                 // we do this loop below to protect from Jvm.pause not pausing for as long as it should
                 waitUntilMs += i;
@@ -704,9 +702,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     final StringBuilder sb = new StringBuilder();
                     long ms = System.currentTimeMillis() - startTimeMillis;
                     sb.append(name).append(": Shutting down thread is executing after ").
-                            append(ms).append("ms ").append(threadSnapshot)
+                            append(ms).append("ms ").append(thread)
                             .append(", " + "handlerCount=").append(nonDaemonHandlerCount());
-                    Jvm.trimStackTrace(sb, threadSnapshot.getStackTrace());
+                    Jvm.trimStackTrace(sb, thread.getStackTrace());
                     Jvm.warn().on(getClass(), sb.toString());
                     dumpRunningHandlers();
                 }
