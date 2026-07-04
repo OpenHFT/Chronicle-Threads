@@ -99,6 +99,8 @@ public final class EventLoopMetrics {
 
     // One warning per JVM for a disabling (zero/negative) flush interval.
     private static final AtomicBoolean WARNED_BAD_INTERVAL = new AtomicBoolean();
+    // One warning per JVM for a throwing sink; loop execution and existing debug paths continue.
+    private static final AtomicBoolean WARNED_SINK_FAILURE = new AtomicBoolean();
 
     private final MetricsOut out;
     // Per-loop registry: this loop's flush touches only this loop's instruments (owner-flush).
@@ -249,7 +251,16 @@ public final class EventLoopMetrics {
             windowNs = 1;
         busyRatio.set(clampRatio((double) busyNs / windowNs));
         idleRatio.set(clampRatio((double) idleNs / windowNs));
-        registry.flush(out, ServicesTimestampLongConverter.currentTime(), windowNs);
+        final long eventTime = ServicesTimestampLongConverter.currentTime();
+        try {
+            registry.flush(out, eventTime, windowNs);
+        } catch (Throwable t) {
+            if (WARNED_SINK_FAILURE.compareAndSet(false, true))
+                Jvm.warn().on(EventLoopMetrics.class,
+                        "Event-loop metrics sink threw; dropping this window and further sink failures", t);
+            // Advance the instruments' windows so a disabled/failed interval is not replayed later.
+            registry.flush(Metrics.ignored(), eventTime, windowNs);
+        }
         busyNs = 0;
         idleNs = 0;
         windowStartNs = nowNs;

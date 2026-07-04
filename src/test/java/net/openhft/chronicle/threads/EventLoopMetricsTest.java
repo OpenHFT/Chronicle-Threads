@@ -108,6 +108,7 @@ class EventLoopMetricsTest extends ThreadsTestCommon {
 
     @Test
     void noMetricEventsWhenNothingInstalledAtLoopConstruction() {
+        expectException("Metrics.install() was called after");
         final CapturingMetricsOut capture = new CapturingMetricsOut();
         final String loopName = "metrics-disabled-loop";
         try (MediumEventLoop eventLoop = new MediumEventLoop(null, loopName, Pauser.balanced(), true, null)) {
@@ -277,6 +278,33 @@ class EventLoopMetricsTest extends ThreadsTestCommon {
         assertNotNull(capture.firstGauge("unnamed", BUSY_RATIO_NAME));
     }
 
+    @Test
+    void sinkFailureDoesNotEscapeOrReplayTheDroppedWindow() {
+        expectException("Event-loop metrics sink threw");
+        System.setProperty(EventLoopMetrics.FLUSH_INTERVAL_MS_PROPERTY, "1");
+        final ThrowingOnceMetricsOut sink = new ThrowingOnceMetricsOut();
+        Metrics.install(source -> EventLoopMetrics.SOURCE.equals(source) ? sink : null);
+
+        final EventLoopMetrics metrics = EventLoopMetrics.createIfEnabled("metrics-throwing-loop");
+        assertNotNull(metrics, "metrics should be enabled with a binding installed");
+        try {
+            metrics.loopStarted(System.nanoTime());
+            metrics.onIteration(System.nanoTime() - 1_000, true);
+            metrics.loopFinished();
+            assertEquals(0, sink.capture.total(), "the failed window should be dropped");
+
+            metrics.loopStarted(System.nanoTime());
+            metrics.onIteration(System.nanoTime() - 1_000, true);
+            metrics.loopFinished();
+
+            final CounterSample iterations = sink.capture.firstCounter("metrics-throwing-loop");
+            assertNotNull(iterations);
+            assertEquals(1, iterations.delta, "the failed window must not be replayed");
+        } finally {
+            metrics.close();
+        }
+    }
+
     /**
      * Review #28: allocation gate on the per-iteration recording path. Drives
      * {@link EventLoopMetrics#onIteration(long, boolean)} directly (the exact code the loop
@@ -349,6 +377,48 @@ class EventLoopMetricsTest extends ThreadsTestCommon {
 
         @Override
         public void pointEvent(PointEvent metric) {
+        }
+    }
+
+    static final class ThrowingOnceMetricsOut implements MetricsOut {
+        final CapturingMetricsOut capture = new CapturingMetricsOut();
+        private boolean throwNext = true;
+
+        @Override
+        public void counterMetric(CounterMetric metric) {
+            maybeThrow();
+            capture.counterMetric(metric);
+        }
+
+        @Override
+        public void gaugeMetric(GaugeMetric metric) {
+            maybeThrow();
+            capture.gaugeMetric(metric);
+        }
+
+        @Override
+        public void histogramMetric(HistogramMetric metric) {
+            maybeThrow();
+            capture.histogramMetric(metric);
+        }
+
+        @Override
+        public void rateMetric(RateMetric metric) {
+            maybeThrow();
+            capture.rateMetric(metric);
+        }
+
+        @Override
+        public void pointEvent(PointEvent metric) {
+            maybeThrow();
+            capture.pointEvent(metric);
+        }
+
+        private void maybeThrow() {
+            if (throwNext) {
+                throwNext = false;
+                throw new IllegalStateException("simulated event-loop sink failure");
+            }
         }
     }
 
