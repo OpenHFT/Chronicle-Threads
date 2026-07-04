@@ -53,3 +53,14 @@ A property is considered enabled if it is present (for example `-Dflag`) or set 
 | SHUTDOWN_WAIT_MS | 500 ms | Time to wait for services to stop on shutdown | _SHUTDOWN_WAIT_MILLIS_ (long)
 | threads.timing.error | 80_000_000 ns | Allowed timing error for loop execution | _TIMING_ERROR_ (int)
 |===
+
+=== Metrics
+
+[cols="2a,1,3a,2a",options="header"]
+|===
+| Property Key | Default | Description | Java Variable Name (Type)
+| chronicle.threads.metrics.flush.interval.ms | 1_000 ms | Cadence at which an event loop flushes its `chronicle.threads.eventloop` metrics (task latency histogram, busy-ratio and idle-ratio gauges, iteration counter); read at loop construction. Zero or negative disables event-loop metrics entirely (one warning per JVM) rather than busy-flushing | _flushIntervalNs_ (long)
+| chronicle.metrics.service | unset | When set and non-empty, added as a `service` label on every event-loop metric instrument; read at loop construction | (String)
+|===
+
+The event-loop metric names, labels and cadences are catalogued in `Chronicle-Wire/docs/metrics-catalogue.adoc`; installation and the startup-only policy are covered in `Chronicle-Wire/docs/metrics-integration.adoc`.

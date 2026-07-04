@@ -59,6 +59,21 @@
             <artifactId>chronicle-core</artifactId>
         </dependency>
 
+        <!-- TODO-METRICS-BOM: temporary local-dev pin for wire.metrics work; remove when chronicle-bom manages this version -->
+        <!-- chronicle-wire itself depends on chronicle-threads, so that transitive
+             edge is excluded to avoid a cycle back into this artifact. -->
+        <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>chronicle-wire</artifactId>
+            <version>2026.8-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>net.openhft</groupId>
+                    <artifactId>chronicle-threads</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

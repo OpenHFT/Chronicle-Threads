@@ -12,6 +12,7 @@ import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import net.openhft.chronicle.threads.internal.EventLoopMetrics;
 import net.openhft.chronicle.threads.internal.EventLoopUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,6 +55,12 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     protected final Pauser pauser;
     protected final boolean daemon;
     private final String binding;
+    // Owner-flush metrics wiring; null when "chronicle.threads.eventloop" resolves to
+    // IgnoresEverything at construction (startup-only resolve) or the flush interval disables it.
+    @Nullable
+    private final transient EventLoopMetrics loopMetrics;
+    // Cached at construction so a disabled loop pays one boolean check per iteration.
+    private final transient boolean metricsEnabled;
 
     @NotNull
     protected EventHandler[] mediumHandlersArray = NO_EVENT_HANDLERS;
@@ -65,6 +72,11 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     /**
      * Construct an event loop.
+     * <p>
+     * Metrics note (startup-only): whether this loop records metrics is resolved once, here,
+     * via {@code Metrics.forSourceStatic("chronicle.threads.eventloop")} - install the
+     * {@code MetricsBinding} <em>before</em> constructing the loop; a binding installed later
+     * is not observed. See {@link EventLoopMetrics}.
      *
      * @param parent  parent loop or {@code null} when standalone
      * @param name    thread name for the worker
@@ -85,6 +97,8 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         this.binding = binding;
         loopStartNS = NOT_IN_A_LOOP;
         service = Executors.newSingleThreadExecutor(new NamedThreadFactory(name, daemon, null, true));
+        loopMetrics = EventLoopMetrics.createIfEnabled(name);
+        metricsEnabled = loopMetrics != null;
 
         singleThreadedCheckDisabled(true);
     }
@@ -311,6 +325,18 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     private void runLoop() {
         int acceptHandlerModCount = EventLoopUtil.ACCEPT_HANDLER_MOD_COUNT;
         long lastTimerNS = 0;
+        // metricsEnabled is final; a disabled loop pays only this constant-false check.
+        if (metricsEnabled)
+            loopMetrics.loopStarted(System.nanoTime());
+        try {
+            runLoop0(acceptHandlerModCount, lastTimerNS);
+        } finally {
+            if (metricsEnabled)
+                loopMetrics.loopFinished();
+        }
+    }
+
+    private void runLoop0(int acceptHandlerModCount, long lastTimerNS) {
         while (isStarted()) {
             throwExceptionIfClosed();
 
@@ -319,6 +345,8 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                     highHandler == EventHandlers.NOOP
                             ? runAllMediumHandler()
                             : runAllHandlers();
+            if (metricsEnabled)
+                loopMetrics.onIteration(loopStartNS, busy);
 
             if (lastTimerNS + timerIntervalMS() * 1_000_000 < loopStartNS) {
                 lastTimerNS = loopStartNS;
@@ -674,6 +702,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             mediumHandlers.clear();
             updateMediumHandlersArray();
             newHandlers.clear();
+            // Deregister this loop's metric instruments so a closed loop's series stop.
+            if (metricsEnabled)
+                loopMetrics.close();
         }
     }
 
