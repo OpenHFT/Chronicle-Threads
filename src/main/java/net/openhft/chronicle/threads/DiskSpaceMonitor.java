@@ -67,8 +67,8 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         } else {
             this.notifyDiskLow = new NotifyDiskLowLogWarn();
         }
-        boolean diabled = Jvm.getBoolean("chronicle.disk.monitor.disable");
-        if (!diabled) {
+        boolean disabled = Jvm.getBoolean("chronicle.disk.monitor.disable");
+        if (!disabled) {
             executor = Threads.acquireScheduledExecutorService(DISK_SPACE_CHECKER_NAME, true);
             long period = Jvm.getLong("chronicle.disk.monitor.period", 10L);
             executor.scheduleAtFixedRate(this, period, period, TimeUnit.SECONDS);
