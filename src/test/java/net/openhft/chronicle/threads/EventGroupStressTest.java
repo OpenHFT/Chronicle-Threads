@@ -12,7 +12,6 @@ import net.openhft.chronicle.testframework.process.JavaProcessBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-
 import org.junit.jupiter.api.Timeout;
 
 import java.util.ArrayList;
@@ -21,7 +20,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assumptions.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 /**
  * Spawns many event groups across several processes to check that a large
@@ -32,8 +31,8 @@ class EventGroupStressTest extends ThreadsTestCommon {
     private static final int NUM_PROCESSES = 10;
     private static final int NUM_GROUPS_PER_PROCESS = 20;
 
-    @Test
     @Disabled("https://github.com/OpenHFT/Chronicle-Threads/issues/186")
+    @Test
     @Timeout(30)
     void canOverloadTheCPUWithEventGroupsSafely() {
         assumeFalse(OS.isWindows());

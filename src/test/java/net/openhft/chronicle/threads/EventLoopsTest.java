@@ -10,6 +10,7 @@ import net.openhft.chronicle.core.onoes.ExceptionHandler;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,7 +22,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises the helper routines in {@link EventLoops} and the life-cycle
@@ -49,8 +51,8 @@ class EventLoopsTest extends ThreadsTestCommon {
         }
     }
 
+    @Timeout(5_000)
     @Test
-    @Timeout(5000)
     void stopAllWillBlockUntilTheLastEventLoopStops() {
         try (final MediumEventLoop mediumEventLoop = new MediumEventLoop(null, "test", Pauser.balanced(), false, "none");
              final BlockingEventLoop blockingEventLoop = new BlockingEventLoop("blocker")) {
@@ -127,7 +129,7 @@ class EventLoopsTest extends ThreadsTestCommon {
             long timeoutTime = System.currentTimeMillis() + 500;
             while (!exceptionThrownInHandler.get()) {
                 if (System.currentTimeMillis() > timeoutTime) {
-                    fail("Event loop " + el.name() + " didn't " + (eventHandlerFinished.get() ? "throw an exception when attempting to close" : "run in this time"));
+                    Assertions.fail("Event loop " + el.name() + " didn't " + (eventHandlerFinished.get() ? "throw an exception when attempting to close" : "run in this time"));
                 }
                 Jvm.pause(10);
             }

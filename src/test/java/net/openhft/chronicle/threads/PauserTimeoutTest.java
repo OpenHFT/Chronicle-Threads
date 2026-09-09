@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Exercises {@link Pauser#pause(long, java.util.concurrent.TimeUnit)} with a
@@ -48,8 +48,12 @@ class PauserTimeoutTest extends ThreadsTestCommon {
                 fail(p + " timed out");
             } while (System.nanoTime() < start + timeoutNS / 2);
             while (System.nanoTime() < start + timeoutNS * 5 / 4) ;
-            assertThrows(TimeoutException.class, () -> p.pause(timeoutNS, TimeUnit.NANOSECONDS),
-                    p + " did not timeoutNS");
+            try {
+                p.pause(timeoutNS, TimeUnit.NANOSECONDS);
+            } catch (TimeoutException e) {
+                continue;
+            }
+            fail(p + " did not timeoutNS");
         }
     }
 
@@ -58,10 +62,14 @@ class PauserTimeoutTest extends ThreadsTestCommon {
      * {@link UnsupportedOperationException} when a timeout is supplied.
      */
     @Test
-    void pausersDontSupportTimeout() {
+    void pausersDontSupportTimeout() throws TimeoutException {
         for (Pauser p : pausersDontSupportTimeout) {
-            assertThrows(UnsupportedOperationException.class, () -> p.pause(100, TimeUnit.MILLISECONDS),
-                    p + " did not throw");
+            try {
+                p.pause(100, TimeUnit.MILLISECONDS);
+            } catch (UnsupportedOperationException e) {
+                continue;
+            }
+            fail(p + " did not throw");
         }
     }
 }

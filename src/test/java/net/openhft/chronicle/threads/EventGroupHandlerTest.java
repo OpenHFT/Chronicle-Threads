@@ -326,4 +326,5 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
     void testThrowingEventLoopAddedAfterStartConcurrent() {
         addThrowingEventLoopAfterEventLoopStarted(new ThrowingHandler(HandlerPriority.CONCURRENT, true, false));
     }
+
 }

@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import static java.lang.String.format;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class ThreadsTestCommon {
     private final Map<Predicate<ExceptionKey>, String> ignoreExceptions = new LinkedHashMap<>();

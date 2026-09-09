@@ -5,7 +5,7 @@ package net.openhft.chronicle.threads;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Confirms the stable {@code toString} output for each built-in pauser.
