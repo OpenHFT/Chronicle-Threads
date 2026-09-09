@@ -28,6 +28,12 @@ public class ThreadsTestCommon {
     private Map<ExceptionKey, Integer> exceptions;
 
     @BeforeEach
+    public void beforeEachThreadsTestCommon() {
+        enableReferenceTracing();
+        threadDump();
+        recordExceptions();
+    }
+
     public void enableReferenceTracing() {
         AbstractReferenceCounted.enableReferenceTracing();
     }
@@ -36,7 +42,6 @@ public class ThreadsTestCommon {
         AbstractReferenceCounted.assertReferencesReleased();
     }
 
-    @BeforeEach
     public void threadDump() {
         threadDump = new ThreadDump();
     }
@@ -45,7 +50,6 @@ public class ThreadsTestCommon {
         threadDump.assertNoNewThreads();
     }
 
-    @BeforeEach
     public void recordExceptions() {
         exceptions = Jvm.recordExceptions();
     }
