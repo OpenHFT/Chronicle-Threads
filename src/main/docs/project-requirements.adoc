@@ -49,6 +49,7 @@ _THR-FN-001_ The library SHALL provide builder APIs (e.g., `EventLoopBuilder`, `
 . _Start/Stop Operations_
 _THR-FN-002_ An `EventLoop` or `EventGroup` SHALL support idempotent `start()` and graceful `close()` operations.
 A graceful `close()` implies that active handlers are allowed to complete their current action, and associated resources are released.
+Thread-ownership checks during shutdown SHALL tolerate blocking handlers removing themselves concurrently.
 . _Non-Restartable Loops_
 _THR-FN-003_ Attempting to `start()` an `EventLoop` or `EventGroup` that has already been `close()`d SHALL be rejected or have no effect, as loops are not designed to be restartable.
 
