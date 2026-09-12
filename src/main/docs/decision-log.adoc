@@ -1,5 +1,6 @@
 = Chronicle Threads - Decision Log
 :toc:
+:sectnums:
 :lang: en-GB
 :source-highlighter: rouge
 
@@ -14,6 +15,7 @@ Numbers are unique within the THR scope.
 * link:#THR-OPS-003[THR-OPS-003 Background disk-space monitoring]
 * link:#THR-DOC-004[THR-DOC-004 Nine-Box taxonomy for requirements and decisions]
 * link:#THR-FN-005[THR-FN-005 EventGroup priority sets gate handler registration]
+* link:#THR-TEST-006[THR-TEST-006 Preserve first-attempt unit-test failures]
 
 == Decision Records
 
@@ -227,3 +229,19 @@ Impact & Consequences::
 Notes/Links::
 * Requirements: link:project-requirements.adoc[THR-FN-004 and THR-FN-005 handler management requirements].
 * Key types: `EventGroup`, `EventGroupBuilder.withPriorities(java.util.Set)`, `HandlerPriority`.
+
+[[THR-TEST-006]]
+=== THR-TEST-006 Preserve first-attempt unit-test failures
+
+Date:: 2026-09-12
+Decision Statement::
+* Set Surefire `rerunFailingTestsCount` to the literal value `0`.
+* Command-line properties, including `-Dsurefire.rerunFailingTestsCount=3`, must not enable automatic retries.
+Rationale for Decision::
+* An intermittent failure must retain its original outcome for investigation.
+Validation::
+* A probe that fails first and would pass on retry must execute once and leave Maven failed.
+* Check inherited profiles in the effective POM and retain first-attempt results from lifecycle verification.
+Impact & Consequences::
+* Explicitly recorded, bounded repeat runs remain useful for diagnosis.
+* CI must still handle reported failures when `maven.test.failure.ignore` allows later build steps to continue.
