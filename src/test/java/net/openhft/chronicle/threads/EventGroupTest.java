@@ -685,9 +685,12 @@ public class EventGroupTest extends ThreadsTestCommon {
         @Override
         public void loopFinished() {
             assertTrue(loopFinishedNS.compareAndSet(0, System.nanoTime()), "loopFinished called once only " + this);
-            assertTrue(EventLoop.inEventLoop(), "loopFinished should be called on EL thread (called on `"
+            if (loopStartedNS.get() != 0)
+                assertTrue(EventLoop.inEventLoop(), "loopFinished should be called on EL thread (called on `"
                     + Thread.currentThread().getName()
                     + "`, priority=" + priority + " )");
+            else
+                assertEquals(0, actionCalled.get(), "An unstarted handler cannot have run an action");
             Jvm.busyWaitMicros(1);
         }
 
@@ -713,8 +716,9 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
 
         void checkCloseOrder() {
-            // We call loopFinished if and only if we called loopStarted
-            if (loopStartedNS.get() != 0) {
+            // Medium/Vanilla loops also finish accepted handlers when startup is cancelled.
+            boolean finishesWithoutStart = priority != HandlerPriority.BLOCKING && priority != HandlerPriority.MONITOR;
+            if (loopStartedNS.get() != 0 || finishesWithoutStart) {
                 assertNotEquals(0, loopFinishedNS.get(), this.toString());
                 assertNotEquals(0, closedNS.get(), this.toString());
                 assertTrue(loopFinishedNS.get() < closedNS.get(), this.toString());
