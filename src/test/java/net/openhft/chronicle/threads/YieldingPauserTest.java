@@ -31,8 +31,8 @@ class YieldingPauserTest extends ThreadsTestCommon {
                     // a delta of 20 was used here, however in some situations in CI that was not sufficient:
                     // org.opentest4j.AssertionFailedError: expected: <100.0> but was: <126.0>
                     int delta = 30;
-                    // macOS CI has taken 176 ms to observe the timeout; retain the existing lower bound.
-                    final int maxTimeMillis = OS.isMacOSX() ? 180 : pauseTimeMillis + delta;
+                    // macOS CI has taken 190 ms to observe the timeout; retain the existing lower bound.
+                    final int maxTimeMillis = OS.isMacOSX() ? 200 : pauseTimeMillis + delta;
                     assertTrue(time >= pauseTimeMillis - delta && time <= maxTimeMillis,
                             () -> "Expected " + (pauseTimeMillis - delta) + " to " + maxTimeMillis
                                     + " ms but was " + time + " ms");
