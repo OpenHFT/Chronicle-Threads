@@ -149,8 +149,15 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
 
     @Override
     public boolean isRunningOnThread(Thread thread) {
-        // Runners remove themselves on completion; traverse one copy-on-write snapshot.
-        for (Runner runner : runners) {
+        // Descending indices tolerate removals without allocating an iterator.
+        for (int i = runners.size() - 1; i >= 0; i--) {
+            final Runner runner;
+            try {
+                runner = runners.get(i);
+            } catch (IndexOutOfBoundsException ignored) {
+                // A runner completed and shrank the list before get(i).
+                continue;
+            }
             if (thread == runner.thread()) {
                 return true;
             }

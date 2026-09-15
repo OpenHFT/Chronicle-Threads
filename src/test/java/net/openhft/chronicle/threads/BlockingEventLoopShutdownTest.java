@@ -5,6 +5,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -13,8 +14,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -41,7 +44,9 @@ class BlockingEventLoopShutdownTest extends ThreadsTestCommon {
             loop.start();
             try {
                 await(started);
+                final int iteratorsBeforeLookup = runners.iterators.get();
                 assertTrue(loop.isRunningOnThread(worker.get()));
+                assertEquals(iteratorsBeforeLookup, runners.iterators.get(), "Thread lookup must not create an iterator");
                 runners.armed.set(true);
                 if (closeLoop) {
                     loop.close();
@@ -53,6 +58,43 @@ class BlockingEventLoopShutdownTest extends ThreadsTestCommon {
                 assertFalse(loop.isRunningOnThread(worker.get()));
             } finally {
                 finish.countDown();
+            }
+        }
+    }
+
+    @Test
+    void lookupFindsSurvivingRunnerWhenEarlierRunnerIsRemoved() throws IllegalAccessException {
+        final CountDownLatch started = new CountDownLatch(2);
+        final CountDownLatch finishFirst = new CountDownLatch(1);
+        final CountDownLatch finishSecond = new CountDownLatch(1);
+        final AtomicReference<Thread> survivor = new AtomicReference<>();
+        final RemovingRunnerList runners = new RemovingRunnerList(finishFirst);
+        runners.finishAfterGet = true;
+        try (BlockingEventLoop loop = new BlockingEventLoop("surviving-runner")) {
+            Jvm.getField(BlockingEventLoop.class, "runners").set(loop, runners);
+            loop.addHandler(() -> {
+                started.countDown();
+                await(finishFirst);
+                throw InvalidEventHandlerException.reusable();
+            });
+            loop.addHandler(() -> {
+                survivor.set(Thread.currentThread());
+                started.countDown();
+                await(finishSecond);
+                throw InvalidEventHandlerException.reusable();
+            });
+            try {
+                loop.start();
+                await(started);
+                runners.armed.set(true);
+                // Removal shifts the surviving runner to index zero after the first get.
+                assertTrue(loop.isRunningOnThread(survivor.get()), "Removal must not hide a live worker");
+                assertEquals(0, runners.removed.getCount());
+                assertEquals(1, runners.size());
+                assertTrue(loop.isRunningOnThread(survivor.get()));
+            } finally {
+                finishFirst.countDown();
+                finishSecond.countDown();
             }
         }
     }
@@ -71,6 +113,8 @@ class BlockingEventLoopShutdownTest extends ThreadsTestCommon {
         private final transient CountDownLatch finish;
         private final transient CountDownLatch removed = new CountDownLatch(1);
         private final AtomicBoolean armed = new AtomicBoolean();
+        private final AtomicInteger iterators = new AtomicInteger();
+        private boolean finishAfterGet;
 
         private RemovingRunnerList(CountDownLatch finish) {
             this.finish = finish;
@@ -79,12 +123,22 @@ class BlockingEventLoopShutdownTest extends ThreadsTestCommon {
         @Override
         public int size() {
             final int size = super.size();
-            finishRunner();
+            if (!finishAfterGet)
+                finishRunner();
             return size;
         }
 
         @Override
+        public Object get(int index) {
+            final Object runner = super.get(index);
+            if (finishAfterGet)
+                finishRunner();
+            return runner;
+        }
+
+        @Override
         public Iterator<Object> iterator() {
+            iterators.incrementAndGet();
             final Iterator<Object> snapshot = super.iterator();
             finishRunner();
             return snapshot;
