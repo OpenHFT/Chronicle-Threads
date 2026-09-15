@@ -56,6 +56,10 @@ _THR-FN-003_ Attempting to `start()` an `EventLoop` or `EventGroup` that has alr
 
 . _Dynamic Registration_
 _THR-FN-004_ Clients SHALL be able to add an `EventHandler` to a running `EventGroup` at runtime.
+For `MediumEventLoop` and `VanillaEventLoop`, registration after stopping begins SHALL fail with `IllegalStateException`; the caller retains ownership of a rejected handler.
+Registration racing with shutdown SHALL either reject the handler or retain it for exactly one finish callback and subsequent close, including handlers accepted before the loop starts or before their first action.
+If startup is cancelled, the stopping thread SHALL deliver the finish callback; handlers whose loop has started SHALL finish on its event-loop thread.
+Finish callbacks SHALL run outside the registration lock, so they can wait for another thread whose registration attempt must be rejected.
 . _Handler Priority_
 _THR-FN-005_ Each `EventHandler` SHALL declare a `HandlerPriority`.
 The system SHALL support a range of priorities influencing execution order and/or loop assignment.

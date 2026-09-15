@@ -288,6 +288,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
         private final List<ControllableHandler> addedHandlers;
         private volatile boolean stopAddingHandlers = false;
         private final Semaphore stoppedAddingHandlers;
+        private volatile Throwable failure;
 
         HandlerAdder(EventLoop eventLoop, CyclicBarrier cyclicBarrier, Supplier<ControllableHandler> handlerSupplier) {
             this.eventLoop = eventLoop;
@@ -297,31 +298,41 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
             this.stoppedAddingHandlers = new Semaphore(0);
         }
 
-        @SuppressWarnings("CallToPrintStackTrace")
         @Override
         public void run() {
             try {
                 await(cyclicBarrier);
                 while (!stopAddingHandlers && addedHandlers.size() < MAX_HANDLERS_TO_ADD) {
                     ControllableHandler handler = handlerSupplier.get();
-                    eventLoop.addHandler(handler);
+                    try {
+                        eventLoop.addHandler(handler);
+                    } catch (IllegalStateException rejection) {
+                        handler.close();
+                        if (!eventLoop.isStopped())
+                            throw rejection;
+                        break;
+                    }
                     addedHandlers.add(handler);
                     pauseMicros(ThreadLocalRandom.current().nextInt(100, 300));
                 }
-                stoppedAddingHandlers.release();
                 Jvm.startup().on(HandlerAdder.class, "Stopped adding handlers");
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (Throwable t) {
+                failure = t;
+            } finally {
+                stoppedAddingHandlers.release();
             }
         }
 
         void stopAddingHandlers() {
             stopAddingHandlers = true;
             try {
-                stoppedAddingHandlers.acquire();
+                Assertions.assertTrue(stoppedAddingHandlers.tryAcquire(15, TimeUnit.SECONDS), "Handler adder did not stop");
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             }
+            if (failure != null)
+                throw new AssertionError("Handler adder failed", failure);
         }
 
         void stopAllHandlers() {

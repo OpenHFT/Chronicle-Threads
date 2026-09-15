@@ -3,12 +3,13 @@
  */
 package net.openhft.chronicle.threads;
 
+import net.openhft.chronicle.core.OS;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 class YieldingPauserTest extends ThreadsTestCommon {
@@ -30,8 +31,11 @@ class YieldingPauserTest extends ThreadsTestCommon {
                     // a delta of 20 was used here, however in some situations in CI that was not sufficient:
                     // org.opentest4j.AssertionFailedError: expected: <100.0> but was: <126.0>
                     int delta = 30;
-                    // please don't add delta to pauseTimeMillis below - it makes this test flakier on Windows
-                    assertEquals(pauseTimeMillis, time, delta);
+                    // macOS CI has taken 190 ms to observe the timeout; retain the existing lower bound.
+                    final int maxTimeMillis = OS.isMacOSX() ? 200 : pauseTimeMillis + delta;
+                    assertTrue(time >= pauseTimeMillis - delta && time <= maxTimeMillis,
+                            () -> "Expected " + (pauseTimeMillis - delta) + " to " + maxTimeMillis
+                                    + " ms but was " + time + " ms");
                     tp.reset();
                     break;
                 }
