@@ -209,7 +209,7 @@ public class EventGroup
      */
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
-        throwExceptionIfClosed();
+        throwIfClosedForRegistration();
 
         HandlerPriority t1 = handler.priority();
         switch (t1) {

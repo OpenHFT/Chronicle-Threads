@@ -51,7 +51,7 @@ class EventLoopAdmissionTest extends ThreadsTestCommon {
             }
             loop.stop();
             assertTrue(loop.isStopped());
-            assertThrows(IllegalStateException.class, () -> loop.addHandler(handler));
+            assertThrows(HandlerRegistrationClosedException.class, () -> loop.addHandler(handler));
             loop.close();
             assertAll(
                     () -> assertEquals(0, handler.loopStartedCalled()),
@@ -104,7 +104,7 @@ class EventLoopAdmissionTest extends ThreadsTestCommon {
                 assertTrue(loop.newHandlers.contains(pending));
                 Future<?> stopped = stopper.submit(loop::stop);
                 Waiters.waitForCondition("Stop did not begin", loop::isStopped, 5_000);
-                assertThrows(IllegalStateException.class, () -> loop.addHandler(rejected));
+                assertThrows(HandlerRegistrationClosedException.class, () -> loop.addHandler(rejected));
                 release.countDown();
                 stopped.get(5, TimeUnit.SECONDS);
                 // The last iteration may initialise the queued handler after the
@@ -138,7 +138,7 @@ class EventLoopAdmissionTest extends ThreadsTestCommon {
                 public void loopFinished() {
                     super.loopFinished();
                     try {
-                        getUninterruptibly(registrar.submit(() -> assertThrows(IllegalStateException.class,
+                        getUninterruptibly(registrar.submit(() -> assertThrows(HandlerRegistrationClosedException.class,
                                 () -> loop.addHandler(rejected))));
                     } catch (Throwable t) {
                         failure.set(t);

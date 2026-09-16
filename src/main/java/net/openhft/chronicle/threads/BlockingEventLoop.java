@@ -78,7 +78,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
         if (DEBUG_ADDING_HANDLERS)
             Jvm.debug().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         if (isClosed())
-            throw new IllegalStateException("Event Group has been closed");
+            throw new HandlerRegistrationClosedException("Event Group has been closed");
         eventLoopQuietly(parent, handler);
         this.handlers.add(handler);
         if (isStarted())

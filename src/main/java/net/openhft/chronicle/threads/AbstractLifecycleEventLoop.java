@@ -5,6 +5,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
+import net.openhft.chronicle.core.io.ClosedIllegalStateException;
 import net.openhft.chronicle.core.io.ThreadingIllegalStateException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
@@ -61,6 +62,15 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     protected String nameWithSlash() {
         return withSlash(name);
+    }
+
+    // Wrap only this loop's close check, never a user callback or a priority/configuration error.
+    final void throwIfClosedForRegistration() {
+        try {
+            throwExceptionIfClosed();
+        } catch (ClosedIllegalStateException closed) {
+            throw new HandlerRegistrationClosedException(closed);
+        }
     }
 
     @Override

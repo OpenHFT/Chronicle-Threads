@@ -182,7 +182,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
-        throwExceptionIfClosed();
+        throwIfClosedForRegistration();
 
         // Thread-safe: external threads enqueue handlers while the loop
         // thread holds {@code addHandlerMutex} during start-up.
@@ -246,7 +246,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     private void throwIfRegistrationClosed() {
         if (isStopped() || handlersFinished)
-            throw new IllegalStateException("Cannot add a handler to stopped event loop " + name());
+            throw new HandlerRegistrationClosedException("Cannot add a handler to stopped event loop " + name());
     }
 
     private void finishHandlersOnce(boolean onlyIfNotRunning) {
