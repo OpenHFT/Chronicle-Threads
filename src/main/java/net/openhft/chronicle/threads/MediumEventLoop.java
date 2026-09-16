@@ -182,7 +182,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
 
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
-        throwExceptionIfClosed();
+        //! A fully closed loop must expose the same lifecycle reason as a stopping loop.
+        //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership (MEDIUM).
+        throwIfClosedForRegistration();
 
         // Thread-safe: external threads enqueue handlers while the loop
         // thread holds {@code addHandlerMutex} during start-up.
@@ -245,8 +247,13 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     private void throwIfRegistrationClosed() {
+        //! Stopping rejects ownership transfer, but plain IllegalStateException also means invalid configuration.
+        //! A distinct reason lets callers clean up a rejected handler without suppressing configuration faults.
+        //! Regressions: HandlerRegistrationClosedExceptionTest.stoppedLoopHasDistinguishableRejection;
+        //! EventLoopAdmissionTest.rejectsRegistrationAfterStopWithoutStart, rejectsRegistrationAfterStartedLoopStops,
+        //! pendingHandlerFinishesOnceAndLateRegistrationIsRejected and finishCallbackCanWaitForAnotherThreadsRejectedRegistration.
         if (isStopped() || handlersFinished)
-            throw new IllegalStateException("Cannot add a handler to stopped event loop " + name());
+            throw new HandlerRegistrationClosedException("Cannot add a handler to stopped event loop " + name());
     }
 
     private void finishHandlersOnce(boolean onlyIfNotRunning) {

@@ -5,6 +5,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
+import net.openhft.chronicle.core.io.ClosedIllegalStateException;
 import net.openhft.chronicle.core.io.ThreadingIllegalStateException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
@@ -61,6 +62,18 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     protected String nameWithSlash() {
         return withSlash(name);
+    }
+
+    //! Callers need a lifecycle-specific rejection to avoid hiding genuine setup failures during shutdown.
+    //! Wrap only this loop's close check; wrapping addHandler as a whole could relabel a callback failure.
+    //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership
+    //! and callbackFailureIsNotReclassifiedAsRejection.
+    final void throwIfClosedForRegistration() {
+        try {
+            throwExceptionIfClosed();
+        } catch (ClosedIllegalStateException closed) {
+            throw new HandlerRegistrationClosedException(closed);
+        }
     }
 
     @Override

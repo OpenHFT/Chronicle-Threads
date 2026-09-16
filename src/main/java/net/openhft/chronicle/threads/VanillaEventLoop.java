@@ -88,7 +88,9 @@ public class VanillaEventLoop extends MediumEventLoop {
 
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
-        throwExceptionIfClosed();
+        //! This override must preserve the typed closed-loop rejection before its own priority checks.
+        //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership (VANILLA).
+        throwIfClosedForRegistration();
 
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
