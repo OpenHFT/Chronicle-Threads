@@ -209,6 +209,9 @@ public class EventGroup
      */
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
+        //! Distinguish the group's own closure before priority selection, leaving configuration errors intact.
+        //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership (GROUP)
+        //! and missingPriorityIsNotAClosedRegistrationEvenWhenGroupIsStopped.
         throwIfClosedForRegistration();
 
         HandlerPriority t1 = handler.priority();

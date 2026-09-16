@@ -13,6 +13,9 @@ import net.openhft.chronicle.core.io.ClosedIllegalStateException;
  * <p>The closed resource is the registration channel: the loop may still be stopping.
  * Extending {@link ClosedIllegalStateException} preserves existing closed-loop catch clauses.</p>
  */
+//! A specific reason avoids inferring shutdown from mutable loop state or exception-message text.
+//! Keep ClosedIllegalStateException as the superclass so existing closed-loop catch clauses still work.
+//! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership checks both types.
 public class HandlerRegistrationClosedException extends ClosedIllegalStateException {
     private static final long serialVersionUID = 0L;
 

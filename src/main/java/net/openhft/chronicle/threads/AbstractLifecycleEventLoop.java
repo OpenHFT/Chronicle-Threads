@@ -64,7 +64,10 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         return withSlash(name);
     }
 
-    // Wrap only this loop's close check, never a user callback or a priority/configuration error.
+    //! Callers need a lifecycle-specific rejection to avoid hiding genuine setup failures during shutdown.
+    //! Wrap only this loop's close check; wrapping addHandler as a whole could relabel a callback failure.
+    //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership
+    //! and callbackFailureIsNotReclassifiedAsRejection.
     final void throwIfClosedForRegistration() {
         try {
             throwExceptionIfClosed();
