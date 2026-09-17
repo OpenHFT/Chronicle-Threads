@@ -35,7 +35,9 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
+    @SuppressWarnings("java:S2065") // Chronicle Wire honours transient runtime fields without Serializable.
     private final transient ExecutorService service;
+    @SuppressWarnings("java:S2065") // Avoid traversing the parent loop during reflective marshalling.
     private final transient EventLoop parent;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final Pauser pauser;
@@ -230,6 +232,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
      */
     private static final class IdempotentLoopStartedEventHandler extends SimpleCloseable implements EventHandler {
 
+        @SuppressWarnings("java:S2065") // Exclude live handler resources from reflective marshalling.
         private final transient EventHandler eventHandler;
         private final String handler;
         private boolean loopStarted = false;

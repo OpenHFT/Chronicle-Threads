@@ -51,7 +51,7 @@ class HandlerAdmissionTest extends ThreadsTestCommon {
 
     @ParameterizedTest
     @EnumSource(LoopType.class)
-    void legacyRegistrationRetiresLateHandler(LoopType type) throws Exception {
+    void legacyRegistrationRetiresLateHandler(LoopType type) {
         for (boolean started : new boolean[]{false, true}) {
             CountingHandler handler = new CountingHandler(type.priority());
             try (AbstractLifecycleEventLoop loop = type.create()) {
@@ -153,12 +153,13 @@ class HandlerAdmissionTest extends ThreadsTestCommon {
                 CountingHandler legacy = new CountingHandler(type.priority());
                 loop.addHandler(legacy);
                 assertRetired(legacy);
-                CountingHandler checked = new CountingHandler(type.priority());
-                assertThrows(HandlerRegistrationRejectedException.class, () -> loop.addHandlerOrThrow(checked));
-                assertEquals(0, checked.loopFinishedCalled());
-                assertEquals(0, checked.closeCalled());
-                checked.loopFinished();
-                checked.close();
+                // Checked rejection retains caller ownership; only this handler belongs in the resource scope.
+                try (CountingHandler checked = new CountingHandler(type.priority())) {
+                    assertThrows(HandlerRegistrationRejectedException.class, () -> loop.addHandlerOrThrow(checked));
+                    assertEquals(0, checked.loopFinishedCalled());
+                    assertEquals(0, checked.closeCalled());
+                    checked.loopFinished();
+                }
             } finally {
                 release.countDown();
                 stopped.get(5, TimeUnit.SECONDS);
@@ -333,11 +334,27 @@ class HandlerAdmissionTest extends ThreadsTestCommon {
         AtomicInteger registrations = new AtomicInteger();
         try (AbstractLifecycleEventLoop custom = new AbstractLifecycleEventLoop("custom") {
             @Override public void addHandler(EventHandler handler) { registrations.incrementAndGet(); }
-            @Override protected void performStart() { }
-            @Override protected void performStopFromNew() { }
-            @Override protected void performStopFromStarted() { }
+            @Override
+            protected void performStart() {
+                // This registration-only fixture has no worker to start.
+            }
+
+            @Override
+            protected void performStopFromNew() {
+                // The fixture stores no handlers or executor resources to release.
+            }
+
+            @Override
+            protected void performStopFromStarted() {
+                // This fixture never starts a worker, so stopping requires no work.
+            }
+
             @Override public boolean isAlive() { return false; }
-            @Override public void unpause() { }
+            @Override
+            public void unpause() {
+                // No worker thread waits on this fixture.
+            }
+
             @Override public boolean isRunningOnThread(Thread thread) { return false; }
         }) {
             CountingHandler handler = new CountingHandler(HandlerPriority.MEDIUM);

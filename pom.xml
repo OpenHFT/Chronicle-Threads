@@ -239,6 +239,24 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>sonar</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <!-- The parent declares surefireArgLine empty. Evaluate it after JaCoCo prepare-agent runs. -->
+                            <argLine>@{surefireArgLine} ${jvm.requiredArgs} -Djvm.coverage=true</argLine>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
     <scm>
         <url>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git</url>
         <connection>scm:git:git@github.com:OpenHFT/Chronicle-Threads.git</connection>

@@ -229,9 +229,10 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     //! Explicit admission leaves rejected resources with the caller; acceptance keeps normal lifecycle delivery.
     //! Regressions: HandlerAdmissionTest.checkedRegistrationRetainsRejectedOwnership,
     //! checkedRegistrationAcceptsConfiguredPriorities and checkedExceptionMustBeCaughtOrDeclared.
-    //! Checked lifecycle coverage: HandlerRegistrationClosedExceptionTest.checkedStoppedLoopHasDistinguishableRejection;
-    //! EventLoopAdmissionTest.rejectsRegistrationAfterStopWithoutStart, rejectsRegistrationAfterStartedLoopStops,
-    //! pendingHandlerFinishesOnceAndLateRegistrationIsRejected and finishCallbackCanWaitForAnotherThreadsRejectedRegistration.
+    //! HandlerRegistrationClosedExceptionTest covers checked rejection in checkedStoppedLoopHasDistinguishableRejection.
+    //! EventLoopAdmissionTest verifies rejectsRegistrationAfterStopWithoutStart and rejectsRegistrationAfterStartedLoopStops.
+    //! It also exercises pendingHandlerFinishesOnceAndLateRegistrationIsRejected and
+    //! finishCallbackCanWaitForAnotherThreadsRejectedRegistration.
     public void addHandlerOrThrow(@NotNull EventHandler handler) throws HandlerRegistrationRejectedException {
         final HandlerPriority priority = handler.priority().alias();
         validatePriority(handler, priority);

@@ -274,5 +274,8 @@ Validation::
 * `HandlerAdmissionTest` covers legacy retirement, checked caller ownership, all configured group priorities, lazy-child shutdown, callback lock freedom and javac catch-or-declare enforcement.
 * `EventLoopAdmissionTest` exercises checked admission racing with close, queued handlers and cancelled startup.
 * Existing fully closed legacy rejection tests remain in `HandlerRegistrationClosedExceptionTest`.
+* The `sonar` profile uses late evaluation of `surefireArgLine` so JaCoCo instrumentation reaches the test JVM.
+  The inherited early expansion of the initially empty property ran tests without collecting coverage.
+  Validate with `mvn -Psonar clean verify` and inspect `target/site/jacoco/jacoco.xml`; a successful test run alone does not prove that coverage was collected.
 Notes/Links::
 * Requirement: link:project-requirements.adoc[THR-FN-004].
