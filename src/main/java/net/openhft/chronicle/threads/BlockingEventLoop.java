@@ -187,11 +187,18 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
                 '}';
     }
 
-    @SuppressWarnings("ForLoopReplaceableByForEach")
     @Override
     public boolean isRunningOnThread(Thread thread) {
-        for (int i=0; i < runners.size(); i++) {
-            if (thread == runners.get(i).thread()) {
+        // Descending indices tolerate removals without allocating an iterator.
+        for (int i = runners.size() - 1; i >= 0; i--) {
+            final Runner runner;
+            try {
+                runner = runners.get(i);
+            } catch (IndexOutOfBoundsException ignored) {
+                // A runner completed and shrank the list before get(i).
+                continue;
+            }
+            if (thread == runner.thread()) {
                 return true;
             }
         }
