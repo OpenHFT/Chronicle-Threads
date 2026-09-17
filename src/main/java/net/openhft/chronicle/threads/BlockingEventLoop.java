@@ -9,6 +9,7 @@ import net.openhft.chronicle.core.threads.EventLoop;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -42,6 +43,7 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     @NotNull
     private transient final ExecutorService service;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
+    private final List<EventHandler> pendingHandlers = new ArrayList<>();
     private final List<Runner> runners = new CopyOnWriteArrayList<>();
     private final NamedThreadFactory threadFactory;
     private final Supplier<Pauser> pauserSupplier;
@@ -70,26 +72,54 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
      * <p>Priorities other than
      * {@link net.openhft.chronicle.core.threads.HandlerPriority#BLOCKING}
      * are permitted but are not treated specially.</p>
+     * <p>Stopping loops finish and close unused handlers. Fully closed loops reject as before.
+     * Use {@link #addHandlerOrThrow(EventHandler)} to retain ownership after rejection.</p>
      *
      * @param handler to execute
      */
     @Override
-    public synchronized void addHandler(@NotNull final EventHandler handler) {
+    public void addHandler(@NotNull final EventHandler handler) {
         if (DEBUG_ADDING_HANDLERS)
             Jvm.debug().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
         //! Closed blocking loops need the same distinguishable rejection without taking handler ownership.
         //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership (BLOCKING).
         if (isClosed())
             throw new HandlerRegistrationClosedException("Event Group has been closed");
+        //! Legacy late registration must release resources without introducing a shutdown exception.
+        //! Cleanup runs outside the admission lock: HandlerAdmissionTest.legacyRegistrationRetiresLateHandler
+        //! and legacyCleanupRunsOutsideAdmissionLock.
+        if (!tryAddHandler(handler))
+            retireUnadmittedHandler(handler);
+    }
+
+    //! Checked rejection leaves ownership with the caller instead of silently consuming the handler.
+    //! Regression: HandlerAdmissionTest.checkedRegistrationRetainsRejectedOwnership.
+    @Override
+    public void addHandlerOrThrow(@NotNull EventHandler handler) throws HandlerRegistrationRejectedException {
+        if (!tryAddHandler(handler))
+            throw new HandlerRegistrationRejectedException("Event loop is stopping or closed: " + name());
+    }
+
+    private synchronized boolean tryAddHandler(EventHandler handler) {
+        if (isStopped() || isClosing())
+            return false;
         eventLoopQuietly(parent, handler);
         this.handlers.add(handler);
         if (isStarted())
             this.startHandler(handler);
+        else
+            pendingHandlers.add(handler);
+        return true;
     }
 
     @Override
     protected synchronized void performStart() {
-        handlers.forEach(this::startHandler);
+        //! A stop can win after start changes lifecycle but before the executor receives its tasks.
+        //! Keep pending ownership until either submission or stop: HandlerAdmissionTest.acceptedBeforeStartIsFinished.
+        if (isStopped())
+            return;
+        pendingHandlers.forEach(this::startHandler);
+        pendingHandlers.clear();
     }
 
     private void startHandler(final EventHandler handler) {
@@ -125,7 +155,15 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
          * It's necessary for blocking handlers to be interrupted, so they abort what they're
          * doing and run to completion immediately.
          */
-        service.shutdownNow();
+        final List<EventHandler> pending;
+        //! Serialise executor shutdown with admission; finish work which will never get a runner callback.
+        //! Callbacks stay outside the lock. Regression: HandlerAdmissionTest.acceptedBeforeStartIsFinished.
+        synchronized (this) {
+            pending = new ArrayList<>(pendingHandlers);
+            pendingHandlers.clear();
+            service.shutdownNow();
+        }
+        pending.forEach(Threads::loopFinishedQuietly);
         unpause();
         Threads.shutdown(service);
     }

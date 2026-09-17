@@ -95,9 +95,27 @@ public class VanillaEventLoop extends MediumEventLoop {
         final HandlerPriority priority = handler.priority();
         if (DEBUG_ADDING_HANDLERS)
             Jvm.debug().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
+        validatePriority(handler, priority);
+        addHandlerInternal(handler);
+    }
+
+    //! Preserve this loop's configured priorities for explicit admission too.
+    //! Regressions: HandlerAdmissionTest.configurationAndCallbackFailuresRemainVisible
+    //! and checkedRegistrationAcceptsConfiguredPriorities.
+    @Override
+    public void addHandlerOrThrow(@NotNull final EventHandler handler) throws HandlerRegistrationRejectedException {
+        final HandlerPriority priority = handler.priority();
+        validatePriority(handler, priority);
+        if (isClosing() || !tryAddHandlerInternal(handler))
+            throw new HandlerRegistrationRejectedException("Cannot add a handler to stopped event loop " + name());
+    }
+
+    //! The group and both registration APIs must honour this loop's configured priority set.
+    //! Regression: HandlerAdmissionTest.configurationAndCallbackFailuresRemainVisible.
+    @Override
+    void validatePriority(EventHandler handler, HandlerPriority priority) {
         if (!priorities.contains(priority))
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler + " allows " + priorities);
-        addHandlerInternal(handler);
     }
 
     @Override

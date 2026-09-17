@@ -68,7 +68,7 @@ public class EventGroup
     private final AtomicInteger counter = new AtomicInteger();
     @NotNull
     private final MonitorEventLoop monitor;
-    private final CoreEventLoop core;
+    private final MediumEventLoop core;
     private final BlockingEventLoop blocking;
     @NotNull
     private final Pauser pauser;
@@ -206,56 +206,77 @@ public class EventGroup
      * If the relevant loop was not configured an {@link IllegalStateException}
      * is thrown. Unknown priorities result in an
      * {@link IllegalArgumentException}.
+     *
+     * <p>Once stopping begins, an otherwise valid handler is finished and closed without
+     * registration. A fully closed group retains its unchecked rejection. Use
+     * {@link #addHandlerOrThrow(EventHandler)} to retain ownership after lifecycle rejection.</p>
      */
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
-        //! Distinguish the group's own closure before priority selection, leaving configuration errors intact.
-        //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership (GROUP)
-        //! and missingPriorityIsNotAClosedRegistrationEvenWhenGroupIsStopped.
+        //! Preserve legacy closed-group rejection and configuration errors, but retire stop-time submissions.
+        //! Regressions: HandlerAdmissionTest.legacyRegistrationRetiresLateHandler, legacyGroupRetiresEveryConfiguredPriority and
+        //! configurationAndCallbackFailuresRemainVisible; HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership.
         throwIfClosedForRegistration();
+        final AbstractLifecycleEventLoop receiving = registrationLoop(handler, handler.priority());
+        if (receiving == null)
+            Threads.retireUnadmittedHandler(handler);
+        else
+            receiving.addHandler(handler);
+    }
 
-        HandlerPriority t1 = handler.priority();
-        switch (t1) {
+    @Override
+    public void addHandlerOrThrow(@NotNull final EventHandler handler) throws HandlerRegistrationRejectedException {
+        //! Checked rejection preserves caller ownership on every configured priority route.
+        //! Regressions: HandlerAdmissionTest.checkedRegistrationRetainsRejectedOwnership,
+        //! checkedRegistrationAcceptsConfiguredPriorities and stoppedGroupDoesNotCreateLazyLoops.
+        final AbstractLifecycleEventLoop receiving = registrationLoop(handler, handler.priority());
+        if (receiving == null)
+            throw new HandlerRegistrationRejectedException("Cannot add a handler to stopped event group " + name());
+        receiving.addHandlerOrThrow(handler);
+    }
+
+    private synchronized AbstractLifecycleEventLoop registrationLoop(EventHandler handler, HandlerPriority priority) {
+        switch (priority) {
             case MONITOR:
-                monitor.addHandler(handler);
                 break;
-
             case HIGH:
             case MEDIUM:
             case TIMER:
             case DAEMON:
                 if (core == null)
-                    throw new IllegalStateException("Cannot add " + t1 + " " + handler + " to " + name);
-                core.addHandler(handler);
+                    throw new IllegalStateException("Cannot add " + priority + " " + handler + " to " + name);
                 break;
-
             case BLOCKING:
                 if (blocking == null)
                     throw new IllegalStateException("Cannot add BLOCKING " + handler + " to " + name);
-                blocking.addHandler(handler);
                 break;
-
-            // used only for replication, this is so replication can run in its own thread
             case REPLICATION:
             case REPLICATION_TIMER:
-                if (t1 == HandlerPriority.REPLICATION && !priorities.contains(HandlerPriority.REPLICATION))
-                    throw new IllegalStateException("Cannot add REPLICATION " + handler + " to " + name);
-
-                if (t1 == HandlerPriority.REPLICATION_TIMER && !priorities.contains(HandlerPriority.REPLICATION_TIMER))
-                    throw new IllegalStateException("Cannot add REPLICATION_TIMER " + handler + " to " + name);
-
-                getReplication().addHandler(handler);
+                if (!priorities.contains(priority))
+                    throw new IllegalStateException("Cannot add " + priority + " " + handler + " to " + name);
                 break;
-
-            case CONCURRENT: {
+            case CONCURRENT:
                 if (concThreads.isEmpty())
                     throw new IllegalStateException("Cannot add CONCURRENT " + handler + " to " + name);
-                getConcThread(counter.getAndIncrement() % concThreads.size()).addHandler(handler);
                 break;
-            }
-
             default:
-                throw new IllegalArgumentException("Unknown priority " + handler.priority());
+                throw new IllegalArgumentException("Unknown priority " + priority);
+        }
+        //! Pair lazy child creation with the stop snapshot; no fresh loop may escape group shutdown.
+        //! Regressions: HandlerAdmissionTest.stoppedGroupDoesNotCreateLazyLoops and lazyRegistrationRacingStopKeepsOwnership.
+        if (isStopped() || isClosing()) {
+            if (priority == HandlerPriority.HIGH || priority == HandlerPriority.MEDIUM ||
+                    priority == HandlerPriority.TIMER || priority == HandlerPriority.DAEMON)
+                core.validatePriority(handler, priority);
+            return null;
+        }
+        switch (priority) {
+            case MONITOR: return monitor;
+            case BLOCKING: return blocking;
+            case REPLICATION:
+            case REPLICATION_TIMER: return getReplication();
+            case CONCURRENT: return getConcThread(counter.getAndIncrement() % concThreads.size());
+            default: return core;
         }
     }
 
@@ -374,8 +395,16 @@ public class EventGroup
     }
 
     private void performStop() {
+        final List<VanillaEventLoop> concurrentSnapshot;
+        final VanillaEventLoop replicationSnapshot;
+        //! Capture children under the creation lock, then stop outside it so callbacks can submit elsewhere.
+        //! Regressions: HandlerAdmissionTest.lazyRegistrationRacingStopKeepsOwnership and legacyCleanupRunsOutsideAdmissionLock.
+        synchronized (this) {
+            concurrentSnapshot = new ArrayList<>(concThreads);
+            replicationSnapshot = replication;
+        }
         monitor.stop();
-        EventLoops.stopAll(concThreads, replication, core, blocking);
+        EventLoops.stopAll(concurrentSnapshot, replicationSnapshot, core, blocking);
     }
 
     /**

@@ -30,8 +30,8 @@ import static net.openhft.chronicle.threads.Threads.*;
  * <p>
  * The main loop runs on one thread and repeatedly executes HIGH then MEDIUM
  * handlers before pausing via the supplied {@link Pauser}.
- * Registration is rejected once stopping begins; the rejected handler remains
- * caller-owned. Accepted handlers receive their finish callback even when
+ * Legacy registration retires handlers submitted after stopping begins; explicit
+ * checked rejection leaves them caller-owned. Accepted handlers finish even when
  * shutdown prevents their first action from running.
  */
 public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
@@ -180,9 +180,14 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         finishHandlersOnce(true);
     }
 
+    /**
+     * Registers the handler, or finishes and closes it if stopping has begun.
+     * A fully closed loop retains its unchecked rejection. Use {@link #addHandlerOrThrow(EventHandler)}
+     * when the caller needs to retain ownership if admission is rejected.
+     */
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
-        //! A fully closed loop must expose the same lifecycle reason as a stopping loop.
+        //! Keep the established unchecked failure for legacy registration on a fully closed loop.
         //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership (MEDIUM).
         throwIfClosedForRegistration();
 
@@ -192,68 +197,76 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         final HandlerPriority priority = handler.priority().alias();
         if (DEBUG_ADDING_HANDLERS)
             Jvm.debug().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
+        validatePriority(handler, priority);
+        addHandlerInternal(handler);
+    }
+
+    //! Group shutdown must still report configuration failures before retiring a late handler.
+    //! Share the same validation: HandlerAdmissionTest.configurationAndCallbackFailuresRemainVisible.
+    void validatePriority(EventHandler handler, HandlerPriority priority) {
         if (!ALLOWED_PRIORITIES.contains(priority)) {
             if (handler.priority() == HandlerPriority.MONITOR) {
                 Jvm.warn().on(getClass(), "Ignoring " + handler.getClass());
             }
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
         }
-        addHandlerInternal(handler);
     }
 
     /**
      * Add a handler in the appropriate way given the thread adding the handler and the state of the loop
      */
     protected void addHandlerInternal(@NotNull EventHandler handler) {
-        throwIfRegistrationClosed();
+        //! Legacy stop-time registration must not introduce a new exception into existing callers.
+        //! Retire the unadmitted handler, including its buffers, outside addHandlerMutex.
+        //! Regressions: HandlerAdmissionTest.legacyRegistrationRetiresLateHandler,
+        //! stoppingRegistrationHasExplicitOwnership, legacyCleanupRunsOutsideAdmissionLock and cleanupFailuresRemainVisible.
+        if (!tryAddHandlerInternal(handler)) {
+            retireUnadmittedHandler(handler);
+        }
+    }
+
+    @Override
+    //! Explicit admission leaves rejected resources with the caller; acceptance keeps normal lifecycle delivery.
+    //! Regressions: HandlerAdmissionTest.checkedRegistrationRetainsRejectedOwnership,
+    //! checkedRegistrationAcceptsConfiguredPriorities and checkedExceptionMustBeCaughtOrDeclared.
+    //! Checked lifecycle coverage: HandlerRegistrationClosedExceptionTest.checkedStoppedLoopHasDistinguishableRejection;
+    //! EventLoopAdmissionTest.rejectsRegistrationAfterStopWithoutStart, rejectsRegistrationAfterStartedLoopStops,
+    //! pendingHandlerFinishesOnceAndLateRegistrationIsRejected and finishCallbackCanWaitForAnotherThreadsRejectedRegistration.
+    public void addHandlerOrThrow(@NotNull EventHandler handler) throws HandlerRegistrationRejectedException {
+        final HandlerPriority priority = handler.priority().alias();
+        validatePriority(handler, priority);
+        if (isClosing() || !tryAddHandlerInternal(handler))
+            throw new HandlerRegistrationRejectedException("Cannot add a handler to stopped event loop " + name());
+    }
+
+    protected final boolean tryAddHandlerInternal(@NotNull EventHandler handler) {
         if (thread == null) {
-            if (!addHandlerBeforeStart(handler)) {
-                addHandlerAfterStart(handler);
+            synchronized (addHandlerMutex) {
+                if (registrationClosed())
+                    return false;
+                if (thread == null) {
+                    addNewHandler(handler);
+                    return true;
+                }
             }
         } else if (thread == Thread.currentThread()) {
-            // The event loop thread adding a handler to itself
-            addNewHandler(handler);
-        } else {
-            addHandlerAfterStart(handler);
-        }
-    }
-
-    /**
-     * This is the code used when any thread tries to add an event handler before a loop is started
-     */
-    private boolean addHandlerBeforeStart(@NotNull EventHandler handler) {
-        synchronized (addHandlerMutex) {
-            throwIfRegistrationClosed();
-            if (thread != null) {
-                // The loop started since the initial check, fall back to after-start behaviour
+            if (registrationClosed())
                 return false;
-            }
             addNewHandler(handler);
+            return true;
         }
-        return true;
-    }
-
-    /**
-     * This is the code executed when a non-event-loop thread wants to add a handler on a started loop
-     */
-    private void addHandlerAfterStart(@NotNull EventHandler handler) {
-        // Pair admission with finishHandlersOnce(): an accepted handler must be
-        // visible before the loop takes its final lifecycle snapshot.
+        // Preserve the admission/final-snapshot interlock introduced by #353.
         synchronized (addHandlerMutex) {
-            throwIfRegistrationClosed();
+            if (registrationClosed())
+                return false;
             newHandlers.offer(handler);
         }
         pauser.unpause();
+        return true;
     }
 
-    private void throwIfRegistrationClosed() {
-        //! Stopping rejects ownership transfer, but plain IllegalStateException also means invalid configuration.
-        //! A distinct reason lets callers clean up a rejected handler without suppressing configuration faults.
-        //! Regressions: HandlerRegistrationClosedExceptionTest.stoppedLoopHasDistinguishableRejection;
-        //! EventLoopAdmissionTest.rejectsRegistrationAfterStopWithoutStart, rejectsRegistrationAfterStartedLoopStops,
-        //! pendingHandlerFinishesOnceAndLateRegistrationIsRejected and finishCallbackCanWaitForAnotherThreadsRejectedRegistration.
-        if (isStopped() || handlersFinished)
-            throw new HandlerRegistrationClosedException("Cannot add a handler to stopped event loop " + name());
+    private boolean registrationClosed() {
+        return isStopped() || handlersFinished;
     }
 
     private void finishHandlersOnce(boolean onlyIfNotRunning) {

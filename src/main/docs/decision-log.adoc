@@ -245,3 +245,34 @@ Validation::
 Impact & Consequences::
 * Explicitly recorded, bounded repeat runs remain useful for diagnosis.
 * CI must still handle reported failures when `maven.test.failure.ignore` allows later build steps to continue.
+
+[[THR-FN-037]]
+=== THR-FN-037 Preserve legacy registration with explicit checked admission
+
+Date:: 2026-09-17
+Context::
+* Stop-time exceptions introduced by #353 and typed by #354 break existing Network callers that use `addHandler` and report any shutdown warning as a test failure.
+* Quietly dropping an unadmitted handler leaks resources normally released by `loopFinished()` and `close()`.
+Decision Statement::
+* Legacy registration finishes and closes valid late handlers without a lifecycle-rejection exception. Fully closed loops keep their established unchecked rejection.
+* Add `addHandlerOrThrow(EventHandler)` with checked `HandlerRegistrationRejectedException`. On lifecycle rejection the caller retains the untouched handler; normal admission transfers responsibility to the loop.
+* Expose the method in Threads' lifecycle base class and built-in loops, without requiring a new Chronicle Core artifact. Unsupported custom subclasses fail explicitly without consuming the handler.
+* Pair lazy child creation with the group shutdown snapshot. Finish unused handlers outside admission locks.
+Alternatives Considered::
+* A strict-mode system property would change ownership semantics globally and leave behaviour dependent on process configuration.
+* A boolean result could be ignored, leaving rejected resources without an owner.
+* Making the existing method checked would break source compatibility with the Core interface and existing callers.
+Rationale for Decision::
+* An explicit method name and checked exception make the ownership decision visible to the caller and compiler while preserving legacy shutdown behaviour.
+Impact & Consequences::
+* Strict callers must catch or declare the checked exception. They may finish and close the rejected handler or retain it for another loop.
+* Genuine configuration and application failures remain visible; this change does not turn every exceptional return into a promise of non-admission.
+* A custom pauser or callback throwing after publication remains an unqualified contract case. No admission rollback is introduced here.
+* Callers using only the Core `EventLoop` interface continue to have the legacy API. A future Core API extension is a separate decision.
+* Pending Network acceptor code that depends on stop-time rejection must opt in to the checked API when adopting this Threads version.
+Validation::
+* `HandlerAdmissionTest` covers legacy retirement, checked caller ownership, all configured group priorities, lazy-child shutdown, callback lock freedom and javac catch-or-declare enforcement.
+* `EventLoopAdmissionTest` exercises checked admission racing with close, queued handlers and cancelled startup.
+* Existing fully closed legacy rejection tests remain in `HandlerRegistrationClosedExceptionTest`.
+Notes/Links::
+* Requirement: link:project-requirements.adoc[THR-FN-004].

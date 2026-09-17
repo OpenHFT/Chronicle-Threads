@@ -51,7 +51,7 @@ class EventLoopAdmissionTest extends ThreadsTestCommon {
             }
             loop.stop();
             assertTrue(loop.isStopped());
-            assertThrows(HandlerRegistrationClosedException.class, () -> loop.addHandler(handler));
+            assertThrows(HandlerRegistrationRejectedException.class, () -> loop.addHandlerOrThrow(handler));
             loop.close();
             assertAll(
                     () -> assertEquals(0, handler.loopStartedCalled()),
@@ -104,7 +104,7 @@ class EventLoopAdmissionTest extends ThreadsTestCommon {
                 assertTrue(loop.newHandlers.contains(pending));
                 Future<?> stopped = stopper.submit(loop::stop);
                 Waiters.waitForCondition("Stop did not begin", loop::isStopped, 5_000);
-                assertThrows(HandlerRegistrationClosedException.class, () -> loop.addHandler(rejected));
+                assertThrows(HandlerRegistrationRejectedException.class, () -> loop.addHandlerOrThrow(rejected));
                 release.countDown();
                 stopped.get(5, TimeUnit.SECONDS);
                 // The last iteration may initialise the queued handler after the
@@ -138,8 +138,8 @@ class EventLoopAdmissionTest extends ThreadsTestCommon {
                 public void loopFinished() {
                     super.loopFinished();
                     try {
-                        getUninterruptibly(registrar.submit(() -> assertThrows(HandlerRegistrationClosedException.class,
-                                () -> loop.addHandler(rejected))));
+                        getUninterruptibly(registrar.submit(() -> assertThrows(HandlerRegistrationRejectedException.class,
+                                () -> loop.addHandlerOrThrow(rejected))));
                     } catch (Throwable t) {
                         failure.set(t);
                     }
@@ -216,9 +216,9 @@ class EventLoopAdmissionTest extends ThreadsTestCommon {
                     Future<Boolean> accepted = workers.submit(() -> {
                         start.await(5, TimeUnit.SECONDS);
                         try {
-                            loop.addHandler(handler);
+                            loop.addHandlerOrThrow(handler);
                             return true;
-                        } catch (IllegalStateException rejection) {
+                        } catch (HandlerRegistrationRejectedException rejection) {
                             return false;
                         }
                     });
