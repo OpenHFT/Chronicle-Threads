@@ -20,7 +20,7 @@ class HandlerRegistrationClosedExceptionTest extends ThreadsTestCommon {
     enum LoopType {
         MEDIUM, VANILLA, GROUP, BLOCKING;
 
-        EventLoop create() {
+        AbstractLifecycleEventLoop create() {
             switch (this) {
                 case MEDIUM:
                     return new MediumEventLoop(null, "admission", Pauser.balanced(), true, null);
@@ -54,11 +54,11 @@ class HandlerRegistrationClosedExceptionTest extends ThreadsTestCommon {
 
     @ParameterizedTest
     @EnumSource(value = LoopType.class, names = {"MEDIUM", "VANILLA", "GROUP"})
-    void stoppedLoopHasDistinguishableRejection(LoopType type) throws Exception {
+    void checkedStoppedLoopHasDistinguishableRejection(LoopType type) throws Exception {
         CountingHandler handler = new CountingHandler(HandlerPriority.MEDIUM);
-        try (EventLoop loop = type.create()) {
+        try (AbstractLifecycleEventLoop loop = type.create()) {
             loop.stop();
-            assertThrows(HandlerRegistrationClosedException.class, () -> loop.addHandler(handler));
+            assertThrows(HandlerRegistrationRejectedException.class, () -> loop.addHandlerOrThrow(handler));
             assertEquals(0, handler.loopFinishedCalled());
             assertEquals(0, handler.closeCalled());
         } finally {

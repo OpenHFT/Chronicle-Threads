@@ -716,15 +716,10 @@ public class EventGroupTest extends ThreadsTestCommon {
         }
 
         void checkCloseOrder() {
-            // Medium/Vanilla loops also finish accepted handlers when startup is cancelled.
-            boolean finishesWithoutStart = priority != HandlerPriority.BLOCKING && priority != HandlerPriority.MONITOR;
-            if (loopStartedNS.get() != 0 || finishesWithoutStart) {
-                assertNotEquals(0, loopFinishedNS.get(), this.toString());
-                assertNotEquals(0, closedNS.get(), this.toString());
-                assertTrue(loopFinishedNS.get() < closedNS.get(), this.toString());
-            } else {
-                assertEquals(0, loopFinishedNS.get());
-            }
+            // Accepted handlers release finish-time resources even when the group never starts.
+            assertNotEquals(0, loopFinishedNS.get(), this.toString());
+            assertNotEquals(0, closedNS.get(), this.toString());
+            assertTrue(loopFinishedNS.get() < closedNS.get(), this.toString());
         }
 
         @Override

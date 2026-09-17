@@ -56,13 +56,22 @@ _THR-FN-003_ Attempting to `start()` an `EventLoop` or `EventGroup` that has alr
 
 . _Dynamic Registration_
 _THR-FN-004_ Clients SHALL be able to add an `EventHandler` to a running `EventGroup` at runtime.
-For `MediumEventLoop` and `VanillaEventLoop`, registration after stopping begins SHALL fail with `IllegalStateException`; the caller retains ownership of a rejected handler.
-Lifecycle rejection SHALL use `HandlerRegistrationClosedException`, a subtype of `ClosedIllegalStateException` and `IllegalStateException`, so callers can distinguish it from configuration errors.
-Closed-loop registration checks in `EventGroup` and `BlockingEventLoop` SHALL use the same subtype. This does not add a stop-time admission check to `BlockingEventLoop`.
-Exceptions raised by priority selection or handler callbacks SHALL retain their original type and cause.
-Registration racing with shutdown SHALL either reject the handler or retain it for exactly one finish callback and subsequent close, including handlers accepted before the loop starts or before their first action.
-If startup is cancelled, the stopping thread SHALL deliver the finish callback; handlers whose loop has started SHALL finish on its event-loop thread.
-Finish callbacks SHALL run outside the registration lock, so they can wait for another thread whose registration attempt must be rejected.
+The legacy `addHandler` operation on built-in loops SHALL finish and close an otherwise valid, caller-owned handler submitted after stopping begins, without a lifecycle-rejection exception or warning.
+This applies to every configured `EventGroup` priority route, including lazy replication and concurrent loops.
+Fully closed legacy loops SHALL retain their existing unchecked rejection; configuration and callback failures SHALL remain visible.
+
+The additive `addHandlerOrThrow` operation SHALL throw checked `HandlerRegistrationRejectedException` when lifecycle state prevents admission.
+Checked rejection SHALL occur before handler publication and SHALL leave the handler untouched, with cleanup remaining the caller's responsibility.
+Normal return transfers responsibility to the loop but does not guarantee an action will run before shutdown.
+This API is exposed by `AbstractLifecycleEventLoop` and built-in subclasses; it does not change the Chronicle Core `EventLoop` interface.
+Custom subclasses that do not implement checked admission SHALL reject that operation with `UnsupportedOperationException` without calling their legacy method.
+
+Registration racing with shutdown SHALL either reject before admission or retain the accepted handler for one effective finish and subsequent close, including accepted handlers whose loop never starts.
+Finish callbacks for unadmitted or never-started handlers SHALL run outside the registration lock.
+Lazy child creation SHALL be included in the group's shutdown snapshot or prevented once stopping begins.
+The ownership guarantee covers supported lifecycle-rejection paths, not arbitrary custom pausers or callbacks that throw after publication.
+Callers SHALL submit only handlers they own, rather than resubmitting an instance already owned by a loop.
+See decision link:decision-log.adoc#THR-FN-037[THR-FN-037].
 . _Handler Priority_
 _THR-FN-005_ Each `EventHandler` SHALL declare a `HandlerPriority`.
 The system SHALL support a range of priorities influencing execution order and/or loop assignment.

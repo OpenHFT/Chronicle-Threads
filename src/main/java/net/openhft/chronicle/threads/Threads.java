@@ -294,6 +294,18 @@ public enum Threads {
         }
     }
 
+    //! A legacy call consumes a late handler, so dropping it would leak finish-owned resources.
+    //! Cleanup must run outside admission locks and still close if finishing or its diagnostics fail.
+    //! Regressions: HandlerAdmissionTest.legacyRegistrationRetiresLateHandler,
+    //! legacyCleanupRunsOutsideAdmissionLock and cleanupFailuresRemainVisible.
+    static void retireUnadmittedHandler(EventHandler handler) {
+        try {
+            loopFinishedQuietly(handler);
+        } finally {
+            net.openhft.chronicle.core.io.Closeable.closeQuietly(handler);
+        }
+    }
+
     static void loopFinishedQuietly(EventHandler eventHandler) {
         try {
             eventHandler.loopFinished();

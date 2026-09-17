@@ -12,6 +12,7 @@ import net.openhft.chronicle.core.threads.HandlerPriority;
 import net.openhft.chronicle.core.threads.InvalidEventHandlerException;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -34,11 +35,14 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     public static final String MONITOR_INITIAL_DELAY = "MonitorInitialDelay";
     static int MONITOR_INITIAL_DELAY_MS = Jvm.getInteger(MONITOR_INITIAL_DELAY, 10_000);
 
+    @SuppressWarnings("java:S2065") // Chronicle Wire honours transient runtime fields without Serializable.
     private final transient ExecutorService service;
+    @SuppressWarnings("java:S2065") // Avoid traversing the parent loop during reflective marshalling.
     private final transient EventLoop parent;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final Pauser pauser;
     private transient volatile Thread thread = null;
+    private boolean handlersFinished;
 
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
@@ -53,8 +57,11 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     }
 
     @Override
-    protected void performStart() {
-        service.execute(this);
+    protected synchronized void performStart() {
+        //! Stop may win before task submission; it then owns finishing the pending handlers.
+        //! Regression: HandlerAdmissionTest.acceptedBeforeStartIsFinished.
+        if (!isStopped())
+            service.execute(this);
     }
 
     @Override
@@ -74,7 +81,13 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
 
     private void performStop() {
         unpause();
+        //! Exclude a racing task submission before taking the never-started finish snapshot.
+        //! Regression: HandlerAdmissionTest.acceptedBeforeStartIsFinished.
+        synchronized (this) {
+            service.shutdownNow();
+        }
         Threads.shutdownDaemon(service);
+        finishHandlersOnce(true);
     }
 
     @Override
@@ -88,26 +101,50 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
      * {@link IdempotentLoopStartedEventHandler} so that its
      * {@link EventHandler#loopStarted()} method runs exactly once on this
      * loop's thread. Adding the same handler twice is ignored.
+     * Stopping loops finish and close unused handlers; fully closed loops reject as before.
+     * Use {@link #addHandlerOrThrow(EventHandler)} to retain ownership after rejection.
      */
     @Override
-    public synchronized void addHandler(@NotNull final EventHandler handler) {
+    public void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
+
+        //! Legacy shutdown races must retire unused handlers without reporting a registration failure.
+        //! Regressions: HandlerAdmissionTest.legacyRegistrationRetiresLateHandler and legacyCleanupRunsOutsideAdmissionLock.
+        if (!tryAddHandler(handler))
+            Threads.retireUnadmittedHandler(handler);
+    }
+
+    //! Checked rejection does not wrap or finish the caller's handler.
+    //! Regression: HandlerAdmissionTest.checkedRegistrationRetainsRejectedOwnership.
+    @Override
+    public void addHandlerOrThrow(@NotNull EventHandler handler) throws HandlerRegistrationRejectedException {
+        if (!tryAddHandler(handler))
+            throw new HandlerRegistrationRejectedException("Event loop is stopping or closed: " + name());
+    }
+
+    private synchronized boolean tryAddHandler(EventHandler handler) {
+        if (isStopped() || isClosing() || handlersFinished)
+            return false;
 
         if (EventLoop.DEBUG_ADDING_HANDLERS)
             Jvm.debug().on(getClass(), "Adding " + handler.priority() + " " + handler + " to " + this.name);
-        if (isClosed())
-            throw new IllegalStateException("Event Group has been closed");
         eventLoopQuietly(parent, handler);
         if (!handlers.contains(handler))
             handlers.add(new IdempotentLoopStartedEventHandler(handler));
+        return true;
     }
 
     @Override
     public void run() {
-        throwExceptionIfClosed();
+        //! Claim the task under the same lock as stop's final snapshot so a cancelled start cannot finish twice.
+        //! Regression: HandlerAdmissionTest.acceptedBeforeStartIsFinished.
+        synchronized (this) {
+            if (handlersFinished)
+                return;
+            thread = Thread.currentThread();
+        }
 
         try {
-            thread = Thread.currentThread();
             // don't do any monitoring for the first MONITOR_INITIAL_DELAY_MS ms
             final long waitUntilMs = System.currentTimeMillis() + MONITOR_INITIAL_DELAY_MS;
             while (System.currentTimeMillis() < waitUntilMs && isStarted())
@@ -123,11 +160,22 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), e);
         } finally {
-            synchronized (this) {
-                handlers.forEach(Threads::loopFinishedQuietly);
-            }
+            finishHandlersOnce(false);
             thread = null;
         }
+    }
+
+    //! Stop-before-start still owes accepted handlers their finish callback; callbacks must not hold admission locks.
+    //! Regressions: HandlerAdmissionTest.acceptedBeforeStartIsFinished and legacyCleanupRunsOutsideAdmissionLock.
+    private void finishHandlersOnce(boolean onlyIfNotRunning) {
+        final List<EventHandler> snapshot;
+        synchronized (this) {
+            if (handlersFinished || (onlyIfNotRunning && thread != null))
+                return;
+            handlersFinished = true;
+            snapshot = new ArrayList<>(handlers);
+        }
+        snapshot.forEach(Threads::loopFinishedQuietly);
     }
 
     private boolean runHandlers() {
@@ -184,6 +232,7 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
      */
     private static final class IdempotentLoopStartedEventHandler extends SimpleCloseable implements EventHandler {
 
+        @SuppressWarnings("java:S2065") // Exclude live handler resources from reflective marshalling.
         private final transient EventHandler eventHandler;
         private final String handler;
         private boolean loopStarted = false;
