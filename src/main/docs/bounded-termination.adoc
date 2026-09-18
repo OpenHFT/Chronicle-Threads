@@ -19,7 +19,9 @@ machinery, which otherwise catches exceptions and marks the object closed.
 An unsuccessful stop therefore leaves the close state and handlers untouched.
 After a blocked callback eventually finishes, the caller can close normally.
 
-The clock, deadline and failure/owner bookkeeping are transient runtime state.
+The clock, deadline, failure/owner bookkeeping, handler-finished flags and pending
+handler admission list are transient runtime state. The pending list is a subset
+of the existing handler collection, rather than separate configuration.
 They are excluded from reflective Wire configuration marshalling, preserving the
 existing event-group representation. Chronicle-Wire's `MarshallingEventGroupTest`
 provides the downstream compatibility control.
