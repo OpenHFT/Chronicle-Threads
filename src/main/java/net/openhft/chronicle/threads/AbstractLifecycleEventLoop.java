@@ -43,11 +43,14 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      */
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
-    private final AtomicBoolean terminationFailureReported = new AtomicBoolean();
-    private final long terminationTimeoutNs;
-    private final LongSupplier nanoClock;
-    private volatile Thread stoppingThread;
-    private volatile Throwable stopFailure;
+    //! Termination bookkeeping belongs to the live loop, not its marshalled configuration.
+    //! In particular a clock lambda and a stopping thread cannot be portable wire data.
+    //! Integration control: Chronicle-Wire's MarshallingEventGroupTest.test.
+    private transient final AtomicBoolean terminationFailureReported = new AtomicBoolean();
+    private transient final long terminationTimeoutNs;
+    private transient final LongSupplier nanoClock;
+    private transient volatile Thread stoppingThread;
+    private transient volatile Throwable stopFailure;
     protected final String name;
     volatile boolean privateGroup;
 

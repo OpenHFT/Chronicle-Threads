@@ -19,6 +19,11 @@ machinery, which otherwise catches exceptions and marks the object closed.
 An unsuccessful stop therefore leaves the close state and handlers untouched.
 After a blocked callback eventually finishes, the caller can close normally.
 
+The clock, deadline and failure/owner bookkeeping are transient runtime state.
+They are excluded from reflective Wire configuration marshalling, preserving the
+existing event-group representation. Chronicle-Wire's `MarshallingEventGroupTest`
+provides the downstream compatibility control.
+
 == Regression coverage
 
 `TerminationWaitTest` controls elapsed time independently of wall-clock changes
