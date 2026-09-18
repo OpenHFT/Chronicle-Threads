@@ -43,7 +43,9 @@ public class BlockingEventLoop extends AbstractLifecycleEventLoop implements Eve
     @NotNull
     private transient final ExecutorService service;
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
-    private final List<EventHandler> pendingHandlers = new ArrayList<>();
+    //! Pending admission tracks a runtime subset of handlers, which are already represented above.
+    //! Keep this ownership bookkeeping out of Wire: MarshallingEventGroupTest.test in Chronicle-Wire.
+    private transient final List<EventHandler> pendingHandlers = new ArrayList<>();
     private final List<Runner> runners = new CopyOnWriteArrayList<>();
     private final NamedThreadFactory threadFactory;
     private final Supplier<Pauser> pauserSupplier;

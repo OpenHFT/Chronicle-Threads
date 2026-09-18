@@ -12,7 +12,9 @@ import net.openhft.chronicle.core.threads.EventLoop;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongSupplier;
 
 /**
  * Base implementation that manages the life-cycle of an {@link EventLoop}.
@@ -30,17 +32,25 @@ import java.util.concurrent.atomic.AtomicReference;
  * Transitions are linear in that order. Invoking {@code stop()} while in
  * {@code NEW} skips {@code STARTED} entirely. Both {@code start()} and
  * {@code stop()} are idempotent and {@code stop()} blocks until the loop is
- * {@code STOPPED}.
+ * {@code STOPPED}. A failed or interrupted termination wait throws without
+ * claiming that shutdown completed.
  */
 @SuppressWarnings("this-escape")
 public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
 
     /**
-     * After this time, awaitTermination will log an error and return, this is really only so
-     * tests don't block forever. This time should be kept as "effectively forever".
+     * Bound a secondary caller's wait for the thread already stopping the loop.
      */
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
+    //! Termination bookkeeping belongs to the live loop, not its marshalled configuration.
+    //! In particular a clock lambda and a stopping thread cannot be portable wire data.
+    //! Integration control: Chronicle-Wire's MarshallingEventGroupTest.test.
+    private transient final AtomicBoolean terminationFailureReported = new AtomicBoolean();
+    private transient final long terminationTimeoutNs;
+    private transient final LongSupplier nanoClock;
+    private transient volatile Thread stoppingThread;
+    private transient volatile Throwable stopFailure;
     protected final String name;
     volatile boolean privateGroup;
 
@@ -54,6 +64,15 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      * @param name descriptive name for the loop
      */
     protected AbstractLifecycleEventLoop(@NotNull String name) {
+        this(name, TimeUnit.MILLISECONDS.toNanos(AWAIT_TERMINATION_TIMEOUT_MS), System::nanoTime);
+    }
+
+    // Package-local seam: tests advance elapsed time without changing the production deadline.
+    AbstractLifecycleEventLoop(@NotNull String name, long terminationTimeoutNs, LongSupplier nanoClock) {
+        if (terminationTimeoutNs <= 0)
+            throw new IllegalArgumentException("Termination timeout must be positive");
+        this.terminationTimeoutNs = terminationTimeoutNs;
+        this.nanoClock = nanoClock;
         this.name = name.replaceAll("/$", "");
 
         // event loops operate on dedicated threads but may be closed elsewhere
@@ -120,13 +139,27 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     @Override
     public final void stop() {
         if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STOPPING)) {
-            performStopFromNew();
-            lifecycle.set(EventLoopLifecycle.STOPPED);
+            performStop(false);
         } else if (lifecycle.compareAndSet(EventLoopLifecycle.STARTED, EventLoopLifecycle.STOPPING)) {
-            performStopFromStarted();
-            lifecycle.set(EventLoopLifecycle.STOPPED);
+            performStop(true);
         } else {
             awaitTermination();
+        }
+    }
+
+    private void performStop(boolean started) {
+        stoppingThread = Thread.currentThread();
+        try {
+            if (started)
+                performStopFromStarted();
+            else
+                performStopFromNew();
+            lifecycle.set(EventLoopLifecycle.STOPPED);
+        } catch (RuntimeException | Error failure) {
+            stopFailure = failure;
+            throw failure;
+        } finally {
+            stoppingThread = null;
         }
     }
 
@@ -149,22 +182,67 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      *
      * <p>If the state does not change within
      * {@link #AWAIT_TERMINATION_TIMEOUT_MS} milliseconds an error is logged and
-     * the method returns. The timeout is primarily to avoid tests hanging
-     * indefinitely.</p>
+     * an {@link IllegalStateException} is thrown. Interruption preserves the
+     * interrupted status and also fails the wait. Neither case completes the
+     * lifecycle or transfers ownership of resources.</p>
      */
     protected final void awaitTermination() {
-        long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
-        while (!Thread.currentThread().isInterrupted()) {
+        long start = nanoClock.getAsLong();
+        while (true) {
             if (lifecycle.get() == EventLoopLifecycle.STOPPED)
                 return;
-            if (System.currentTimeMillis() > endTime) {
-                Jvm.error().on(getClass(), "awaitTermination() timed out, continuing. This probably represents a bug.");
+            long elapsed = nanoClock.getAsLong() - start;
+            if (stopFailure != null)
+                throw terminationFailure("stop callback failed", elapsed);
+            if (stoppingThread == Thread.currentThread())
+                throw terminationFailure("reentrant stop", elapsed);
+            if (Thread.currentThread().isInterrupted() || elapsed >= terminationTimeoutNs) {
+                //! Shutdown can complete after the loop's first state read, including while
+                //! interrupting its workers. Honour completed ownership transfer before failing.
+                //! Control: TerminationWaitTest.completedStopWinsRaceWithWaitFailure.
+                if (lifecycle.get() == EventLoopLifecycle.STOPPED)
+                    return;
+                throw terminationFailure(Thread.currentThread().isInterrupted() ? "interrupted" : "timed out", elapsed);
             }
             Jvm.pause(1);
         }
-        if (lifecycle.get() != EventLoopLifecycle.STOPPED) {
-            Jvm.warn().on(getClass(), "awaitTermination() interrupted, returning in state " + lifecycle.get());
+    }
+
+    private IllegalStateException terminationFailure(String reason, long elapsedNs) {
+        StringBuilder diagnostic = new StringBuilder("awaitTermination() ").append(reason)
+                .append(": loop=").append(name).append(", lifecycle=").append(lifecycle.get())
+                .append(", elapsedMs=").append(TimeUnit.NANOSECONDS.toMillis(elapsedNs));
+        Thread stopper = stoppingThread;
+        appendThread(diagnostic, "stopper", stopper);
+        int remaining = 8;
+        for (Thread thread : Thread.getAllStackTraces().keySet()) {
+            if (thread != stopper && isRunningOnThread(thread)) {
+                appendThread(diagnostic, "event loop", thread);
+                if (--remaining == 0) {
+                    diagnostic.append("\nFurther event-loop threads omitted");
+                    break;
+                }
+            }
         }
+        IllegalStateException failure = new IllegalStateException(diagnostic.toString(), stopFailure);
+        // A timeout must not produce one error per millisecond, or per subsequent close call.
+        if (terminationFailureReported.compareAndSet(false, true))
+            Jvm.error().on(getClass(), diagnostic.toString(), failure);
+        return failure;
+    }
+
+    @SuppressWarnings("deprecation") // Thread.threadId() is unavailable on the supported Java 8 baseline.
+    private static void appendThread(StringBuilder diagnostic, String role, Thread thread) {
+        diagnostic.append('\n').append(role).append('=');
+        if (thread == null) {
+            diagnostic.append("none");
+            return;
+        }
+        diagnostic.append(thread.getName()).append(" id=").append(thread.getId())
+                .append(" state=").append(thread.getState());
+        StackTraceElement[] stack = thread.getStackTrace();
+        for (int i = 0; i < Math.min(stack.length, 64); i++)
+            diagnostic.append("\n  at ").append(stack[i]);
     }
 
     @Override
@@ -177,6 +255,9 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
         if (!privateGroup && isRunningOnThread(Thread.currentThread())) {
             throw new ThreadingIllegalStateException(getClass() + ": Attempting to close " + name + " from within!", createdHere());
         }
+        // AbstractCloseable swallows performClose failures and marks the object closed.
+        // Stop before entering that path so failure cannot release a live loop's handlers.
+        stop();
     }
 
     public abstract boolean isRunningOnThread(Thread thread);

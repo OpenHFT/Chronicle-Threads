@@ -246,6 +246,16 @@ Impact & Consequences::
 * Explicitly recorded, bounded repeat runs remain useful for diagnosis.
 * CI must still handle reported failures when `maven.test.failure.ignore` allows later build steps to continue.
 
+[[THR-NF-O-038]]
+=== THR-NF-O-038 Bound unsuccessful termination waits
+
+Date:: 2026-09-18
+Context:: A shutdown deadline logged on every poll without ending the wait; close also swallowed stop failures and could release live resources.
+Decision Statement:: Use monotonic elapsed time, throw on unsuccessful waits, emit one bounded diagnostic and stop before committing the close state.
+Impact & Consequences:: A failed wait retains resource ownership and does not claim completion. The original stop callback remains responsible for finishing. Interrupted callers keep their interrupted status.
+Validation:: `TerminationWaitTest` covers timeout through stop and close, interruption, callback failure, normal and concurrent stop, and eventual cleanup.
+Notes/Links:: link:bounded-termination.adoc[Full termination contract and diagnostic limits].
+
 [[THR-FN-037]]
 === THR-FN-037 Preserve legacy registration with explicit checked admission
 

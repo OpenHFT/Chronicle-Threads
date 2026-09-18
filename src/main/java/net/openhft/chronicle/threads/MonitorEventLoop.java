@@ -42,7 +42,9 @@ public class MonitorEventLoop extends AbstractLifecycleEventLoop implements Runn
     private final List<EventHandler> handlers = new CopyOnWriteArrayList<>();
     private final Pauser pauser;
     private transient volatile Thread thread = null;
-    private boolean handlersFinished;
+    //! Shutdown callback bookkeeping is runtime state, not Wire configuration.
+    //! Compatibility control: Chronicle-Wire's MarshallingEventGroupTest.test.
+    private transient boolean handlersFinished;
 
     public MonitorEventLoop(final EventLoop parent, final Pauser pauser) {
         this(parent, "", pauser);
