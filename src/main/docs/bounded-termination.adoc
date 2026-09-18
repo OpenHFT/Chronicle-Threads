@@ -1,0 +1,27 @@
+= Bounded termination waits
+:sectnums:
+:lang: en-GB
+
+== Contract
+
+The thread that wins the transition to `STOPPING` owns the stop callback. Other
+callers wait at most five minutes of monotonic elapsed time. Expiry, interruption,
+a failed callback or reentrant stop throws `IllegalStateException`; interruption
+retains the interrupted flag. Only a successful callback sets `STOPPED`.
+
+The first failed wait records the loop name, state, elapsed time, stopper stack
+and up to eight owned event-loop thread stacks, limited to 64 frames each.
+Subsequent failures still throw but do not repeat the diagnostic. The timeout
+bounds secondary waits; it cannot forcibly complete an application stop callback.
+
+`close()` performs this stop check before entering `AbstractCloseable`'s close
+machinery, which otherwise catches exceptions and marks the object closed.
+An unsuccessful stop therefore leaves the close state and handlers untouched.
+After a blocked callback eventually finishes, the caller can close normally.
+
+== Regression coverage
+
+`TerminationWaitTest` controls elapsed time independently of wall-clock changes
+and exercises normal/repeated stop, concurrent callers, expiry through stop and
+close, interruption, callback failure, one diagnostic and retained ownership.
+All controlled worker threads are released and joined after the assertion.
