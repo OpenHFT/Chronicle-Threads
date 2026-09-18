@@ -8,6 +8,9 @@ The thread that wins the transition to `STOPPING` owns the stop callback. Other
 callers wait at most five minutes of monotonic elapsed time. Expiry, interruption,
 a failed callback or reentrant stop throws `IllegalStateException`; interruption
 retains the interrupted flag. Only a successful callback sets `STOPPED`.
+If the callback completes between a waiter's initial state read and its expiry
+or interruption check, completed shutdown takes precedence; the interrupted flag
+is still preserved. An unfinished callback retains the failure behaviour.
 
 The first failed wait records the loop name, state, elapsed time, stopper stack
 and up to eight owned event-loop thread stacks, limited to 64 frames each.
@@ -32,3 +35,12 @@ provides the downstream compatibility control.
 and exercises normal/repeated stop, concurrent callers, expiry through stop and
 close, interruption, callback failure, one diagnostic and retained ownership.
 All controlled worker threads are released and joined after the assertion.
+`completedStopWinsRaceWithWaitFailure` completes the real stop callback during
+the controlled clock read, covering both interruption and deadline expiry.
+Stack assertions identify the owned stop callback without requiring it to have
+reached a particular instruction after releasing the observer's latch.
+
+The surviving-runner lookup fixture keeps both handlers live for the lookup
+assertions, then waits for their actual removal before closing the loop. Merely
+releasing their latches did not guarantee that teardown could no longer interrupt
+the second handler's wait.
