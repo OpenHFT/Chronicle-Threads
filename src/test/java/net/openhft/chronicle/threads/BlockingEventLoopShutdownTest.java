@@ -68,7 +68,7 @@ class BlockingEventLoopShutdownTest extends ThreadsTestCommon {
         final CountDownLatch finishFirst = new CountDownLatch(1);
         final CountDownLatch finishSecond = new CountDownLatch(1);
         final AtomicReference<Thread> survivor = new AtomicReference<>();
-        final RemovingRunnerList runners = new RemovingRunnerList(finishFirst);
+        final RemovingRunnerList runners = new RemovingRunnerList(finishFirst, 2);
         runners.finishAfterGet = true;
         try (BlockingEventLoop loop = new BlockingEventLoop("surviving-runner")) {
             Jvm.getField(BlockingEventLoop.class, "runners").set(loop, runners);
@@ -95,6 +95,10 @@ class BlockingEventLoopShutdownTest extends ThreadsTestCommon {
             } finally {
                 finishFirst.countDown();
                 finishSecond.countDown();
+                // Releasing the latch only makes the survivor runnable. Closing immediately
+                // can interrupt await before it returns and turn normal teardown into a WARN.
+                // Keep the live-runner assertions above, then await both actual removals.
+                await(runners.allRemoved);
             }
         }
     }
@@ -112,12 +116,18 @@ class BlockingEventLoopShutdownTest extends ThreadsTestCommon {
         private static final long serialVersionUID = 1L;
         private final transient CountDownLatch finish;
         private final transient CountDownLatch removed = new CountDownLatch(1);
+        private final transient CountDownLatch allRemoved;
         private final AtomicBoolean armed = new AtomicBoolean();
         private final AtomicInteger iterators = new AtomicInteger();
         private boolean finishAfterGet;
 
         private RemovingRunnerList(CountDownLatch finish) {
+            this(finish, 1);
+        }
+
+        private RemovingRunnerList(CountDownLatch finish, int expectedRemovals) {
             this.finish = finish;
+            this.allRemoved = new CountDownLatch(expectedRemovals);
         }
 
         @Override
@@ -154,8 +164,10 @@ class BlockingEventLoopShutdownTest extends ThreadsTestCommon {
         @Override
         public boolean remove(Object runner) {
             final boolean result = super.remove(runner);
-            if (result)
+            if (result) {
                 removed.countDown();
+                allRemoved.countDown();
+            }
             return result;
         }
     }

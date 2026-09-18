@@ -196,10 +196,14 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
                 throw terminationFailure("stop callback failed", elapsed);
             if (stoppingThread == Thread.currentThread())
                 throw terminationFailure("reentrant stop", elapsed);
-            if (Thread.currentThread().isInterrupted())
-                throw terminationFailure("interrupted", elapsed);
-            if (elapsed >= terminationTimeoutNs)
-                throw terminationFailure("timed out", elapsed);
+            if (Thread.currentThread().isInterrupted() || elapsed >= terminationTimeoutNs) {
+                //! Shutdown can complete after the loop's first state read, including while
+                //! interrupting its workers. Honour completed ownership transfer before failing.
+                //! Control: TerminationWaitTest.completedStopWinsRaceWithWaitFailure.
+                if (lifecycle.get() == EventLoopLifecycle.STOPPED)
+                    return;
+                throw terminationFailure(Thread.currentThread().isInterrupted() ? "interrupted" : "timed out", elapsed);
+            }
             Jvm.pause(1);
         }
     }

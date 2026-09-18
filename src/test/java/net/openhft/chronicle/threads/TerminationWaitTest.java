@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongSupplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -77,7 +78,9 @@ class TerminationWaitTest extends ThreadsTestCommon {
             assertTrue(failure.getMessage().contains("loop=controlled"));
             assertTrue(failure.getMessage().contains("lifecycle=STOPPING"));
             assertTrue(failure.getMessage().contains("stopper=termination-stopper"));
-            assertTrue(failure.getMessage().contains("CountDownLatch.await"));
+            // The stopper can still be returning from countDown when the waiter wakes.
+            // Require its owned callback frame without assuming the scheduler reached await.
+            assertTrue(failure.getMessage().contains("ControlledLoop.performStopFromNew"));
             assertFalse(loop.isClosed());
             assertEquals(0, loop.resourcesClosed.get());
             assertTrue(stopper.isAlive());
@@ -137,6 +140,46 @@ class TerminationWaitTest extends ThreadsTestCommon {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void completedStopWinsRaceWithWaitFailure(boolean interrupt) throws Exception {
+        AtomicInteger clockReads = new AtomicInteger();
+        AtomicReference<ControlledLoop> controlled = new AtomicReference<>();
+        AtomicReference<Thread> stopperRef = new AtomicReference<>();
+        ControlledLoop loop = new ControlledLoop(new AtomicLong(), () -> {
+            if (clockReads.incrementAndGet() == 2) {
+                controlled.get().release.countDown();
+                try {
+                    join(stopperRef.get());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(e);
+                }
+                if (interrupt)
+                    Thread.currentThread().interrupt();
+                return 100;
+            }
+            return 0;
+        });
+        controlled.set(loop);
+        AtomicReference<Throwable> workerFailure = new AtomicReference<>();
+        Thread stopper = startStopper(loop, workerFailure);
+        stopperRef.set(stopper);
+        try {
+            // Complete the real stopper between the initial state read and failure check.
+            assertDoesNotThrow(loop::close);
+            assertEquals(interrupt, Thread.currentThread().isInterrupted());
+            assertTrue(loop.isClosed());
+            assertEquals(1, loop.resourcesClosed.get());
+            assertNull(workerFailure.get());
+        } finally {
+            Thread.interrupted();
+            loop.release.countDown();
+            join(stopper);
+            loop.close();
+        }
+    }
+
     private static Thread startStopper(ControlledLoop loop, AtomicReference<Throwable> failure) throws Exception {
         Thread thread = new Thread(() -> {
             try {
@@ -169,7 +212,11 @@ class TerminationWaitTest extends ThreadsTestCommon {
         }
 
         private ControlledLoop(AtomicLong clock, AtomicLong step) {
-            super("controlled", 100, () -> clock.getAndAdd(step.get()));
+            this(step, () -> clock.getAndAdd(step.get()));
+        }
+
+        private ControlledLoop(AtomicLong step, LongSupplier clock) {
+            super("controlled", 100, clock);
             this.clockStep = step;
         }
 
