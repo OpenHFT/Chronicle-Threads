@@ -1,0 +1,47 @@
+# Static FIX-292 isolation snapshot, 2026-09-20. Provisional entries require review before removal.
+# Open PRs #357
+net/openhft/chronicle/threads/BlockingEventLoopShutdownTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/BlockingEventLoopTest.java
+# Open PRs #358; affinity-or-global-handler
+net/openhft/chronicle/threads/DiskSpaceMonitorTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/EventGroupBadAffinityTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/EventGroupHandlerTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/EventGroupStressTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/EventGroupTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/EventLoopAdmissionTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/EventLoopConcurrencyStressTest.java
+# affinity-or-global-handler
+net/openhft/chronicle/threads/EventLoopsTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/HandlerAdmissionTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/HandlerRegistrationClosedExceptionTest.java
+# Open PRs #359
+net/openhft/chronicle/threads/LongPauserTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/LoopIntrospectionTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/MediumEventLoopTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/PauserTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/PauserTimeoutTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/StopVCloseTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/ThreadsTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/VanillaEventLoopTest.java
+# Open PRs #359
+net/openhft/chronicle/threads/YieldingPauserTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/internal/EventLoopStateRendererTest.java
+# references changed/named test fixture
+net/openhft/chronicle/threads/internal/ThreadsThreadHolderTest.java
