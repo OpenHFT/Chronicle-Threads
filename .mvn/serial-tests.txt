@@ -1,4 +1,7 @@
-# FIX-292: develop already uses four reused workers; retain only the observed eight-worker exception.
-# Reverse-order eight-worker run: lookupFindsSurvivingRunnerWhenEarlierRunnerIsRemoved recorded
-# 'Interrupted waiting for the worker' during shutdown. Keep this class separate pending its fixture repair.
+# FIX-292: exceptions supported by observed local and platform CI failures.
+# BlockingEventLoopShutdownTest: local reverse-order shutdown warning.
+# Timing assertions failed on both Zing JDKs; retain their original assertions and timings in serial/fresh execution.
+# TeamCity builds: 1365949, 1365950
 net/openhft/chronicle/threads/BlockingEventLoopShutdownTest.java
+net/openhft/chronicle/threads/LongPauserTest.java
+net/openhft/chronicle/threads/YieldingPauserTest.java
