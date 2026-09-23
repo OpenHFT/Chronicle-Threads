@@ -404,7 +404,13 @@ public class EventGroup
             replicationSnapshot = replication;
         }
         monitor.stop();
-        EventLoops.stopAll(concurrentSnapshot, replicationSnapshot, core, blocking);
+        if (privateGroup && core != null && core.isRunningOnThread(Thread.currentThread())) {
+            // Private core shutdown interrupts its own thread. Finish foreign waits first.
+            EventLoops.stopAll(concurrentSnapshot, replicationSnapshot, blocking);
+            core.stop();
+        } else {
+            EventLoops.stopAll(concurrentSnapshot, replicationSnapshot, core, blocking);
+        }
     }
 
     /**
