@@ -11,8 +11,11 @@ import net.openhft.chronicle.core.onoes.Slf4jExceptionHandler;
 import net.openhft.chronicle.core.threads.CleaningThread;
 import net.openhft.chronicle.core.threads.ThreadDump;
 import net.openhft.chronicle.core.time.SystemTimeProvider;
-import org.junit.jupiter.api.AfterEach;
+import net.openhft.chronicle.core.util.ThrowingRunnable;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -21,11 +24,32 @@ import java.util.function.Predicate;
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.fail;
 
+@ExtendWith(ThreadsTestCommon.ResourceVerification.class)
 public class ThreadsTestCommon {
     private final Map<Predicate<ExceptionKey>, String> ignoreExceptions = new LinkedHashMap<>();
     private final Map<Predicate<ExceptionKey>, String> expectedExceptions = new LinkedHashMap<>();
     private ThreadDump threadDump;
     private Map<ExceptionKey, Integer> exceptions;
+    private boolean referenceTracingEnabled;
+
+    public static final class ResourceVerification implements AfterEachCallback {
+        @Override
+        public void afterEach(ExtensionContext context) {
+            ThreadsTestCommon fixture = context.getRequiredTestInstances().findInstance(ThreadsTestCommon.class)
+                    .orElseThrow(() -> new IllegalStateException("Missing Threads test fixture"));
+            Throwable failure = attempt(null, fixture::afterChecks);
+            Throwable primary = context.getExecutionException().orElse(null);
+            if (primary == null && failure == null)
+                failure = attempt(null, fixture::verifySuccessfulTest);
+            failure = attempt(failure, fixture::resetTestState);
+            if (failure != null) {
+                if (primary != null && !(primary instanceof org.opentest4j.TestAbortedException))
+                    primary.addSuppressed(failure);
+                else
+                    throw Jvm.rethrow(failure);
+            }
+        }
+    }
 
     @BeforeEach
     public void beforeEachThreadsTestCommon() {
@@ -36,6 +60,7 @@ public class ThreadsTestCommon {
 
     public void enableReferenceTracing() {
         AbstractReferenceCounted.enableReferenceTracing();
+        referenceTracingEnabled = true;
     }
 
     private void assertReferencesReleased() {
@@ -47,7 +72,8 @@ public class ThreadsTestCommon {
     }
 
     private void checkThreadDump() {
-        threadDump.assertNoNewThreads();
+        if (threadDump != null)
+            threadDump.assertNoNewThreads();
     }
 
     public void recordExceptions() {
@@ -109,17 +135,50 @@ public class ThreadsTestCommon {
         fail(description);
     }
 
-    @AfterEach
     public void afterChecks() throws InterruptedException {
-        preAfter();
-        resetSystemTimeProviderClock();
-        CleaningThread.performCleanup(Thread.currentThread());
+        Throwable failure = attempt(null, this::preAfter);
+        failure = attempt(failure, ThreadsTestCommon::resetSystemTimeProviderClock);
+        failure = attempt(failure, () -> CleaningThread.performCleanup(Thread.currentThread()));
+        if (failure != null)
+            throw Jvm.rethrow(failure);
+    }
 
+    private void verifySuccessfulTest() {
+        if (exceptions != null)
+            checkExceptions();
         System.gc();
-        AbstractCloseable.waitForCloseablesToClose(1000);
-        assertReferencesReleased();
-        checkThreadDump();
-        checkExceptions();
+        Throwable failure = attempt(null, () -> AbstractCloseable.waitForCloseablesToClose(1000));
+        if (referenceTracingEnabled)
+            failure = attempt(failure, this::assertReferencesReleased);
+        failure = attempt(failure, this::checkThreadDump);
+        if (failure != null)
+            throw Jvm.rethrow(failure);
+    }
+
+    private void resetTestState() {
+        Throwable failure = attempt(null, Jvm::resetExceptionHandlers);
+        if (referenceTracingEnabled)
+            failure = attempt(failure, AbstractReferenceCounted::disableReferenceTracing);
+        referenceTracingEnabled = false;
+        threadDump = null;
+        exceptions = null;
+        expectedExceptions.clear();
+        ignoreExceptions.clear();
+        resetSystemTimeProviderClock();
+        if (failure != null)
+            throw Jvm.rethrow(failure);
+    }
+
+    private static Throwable attempt(Throwable failure, ThrowingRunnable<Throwable> action) {
+        try {
+            action.run();
+        } catch (Throwable next) {
+            if (failure == null)
+                return next;
+            if (failure != next)
+                failure.addSuppressed(next);
+        }
+        return failure;
     }
 
     void preAfter() throws InterruptedException {
