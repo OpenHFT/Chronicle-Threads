@@ -47,7 +47,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      */
     private final transient Object addHandlerMutex = new Object();
     private final transient Object startStopMutex = new Object();
-    private volatile boolean handlersFinished;
+    //! Shutdown callback bookkeeping is runtime state, not Wire configuration.
+    //! Compatibility control: Chronicle-Wire's MarshallingEventGroupTest.test.
+    private transient volatile boolean handlersFinished;
 
     @Nullable
     protected final transient EventLoop parent;
