@@ -1,0 +1,22 @@
+= Private event-group shutdown
+:sectnums:
+:lang: en-GB
+
+FIX-292 separates self-close coverage from concurrent external close coverage.
+The self-close test waits for the handler's result before outer cleanup starts.
+A non-private group must reject close from its own handler; the test observes
+that exception directly. A separate latch-controlled test holds handler
+completion while another external close is issued.
+
+Private core shutdown calls `shutdownNow`, interrupting the core thread. When
+that same thread closes its event group, it must first finish waiting for
+foreign children to stop, then stop its own core. Otherwise it can interrupt
+its own wait in `EventLoops.stopAll`, logging the original Build-All warning
+and abandoning that wait. External shutdown retains concurrent child stopping.
+The change adds no work to handler execution and does not suppress interrupt
+warnings or change shutdown deadlines.
+
+The controlled private self-close test reproduced the interrupt warning on
+Java 25 before the production change. All EventGroup tests pass after changing
+the shutdown order. Full-suite results and platform qualification are recorded
+in the pull request.
