@@ -1,0 +1,21 @@
+= Disk monitor warning fixture
+:sectnums:
+:lang: en-GB
+
+`DiskSpaceMonitorTest.pollDiskSpace` raises the warning threshold and requires
+roughly five scheduled low-space warnings in its existing observation period.
+Slow file-store queries independently emit PERF diagnostics. Counting those as
+warnings made the fixture fail on busy Windows hosts despite the correct warning
+frequency.
+
+The fixture counts only the low-space WARN messages and deliberately records
+eight additional PERF messages as a regression control. It retains the original
+warning-count range and threshold. Production logging and monitoring are unchanged.
+
+Other WARN and ERROR diagnostics remain test failures rather than disappearing
+from the narrowed count. An ERROR-level near-full panic when less than 200 MiB
+of space is free now fails the fixture instead of counting as a scheduled warning.
+The fixture clears the monitor, restores its recorded
+threshold and resets exception handlers in a `finally` block, including when a
+poll or assertion fails. The original ARM skip remains; an ARM build success
+does not demonstrate execution of this test.
