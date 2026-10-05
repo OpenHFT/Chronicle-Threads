@@ -5,7 +5,6 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
-import net.openhft.chronicle.core.io.ClosedIllegalStateException;
 import net.openhft.chronicle.core.io.ThreadingIllegalStateException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
@@ -62,38 +61,6 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     protected String nameWithSlash() {
         return withSlash(name);
-    }
-
-    //! Callers need a lifecycle-specific rejection to avoid hiding genuine setup failures during shutdown.
-    //! Wrap only this loop's close check; wrapping addHandler as a whole could relabel a callback failure.
-    //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership
-    //! and callbackFailureIsNotReclassifiedAsRejection.
-    final void throwIfClosedForRegistration() {
-        try {
-            throwExceptionIfClosed();
-        } catch (ClosedIllegalStateException closed) {
-            throw new HandlerRegistrationClosedException(closed);
-        }
-    }
-
-    /**
-     * Registers a caller-owned handler, or reports lifecycle rejection without taking ownership.
-     * A rejected handler receives no lifecycle callbacks from this call. The caller must arrange
-     * its cleanup. Accepted handlers follow the loop's usual lifecycle; admission does not
-     * guarantee that shutdown will leave time for an action to run.
-     *
-     * <p>Configuration and application callback failures retain their unchecked exceptions.
-     * Do not submit a handler that is already owned by a loop. Custom subclasses must override
-     * this operation to support checked admission; their existing {@code addHandler} is unchanged.</p>
-     *
-     * @throws HandlerRegistrationRejectedException if stopping or closure prevents admission
-     * @throws UnsupportedOperationException if a custom loop has not implemented checked admission
-     */
-    //! An additive concrete method keeps existing third-party subclasses source/binary compatible.
-    //! It must not delegate to a legacy method that could silently consume a rejected handler.
-    //! Regression: HandlerAdmissionTest.customLoopMustExplicitlySupportCheckedAdmission.
-    public void addHandlerOrThrow(@NotNull EventHandler handler) throws HandlerRegistrationRejectedException {
-        throw new UnsupportedOperationException("Checked handler registration is not supported by " + getClass().getName());
     }
 
     @Override
