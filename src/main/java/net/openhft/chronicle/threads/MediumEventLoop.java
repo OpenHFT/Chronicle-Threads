@@ -30,9 +30,6 @@ import static net.openhft.chronicle.threads.Threads.*;
  * <p>
  * The main loop runs on one thread and repeatedly executes HIGH then MEDIUM
  * handlers before pausing via the supplied {@link Pauser}.
- * Registration is rejected once stopping begins; the rejected handler remains
- * caller-owned. Accepted handlers receive their finish callback even when
- * shutdown prevents their first action from running.
  */
 public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
@@ -47,7 +44,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      */
     private final transient Object addHandlerMutex = new Object();
     private final transient Object startStopMutex = new Object();
-    private volatile boolean handlersFinished;
 
     @Nullable
     protected final transient EventLoop parent;
@@ -175,9 +171,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             unpause();
             shutdownService();
         }
-        // A task cancelled before run() starts cannot deliver its own finish callbacks.
-        // Private groups need not wait for their executor to terminate.
-        finishHandlersOnce(true);
     }
 
     @Override
@@ -203,7 +196,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * Add a handler in the appropriate way given the thread adding the handler and the state of the loop
      */
     protected void addHandlerInternal(@NotNull EventHandler handler) {
-        throwIfRegistrationClosed();
         if (thread == null) {
             if (!addHandlerBeforeStart(handler)) {
                 addHandlerAfterStart(handler);
@@ -221,7 +213,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      */
     private boolean addHandlerBeforeStart(@NotNull EventHandler handler) {
         synchronized (addHandlerMutex) {
-            throwIfRegistrationClosed();
             if (thread != null) {
                 // The loop started since the initial check, fall back to after-start behaviour
                 return false;
@@ -235,29 +226,16 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * This is the code executed when a non-event-loop thread wants to add a handler on a started loop
      */
     private void addHandlerAfterStart(@NotNull EventHandler handler) {
-        // Pair admission with finishHandlersOnce(): an accepted handler must be
-        // visible before the loop takes its final lifecycle snapshot.
-        synchronized (addHandlerMutex) {
-            throwIfRegistrationClosed();
-            newHandlers.offer(handler);
+        if (isStopped()) {
+            if (Jvm.isDebugEnabled(MediumEventLoop.class)) {
+                Jvm.debug().on(MediumEventLoop.class, "Aborted adding handler because event loop was stopped, handler=" + handler);
+            }
+            return;
         }
+
+        newHandlers.offer(handler);
+
         pauser.unpause();
-    }
-
-    private void throwIfRegistrationClosed() {
-        if (isStopped() || handlersFinished)
-            throw new IllegalStateException("Cannot add a handler to stopped event loop " + name());
-    }
-
-    private void finishHandlersOnce(boolean onlyIfNotRunning) {
-        synchronized (addHandlerMutex) {
-            if (handlersFinished || (onlyIfNotRunning && thread != null))
-                return;
-            handlersFinished = true;
-        }
-        // Callbacks may wait for other threads which attempt registration.
-        // Keep them outside the admission lock so those attempts can be rejected.
-        loopFinishedAllHandlers();
     }
 
     @Override
@@ -272,8 +250,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             try (AffinityLock lock = AffinityLock.acquireLock(binding)) {
                 // Make sure nobody's adding a handler while we do this
                 synchronized (addHandlerMutex) {
-                    if (handlersFinished)
-                        return;
                     thread = Thread.currentThread();
                     loopStartedAllHandlers();
                 }
@@ -285,7 +261,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 }
                 // otherwise ignore, already closed
             } finally {
-                finishHandlersOnce(false);
+                loopFinishedAllHandlers();
                 loopStartNS = NOT_IN_A_LOOP;
                 thread = null;
             }
