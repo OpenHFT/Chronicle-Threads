@@ -372,7 +372,13 @@ public class EventGroup
 
     private void performStop() {
         monitor.stop();
-        EventLoops.stopAll(concThreads, replication, core, blocking);
+        if (privateGroup && core != null && core.isRunningOnThread(Thread.currentThread())) {
+            // Private core shutdown interrupts its own thread. Finish foreign waits first.
+            EventLoops.stopAll(concThreads, replication, blocking);
+            core.stop();
+        } else {
+            EventLoops.stopAll(concThreads, replication, core, blocking);
+        }
     }
 
     /**
