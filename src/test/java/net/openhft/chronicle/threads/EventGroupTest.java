@@ -16,7 +16,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -117,19 +121,19 @@ public class EventGroupTest extends ThreadsTestCommon {
 
     @Timeout(5)
     @Test
-    void testSimpleEventGroupPrivateGroup() {
+    void testSimpleEventGroupPrivateGroup() throws Exception {
         doTestSimpleEventGroup(true);
     }
 
     @Timeout(5)
     @Test
-    void testSimpleEventGroupNonPrivateGroup() {
+    void testSimpleEventGroupNonPrivateGroup() throws Exception {
         doTestSimpleEventGroup(false);
     }
 
-    private void doTestSimpleEventGroup(boolean privateGroup) {
-        if (!privateGroup)
-            ignoreException("Attempting to close private:false from within!");
+    @SuppressWarnings("try") // Closing from the event-loop thread is the behaviour under test.
+    private void doTestSimpleEventGroup(boolean privateGroup) throws Exception {
+        CompletableFuture<Void> attemptedClose = new CompletableFuture<>();
         try (final EventLoop eventGroup = EventGroup.builder()
                 .withName("private:" + privateGroup)
                 .withPriorities(HandlerPriority.MEDIUM)
@@ -138,9 +142,71 @@ public class EventGroupTest extends ThreadsTestCommon {
                 .build()) {
             eventGroup.start();
             eventGroup.addHandler(() -> {
-                closeQuietly(eventGroup);
-                return false;
+                try {
+                    if (privateGroup)
+                        eventGroup.close();
+                    else
+                        assertThrows(ThreadingIllegalStateException.class, eventGroup::close);
+                    attemptedClose.complete(null);
+                } catch (Throwable failure) {
+                    attemptedClose.completeExceptionally(failure);
+                }
+                throw InvalidEventHandlerException.reusable();
             });
+            attemptedClose.get(2, TimeUnit.SECONDS);
+            assertEquals(privateGroup, eventGroup.isClosed());
+        }
+    }
+
+    @Test
+    @Timeout(5)
+    @SuppressWarnings("try") // The second close deliberately overlaps the first close.
+    void concurrentCloseWhileHandlerFinishes() throws Exception {
+        CountDownLatch finishing = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        ExecutorService closer = Executors.newSingleThreadExecutor();
+        try (EventGroup group = EventGroup.builder().withPriorities(HandlerPriority.MEDIUM).build()) {
+            CountDownLatch started = new CountDownLatch(1);
+            group.addHandler(new EventHandler() {
+                @Override public boolean action() {
+                    started.countDown();
+                    return false;
+                }
+
+                @Override public void loopFinished() {
+                    finishing.countDown();
+                    boolean interrupted = false;
+                    while (true) {
+                        try {
+                            release.await();
+                            break;
+                        } catch (InterruptedException expectedDuringShutdown) {
+                            interrupted = true;
+                        }
+                    }
+                    if (interrupted)
+                        Thread.currentThread().interrupt();
+                }
+            });
+            group.start();
+            assertTrue(started.await(1, TimeUnit.SECONDS), "Handler did not start");
+            Future<?> firstClose = closer.submit(group::close);
+            try (AutoCloseable finishClose = () -> {
+                release.countDown();
+                firstClose.get(2, TimeUnit.SECONDS);
+            }) {
+                assertTrue(finishing.await(1, TimeUnit.SECONDS), "Close did not reach handler completion");
+                assertTrue(group.isClosing());
+                assertFalse(firstClose.isDone());
+                group.close();
+                assertFalse(firstClose.isDone(), "First close must still be held at handler completion");
+            }
+            assertTrue(group.isClosed());
+            assertTrue(group.isStopped());
+        } finally {
+            release.countDown();
+            closer.shutdownNow();
+            assertTrue(closer.awaitTermination(1, TimeUnit.SECONDS), "Closer did not terminate");
         }
     }
 

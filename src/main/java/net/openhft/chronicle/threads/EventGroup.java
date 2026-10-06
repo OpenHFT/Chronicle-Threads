@@ -372,7 +372,13 @@ public class EventGroup
 
     private void performStop() {
         monitor.stop();
-        EventLoops.stopAll(concThreads, replication, core, blocking);
+        if (privateGroup && core != null && core.isRunningOnThread(Thread.currentThread())) {
+            // shutdownNow() on a private core loop interrupts this thread, so stop the other loops before the core loop.
+            EventLoops.stopAll(concThreads, replication, blocking);
+            core.stop();
+        } else {
+            EventLoops.stopAll(concThreads, replication, core, blocking);
+        }
     }
 
     /**
