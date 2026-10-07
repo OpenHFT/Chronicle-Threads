@@ -97,11 +97,19 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     @Override
     public final void stop() {
         if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STOPPING)) {
-            performStopFromNew();
-            lifecycle.set(EventLoopLifecycle.STOPPED);
+            try {
+                performStopFromNew();
+            } finally {
+                // A stop callback that throws must not leave the loop in STOPPING, or every later
+                // stop() and close() waits for a transition that never comes.
+                lifecycle.set(EventLoopLifecycle.STOPPED);
+            }
         } else if (lifecycle.compareAndSet(EventLoopLifecycle.STARTED, EventLoopLifecycle.STOPPING)) {
-            performStopFromStarted();
-            lifecycle.set(EventLoopLifecycle.STOPPED);
+            try {
+                performStopFromStarted();
+            } finally {
+                lifecycle.set(EventLoopLifecycle.STOPPED);
+            }
         } else {
             awaitTermination();
         }
@@ -136,6 +144,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
                 return;
             if (System.currentTimeMillis() > endTime) {
                 Jvm.error().on(getClass(), "awaitTermination() timed out, continuing. This probably represents a bug.");
+                return;
             }
             Jvm.pause(1);
         }
