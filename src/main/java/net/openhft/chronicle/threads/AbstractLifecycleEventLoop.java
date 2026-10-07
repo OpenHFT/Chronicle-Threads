@@ -40,6 +40,8 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      */
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
+    // Runtime state, not configuration: transient keeps it out of Wire marshalling.
+    private final transient long awaitTerminationTimeoutMs;
     protected final String name;
     volatile boolean privateGroup;
 
@@ -53,6 +55,14 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      * @param name descriptive name for the loop
      */
     protected AbstractLifecycleEventLoop(@NotNull String name) {
+        this(name, AWAIT_TERMINATION_TIMEOUT_MS);
+    }
+
+    /**
+     * Test seam: a short termination timeout makes the timeout path testable.
+     */
+    AbstractLifecycleEventLoop(@NotNull String name, long awaitTerminationTimeoutMs) {
+        this.awaitTerminationTimeoutMs = awaitTerminationTimeoutMs;
         this.name = name.replaceAll("/$", "");
 
         // event loops operate on dedicated threads but may be closed elsewhere
@@ -120,7 +130,7 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      * indefinitely.</p>
      */
     protected final void awaitTermination() {
-        long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
+        long endTime = System.currentTimeMillis() + awaitTerminationTimeoutMs;
         while (!Thread.currentThread().isInterrupted()) {
             if (lifecycle.get() == EventLoopLifecycle.STOPPED)
                 return;
