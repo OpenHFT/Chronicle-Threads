@@ -28,8 +28,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * </ul>
  * Transitions are linear in that order. Invoking {@code stop()} while in
  * {@code NEW} skips {@code STARTED} entirely. Both {@code start()} and
- * {@code stop()} are idempotent and {@code stop()} blocks until the loop is
- * {@code STOPPED}.
+ * {@code stop()} are idempotent. {@code stop()} blocks until the loop is
+ * {@code STOPPED}, or until the termination wait times out; then it logs an
+ * error and returns.
  */
 @SuppressWarnings("this-escape")
 public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
@@ -132,10 +133,9 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     /**
      * Wait for the loop to reach {@link EventLoopLifecycle#STOPPED}.
      *
-     * <p>If the state does not change within
-     * {@link #AWAIT_TERMINATION_TIMEOUT_MS} milliseconds an error is logged and
-     * the method returns. The timeout is primarily to avoid tests hanging
-     * indefinitely.</p>
+     * <p>If the state does not change within the termination timeout, 5
+     * minutes by default, the method logs an error and returns. The timeout is
+     * primarily to avoid tests hanging indefinitely.</p>
      */
     protected final void awaitTermination() {
         long endTime = System.currentTimeMillis() + awaitTerminationTimeoutMs;

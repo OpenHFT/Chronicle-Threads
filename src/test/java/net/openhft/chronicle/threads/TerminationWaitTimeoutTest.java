@@ -3,13 +3,10 @@
  */
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.Jvm;
-import net.openhft.chronicle.core.onoes.ExceptionKey;
 import net.openhft.chronicle.core.threads.EventHandler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,11 +35,8 @@ class TerminationWaitTimeoutTest extends ThreadsTestCommon {
             waiter.join(5_000);
             assertFalse(waiter.isAlive(), "second stop() did not return after the termination timeout");
             assertTrue(stopper.isAlive());
-            final Map<ExceptionKey, Integer> exceptions = Jvm.getValue(this, "exceptions");
-            final int timedOut = exceptions.entrySet().stream()
-                    .filter(e -> e.getKey().message.contains("awaitTermination() timed out"))
-                    .mapToInt(Map.Entry::getValue).sum();
-            assertEquals(1, timedOut, "the timeout must be logged once, not once a millisecond");
+            assertEquals(1, countExceptions("awaitTermination() timed out"),
+                    "the timeout must be logged once, not once a millisecond");
         } finally {
             // A waiter that never returned would spin forever and pin the JVM.
             waiter.interrupt();

@@ -11,6 +11,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -45,6 +46,7 @@ class ShutdownServiceRaceTest extends ThreadsTestCommon {
         assertTrue(running.await(5, TimeUnit.SECONDS));
         try {
             assertDoesNotThrow(loop::stop, "stop() must survive the loop thread exiting during its wait");
+            assertFalse(loop.isAlive(), "the loop thread must exit during the wait loop");
         } finally {
             never.countDown();
             loop.close();
