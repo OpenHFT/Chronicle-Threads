@@ -685,6 +685,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         }
 
         Threads.shutdown(service, daemon);
+        // run() sets the volatile field to null when the loop thread exits, which can happen at any
+        // point in the wait below, so read the field once.
+        final Thread thread = this.thread;
         if (thread != null && thread != Thread.currentThread()) {
             long startTimeMillis = System.currentTimeMillis();
             long waitUntilMs = startTimeMillis;
