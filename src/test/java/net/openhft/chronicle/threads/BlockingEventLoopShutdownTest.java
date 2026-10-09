@@ -95,9 +95,10 @@ class BlockingEventLoopShutdownTest extends ThreadsTestCommon {
             } finally {
                 finishFirst.countDown();
                 finishSecond.countDown();
-                // Releasing the latch only makes the survivor runnable. Closing immediately
-                // can interrupt await before it returns and turn normal teardown into a WARN.
-                // Keep the live-runner assertions above, then await both actual removals.
+                //! Releasing a latch does not mean its runner has left await. Close can still
+                //! interrupt that wait, producing a handler WARN during otherwise normal teardown.
+                //! Wait for both removals after the live-runner assertions; regression:
+                //! BlockingEventLoopShutdownTest#lookupFindsSurvivingRunnerWhenEarlierRunnerIsRemoved.
                 await(runners.allRemoved);
             }
         }

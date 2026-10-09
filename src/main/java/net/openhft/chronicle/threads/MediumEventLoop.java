@@ -30,9 +30,6 @@ import static net.openhft.chronicle.threads.Threads.*;
  * <p>
  * The main loop runs on one thread and repeatedly executes HIGH then MEDIUM
  * handlers before pausing via the supplied {@link Pauser}.
- * Legacy registration retires handlers submitted after stopping begins; explicit
- * checked rejection leaves them caller-owned. Accepted handlers finish even when
- * shutdown prevents their first action from running.
  */
 public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreEventLoop, Runnable, Closeable {
     public static final Set<HandlerPriority> ALLOWED_PRIORITIES =
@@ -47,9 +44,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      */
     private final transient Object addHandlerMutex = new Object();
     private final transient Object startStopMutex = new Object();
-    //! Shutdown callback bookkeeping is runtime state, not Wire configuration.
-    //! Compatibility control: Chronicle-Wire's MarshallingEventGroupTest.test.
-    private transient volatile boolean handlersFinished;
 
     @Nullable
     protected final transient EventLoop parent;
@@ -177,21 +171,11 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             unpause();
             shutdownService();
         }
-        // A task cancelled before run() starts cannot deliver its own finish callbacks.
-        // Private groups need not wait for their executor to terminate.
-        finishHandlersOnce(true);
     }
 
-    /**
-     * Registers the handler, or finishes and closes it if stopping has begun.
-     * A fully closed loop retains its unchecked rejection. Use {@link #addHandlerOrThrow(EventHandler)}
-     * when the caller needs to retain ownership if admission is rejected.
-     */
     @Override
     public void addHandler(@NotNull final EventHandler handler) {
-        //! Keep the established unchecked failure for legacy registration on a fully closed loop.
-        //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership (MEDIUM).
-        throwIfClosedForRegistration();
+        throwExceptionIfClosed();
 
         // Thread-safe: external threads enqueue handlers while the loop
         // thread holds {@code addHandlerMutex} during start-up.
@@ -199,88 +183,59 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         final HandlerPriority priority = handler.priority().alias();
         if (DEBUG_ADDING_HANDLERS)
             Jvm.debug().on(getClass(), "Adding " + priority + " " + handler + " to " + this.name);
-        validatePriority(handler, priority);
-        addHandlerInternal(handler);
-    }
-
-    //! Group shutdown must still report configuration failures before retiring a late handler.
-    //! Share the same validation: HandlerAdmissionTest.configurationAndCallbackFailuresRemainVisible.
-    void validatePriority(EventHandler handler, HandlerPriority priority) {
         if (!ALLOWED_PRIORITIES.contains(priority)) {
             if (handler.priority() == HandlerPriority.MONITOR) {
                 Jvm.warn().on(getClass(), "Ignoring " + handler.getClass());
             }
             throw new IllegalStateException(name() + ": Unexpected priority " + priority + " for " + handler);
         }
+        addHandlerInternal(handler);
     }
 
     /**
      * Add a handler in the appropriate way given the thread adding the handler and the state of the loop
      */
     protected void addHandlerInternal(@NotNull EventHandler handler) {
-        //! Legacy stop-time registration must not introduce a new exception into existing callers.
-        //! Retire the unadmitted handler, including its buffers, outside addHandlerMutex.
-        //! Regressions: HandlerAdmissionTest.legacyRegistrationRetiresLateHandler,
-        //! stoppingRegistrationHasExplicitOwnership, legacyCleanupRunsOutsideAdmissionLock and cleanupFailuresRemainVisible.
-        if (!tryAddHandlerInternal(handler)) {
-            retireUnadmittedHandler(handler);
-        }
-    }
-
-    @Override
-    //! Explicit admission leaves rejected resources with the caller; acceptance keeps normal lifecycle delivery.
-    //! Regressions: HandlerAdmissionTest.checkedRegistrationRetainsRejectedOwnership,
-    //! checkedRegistrationAcceptsConfiguredPriorities and checkedExceptionMustBeCaughtOrDeclared.
-    //! HandlerRegistrationClosedExceptionTest covers checked rejection in checkedStoppedLoopHasDistinguishableRejection.
-    //! EventLoopAdmissionTest verifies rejectsRegistrationAfterStopWithoutStart and rejectsRegistrationAfterStartedLoopStops.
-    //! It also exercises pendingHandlerFinishesOnceAndLateRegistrationIsRejected and
-    //! finishCallbackCanWaitForAnotherThreadsRejectedRegistration.
-    public void addHandlerOrThrow(@NotNull EventHandler handler) throws HandlerRegistrationRejectedException {
-        final HandlerPriority priority = handler.priority().alias();
-        validatePriority(handler, priority);
-        if (isClosing() || !tryAddHandlerInternal(handler))
-            throw new HandlerRegistrationRejectedException("Cannot add a handler to stopped event loop " + name());
-    }
-
-    protected final boolean tryAddHandlerInternal(@NotNull EventHandler handler) {
         if (thread == null) {
-            synchronized (addHandlerMutex) {
-                if (registrationClosed())
-                    return false;
-                if (thread == null) {
-                    addNewHandler(handler);
-                    return true;
-                }
+            if (!addHandlerBeforeStart(handler)) {
+                addHandlerAfterStart(handler);
             }
         } else if (thread == Thread.currentThread()) {
-            if (registrationClosed())
-                return false;
+            // The event loop thread adding a handler to itself
             addNewHandler(handler);
-            return true;
+        } else {
+            addHandlerAfterStart(handler);
         }
-        // Preserve the admission/final-snapshot interlock introduced by #353.
+    }
+
+    /**
+     * This is the code used when any thread tries to add an event handler before a loop is started
+     */
+    private boolean addHandlerBeforeStart(@NotNull EventHandler handler) {
         synchronized (addHandlerMutex) {
-            if (registrationClosed())
+            if (thread != null) {
+                // The loop started since the initial check, fall back to after-start behaviour
                 return false;
-            newHandlers.offer(handler);
+            }
+            addNewHandler(handler);
         }
-        pauser.unpause();
         return true;
     }
 
-    private boolean registrationClosed() {
-        return isStopped() || handlersFinished;
-    }
-
-    private void finishHandlersOnce(boolean onlyIfNotRunning) {
-        synchronized (addHandlerMutex) {
-            if (handlersFinished || (onlyIfNotRunning && thread != null))
-                return;
-            handlersFinished = true;
+    /**
+     * This is the code executed when a non-event-loop thread wants to add a handler on a started loop
+     */
+    private void addHandlerAfterStart(@NotNull EventHandler handler) {
+        if (isStopped()) {
+            if (Jvm.isDebugEnabled(MediumEventLoop.class)) {
+                Jvm.debug().on(MediumEventLoop.class, "Aborted adding handler because event loop was stopped, handler=" + handler);
+            }
+            return;
         }
-        // Callbacks may wait for other threads which attempt registration.
-        // Keep them outside the admission lock so those attempts can be rejected.
-        loopFinishedAllHandlers();
+
+        newHandlers.offer(handler);
+
+        pauser.unpause();
     }
 
     @Override
@@ -295,8 +250,6 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             try (AffinityLock lock = AffinityLock.acquireLock(binding)) {
                 // Make sure nobody's adding a handler while we do this
                 synchronized (addHandlerMutex) {
-                    if (handlersFinished)
-                        return;
                     thread = Thread.currentThread();
                     loopStartedAllHandlers();
                 }
@@ -308,7 +261,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 }
                 // otherwise ignore, already closed
             } finally {
-                finishHandlersOnce(false);
+                loopFinishedAllHandlers();
                 loopStartNS = NOT_IN_A_LOOP;
                 thread = null;
             }
@@ -732,6 +685,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         }
 
         Threads.shutdown(service, daemon);
+        // run() sets the volatile field to null when the loop thread exits, which can happen at any
+        // point in the wait below, so read the field once.
+        final Thread thread = this.thread;
         if (thread != null && thread != Thread.currentThread()) {
             long startTimeMillis = System.currentTimeMillis();
             long waitUntilMs = startTimeMillis;

@@ -54,6 +54,14 @@ public class ThreadsTestCommon {
         exceptions = Jvm.recordExceptions();
     }
 
+    int countExceptions(String message) {
+        int count = 0;
+        for (Map.Entry<ExceptionKey, Integer> entry : exceptions.entrySet())
+            if (contains(entry.getKey().message, message))
+                count += entry.getValue();
+        return count;
+    }
+
     void ignoreException(String message) {
         ignoreException(k -> contains(k.message, message) || (k.throwable != null && k.throwable.getMessage().contains(message)), message);
     }
