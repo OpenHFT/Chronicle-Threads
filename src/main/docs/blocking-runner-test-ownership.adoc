@@ -1,0 +1,20 @@
+= Blocking runner test ownership
+:sectnums:
+:lang: en-GB
+
+== Fixture lifetime
+
+`BlockingEventLoopShutdownTest#lookupFindsSurvivingRunnerWhenEarlierRunnerIsRemoved`
+keeps both handlers live while it checks that removing one runner cannot hide the
+survivor. After those assertions, it releases both handlers and waits for both
+runners to remove themselves before closing the loop.
+
+Releasing a latch alone only makes its waiter runnable. Immediate loop closure
+can interrupt a runner that has not yet returned from its latch wait, producing
+an unexpected handler warning. The fixture retains its five-second waits, live
+runner assertions and normal warning checks.
+
+The failure was observed in
+https://teamcity.chronicle.software/buildConfiguration/Chronicle_BuildAll_EnterpriseJava8/1374387[Build All Java 8 build 1374387].
+The production shutdown behaviour remains that of `develop`, including the
+termination wait changes merged in Chronicle-Threads #365.
