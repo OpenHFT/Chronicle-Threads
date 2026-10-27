@@ -167,6 +167,9 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
     }
 
     private void stopEventLoopThread() {
+        synchronized (addHandlerMutex) {
+            // Wait for an admission that began before STOPPING. Never hold this lock while joining.
+        }
         synchronized (startStopMutex) {
             unpause();
             shutdownService();
@@ -202,6 +205,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
             }
         } else if (thread == Thread.currentThread()) {
             // The event loop thread adding a handler to itself
+            rejectIfStopped();
             addNewHandler(handler);
         } else {
             addHandlerAfterStart(handler);
@@ -213,6 +217,7 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      */
     private boolean addHandlerBeforeStart(@NotNull EventHandler handler) {
         synchronized (addHandlerMutex) {
+            rejectIfStopped();
             if (thread != null) {
                 // The loop started since the initial check, fall back to after-start behaviour
                 return false;
@@ -226,16 +231,16 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
      * This is the code executed when a non-event-loop thread wants to add a handler on a started loop
      */
     private void addHandlerAfterStart(@NotNull EventHandler handler) {
-        if (isStopped()) {
-            if (Jvm.isDebugEnabled(MediumEventLoop.class)) {
-                Jvm.debug().on(MediumEventLoop.class, "Aborted adding handler because event loop was stopped, handler=" + handler);
-            }
-            return;
+        synchronized (addHandlerMutex) {
+            rejectIfStopped();
+            newHandlers.offer(handler);
         }
-
-        newHandlers.offer(handler);
-
         pauser.unpause();
+    }
+
+    private void rejectIfStopped() {
+        if (isStopped())
+            throw new RejectedExecutionException(name() + ": handler remains caller-owned while stopping or stopped");
     }
 
     @Override
@@ -261,9 +266,11 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
                 }
                 // otherwise ignore, already closed
             } finally {
-                loopFinishedAllHandlers();
-                loopStartNS = NOT_IN_A_LOOP;
-                thread = null;
+                synchronized (addHandlerMutex) {
+                    loopFinishedAllHandlers();
+                    loopStartNS = NOT_IN_A_LOOP;
+                    thread = null;
+                }
             }
         } catch (Throwable e) {
             Jvm.warn().on(getClass(), hasBeen("terminated due to exception"), e);
