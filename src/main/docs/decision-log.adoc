@@ -16,8 +16,28 @@ Numbers are unique within the THR scope.
 * link:#THR-DOC-004[THR-DOC-004 Nine-Box taxonomy for requirements and decisions]
 * link:#THR-FN-005[THR-FN-005 EventGroup priority sets gate handler registration]
 * link:#THR-TEST-006[THR-TEST-006 Preserve first-attempt unit-test failures]
+* link:#THR-FN-037[THR-FN-037 Keep handler admission inside the stop boundary]
 
 == Decision Records
+
+[[THR-FN-037]]
+=== THR-FN-037 Keep handler admission inside the stop boundary
+
+Date:: 2026-10-27
+Context::
+* Lazy child creation could finish after a group's stop set was captured.
+* A stopped medium loop could silently discard a new handler, obscuring resource ownership.
+Decision Statement::
+* `EventGroup` serialises registration and lazy child creation with capture of the stop set.
+* Requests that lose admission to `STOPPING` throw `RejectedExecutionException`; the caller retains the handler.
+* An admitted child belongs to the stop set. An admitted medium-loop handler is included in completion and eventual close.
+* Joins occur outside the admission monitor; handler execution gains no per-iteration lock or allocation.
+Validation::
+* Latch-controlled tests cover creation before stop, registration after stop, caller ownership on rejection and the normal accepted lifecycle.
+* Run the same controls on the unchanged source and preserve their failures with effective zero retries.
+Impact & Consequences::
+* Callers must handle explicit rejection and dispose of resources whose ownership did not transfer.
+* The change concerns admission; it does not impose an application-specific producer/drainer stop order.
 
 [[THR-FN-001]]
 === THR-FN-001 Event loops are single-threaded for handler execution
