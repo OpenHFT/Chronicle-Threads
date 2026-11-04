@@ -51,10 +51,8 @@ class LongPauserTest extends ThreadsTestCommon {
         boolean failedOnce = false;
         for (int i = 0; i < 100; i++) {
             try {
-                pauser.asyncPause();
-                testUntilUnpaused(pauser, 1, TimeUnit.MILLISECONDS);
-                pauser.reset();
-                testUntilUnpaused(pauser, 0, TimeUnit.MILLISECONDS);
+                assertAsyncPausesFor(pauser, pauser::asyncPause, TimeUnit.MILLISECONDS.toNanos(1));
+                assertAsyncPausesFor(pauser, pauser::reset, 0);
             } catch (AssertionError e) {
                 if (failedOnce)
                     throw e;
@@ -72,15 +70,50 @@ class LongPauserTest extends ThreadsTestCommon {
         assertFalse(longPauser.asyncPausing());
     }
 
-    private static void testUntilUnpaused(LongPauser pauser, int n, TimeUnit timeUnit) {
-        long timeNS = timeUnit.convert(n, TimeUnit.NANOSECONDS);
-        long start = System.nanoTime();
-        while (pauser.asyncPausing()) {
-            if (System.nanoTime() > start + timeNS + 100_000_000)
-                fail();
+    /**
+     * Runs {@code action} then spins on {@link LongPauser#asyncPausing()} until it clears, asserting the elapsed
+     * time is at least {@code expectedNs} and not much more.
+     *
+     * <p>A stall (GC, safepoint, descheduling) can stretch the elapsed time in two places:
+     * <ul>
+     *   <li>inside {@code action}, before it samples the clock to set the deadline</li>
+     *   <li>between the last check that still saw pausing and the end of the loop</li>
+     * </ul>
+     * Both gaps are measured and added to the fixed tolerance.
+     */
+    private static void assertAsyncPausesFor(LongPauser pauser, Runnable action, long expectedNs) {
+        final long toleranceNs = 1_000;
+        final long timeoutNs = 100_000_000;
+
+        // We time the action in case GC etc. makes it unexpectedly slow
+        final long start = System.nanoTime();
+        action.run();
+        final long actionEnd = System.nanoTime();
+        final long actionDurationNs = actionEnd - start;
+
+        // We time the gaps between calls to pauser.asyncPausing() in case the final one is unexpectedly long
+        long lastPausingNs = actionEnd;
+        while(true) {
+            final long beforeCheckNs = System.nanoTime();
+            if (!pauser.asyncPausing())
+                break;
+            lastPausingNs = beforeCheckNs;
+            // Fail if the loop does not exit in a reasonable time
+            if (beforeCheckNs - start - actionDurationNs > expectedNs + timeoutNs)
+                fail("Still pausing after " + (beforeCheckNs - start) / 1_000 + " us, action took " + actionDurationNs / 1_000 + " us");
         }
-        long time = System.nanoTime() - start;
-        final int delta = 11_000_000;
-        assertEquals(timeNS + delta, time, delta);
+        final long end = System.nanoTime();
+        final long finalGapNs = end - lastPausingNs;
+        final long elapsedNs = end - start;
+
+        // The timing uncertainty is the sum of:
+        //   actionDurationNs - because we are not sure exactly when any pause timer was started
+        //   finalGapNs - because the pause may have ended this long ago when we finally detected it had ended
+        //   toleranceNs - accounts for rounding errors, timing jitter etc.
+        final long uncertaintyNs = toleranceNs + actionDurationNs + finalGapNs;
+        final long delta = uncertaintyNs / 2;
+        assertEquals(expectedNs + delta, elapsedNs, delta,
+                () -> "elapsed " + elapsedNs / 1_000 + " us, expected " + expectedNs / 1_000
+                        + " us, setup gap " + actionDurationNs / 1_000 + " us, final gap " + finalGapNs / 1_000 + " us");
     }
 }
