@@ -133,17 +133,21 @@ public class VanillaEventLoop extends MediumEventLoop {
     }
 
     private void runAllHandlers(List<EventHandler> handlers) {
-        for (int i = 0; i < handlers.size(); i++) {
+        for (int i = 0; i < handlers.size(); ) {
             EventHandler handler = null;
             try {
                 handler = handlers.get(i);
                 handler.action();
             } catch (InvalidEventHandlerException e) {
                 removeHandler(handler, handlers);
+                continue;
             } catch (Throwable e) {
-                if (handle(this, handler, e))
+                if (handle(this, handler, e)) {
                     removeHandler(handler, handlers);
+                    continue;
+                }
             }
+            i++;
         }
     }
 

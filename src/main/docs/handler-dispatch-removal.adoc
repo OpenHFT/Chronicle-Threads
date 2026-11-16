@@ -1,0 +1,11 @@
+= Handler removal during dispatch
+:sectnums:
+:lang: en-GB
+
+Each timer or daemon dispatch pass visits the handlers in list order.
+Removing a handler shifts its successor into the current index; dispatch must process that successor before advancing the index.
+Invalid handlers still receive `loopFinished` and `close` once, including when either callback throws.
+Unexpected action failures retain the existing handler policy.
+
+The loop uses the existing list without allocating an iterator or a per-pass snapshot.
+`HandlerDispatchTest` exercises adjacent removals, callback failures, duplicate registration and unaffected following handlers without timing or worker scheduling assumptions.
