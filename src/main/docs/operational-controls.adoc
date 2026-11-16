@@ -47,6 +47,13 @@ Review hot-spots ::
 
 == Startup, Shutdown, and Recovery
 
+`Threads.shutdown` initially waits for tasks to finish. If the caller is
+interrupted during that wait, it cancels outstanding tasks with `shutdownNow`
+and restores the caller's interrupt status. Tasks must cooperate with interruption;
+this cannot force an unresponsive task to terminate.
+`InterruptedShutdownProbeTest` covers cancellation of a blocked worker and
+preservation of the caller's interrupt status, with daemon shutdown as a control.
+
 Why ::
 Predictable lifecycle management prevents resource leaks and eases maintenance.
 

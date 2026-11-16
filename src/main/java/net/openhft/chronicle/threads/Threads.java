@@ -136,6 +136,8 @@ public enum Threads {
      * Shutdown a {@link ExecutorService}. We assume that the service's tasks have already been told to
      * stop (e.g. {@code running.set(false)}) and that we can initially just wait (for {@link #SHUTDOWN_WAIT_MILLIS})
      * for the service to complete. If it does not stop by itself then we terminate it.
+     * If the caller is interrupted while waiting, cancel outstanding tasks and preserve
+     * the caller's interrupt status.
      *
      * @param service service
      */
@@ -146,18 +148,20 @@ public enum Threads {
         Threads.unpark(service);
         try {
 
-            if (!service.awaitTermination(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS)) {
-                service.shutdownNow();
-
-                if (!service.awaitTermination(10, TimeUnit.MILLISECONDS)) {
-                    if (!(service instanceof ThreadPoolExecutor)) {
-                        Jvm.warn().on(Threads.class, "*** FAILED TO TERMINATE " + service);
-                    }
-                    warnRunningThreads(service);
-                }
-            }
+            if (service.awaitTermination(SHUTDOWN_WAIT_MILLIS, TimeUnit.MILLISECONDS))
+                return;
+            service.shutdownNow();
+            if (service.awaitTermination(10, TimeUnit.MILLISECONDS))
+                return;
+            if (!(service instanceof ThreadPoolExecutor))
+                Jvm.warn().on(Threads.class, "*** FAILED TO TERMINATE " + service);
+            warnRunningThreads(service);
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            try {
+                service.shutdownNow();
+            } finally {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
