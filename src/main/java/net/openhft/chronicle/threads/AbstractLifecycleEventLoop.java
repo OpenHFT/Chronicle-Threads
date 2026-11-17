@@ -5,7 +5,6 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
-import net.openhft.chronicle.core.io.ClosedIllegalStateException;
 import net.openhft.chronicle.core.io.ThreadingIllegalStateException;
 import net.openhft.chronicle.core.threads.EventHandler;
 import net.openhft.chronicle.core.threads.EventLoop;
@@ -29,8 +28,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * </ul>
  * Transitions are linear in that order. Invoking {@code stop()} while in
  * {@code NEW} skips {@code STARTED} entirely. Both {@code start()} and
- * {@code stop()} are idempotent and {@code stop()} blocks until the loop is
- * {@code STOPPED}.
+ * {@code stop()} are idempotent. {@code stop()} blocks until the loop is
+ * {@code STOPPED}, or until the termination wait times out; then it logs an
+ * error and returns.
  */
 @SuppressWarnings("this-escape")
 public abstract class AbstractLifecycleEventLoop extends AbstractCloseable implements EventLoop {
@@ -41,6 +41,8 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      */
     private static final long AWAIT_TERMINATION_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
     private final AtomicReference<EventLoopLifecycle> lifecycle = new AtomicReference<>(EventLoopLifecycle.NEW);
+    // Runtime state, not configuration: transient keeps it out of Wire marshalling.
+    private final transient long awaitTerminationTimeoutMs;
     protected final String name;
     volatile boolean privateGroup;
 
@@ -54,6 +56,14 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
      * @param name descriptive name for the loop
      */
     protected AbstractLifecycleEventLoop(@NotNull String name) {
+        this(name, AWAIT_TERMINATION_TIMEOUT_MS);
+    }
+
+    /**
+     * Test seam: a short termination timeout makes the timeout path testable.
+     */
+    AbstractLifecycleEventLoop(@NotNull String name, long awaitTerminationTimeoutMs) {
+        this.awaitTerminationTimeoutMs = awaitTerminationTimeoutMs;
         this.name = name.replaceAll("/$", "");
 
         // event loops operate on dedicated threads but may be closed elsewhere
@@ -62,38 +72,6 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
 
     protected String nameWithSlash() {
         return withSlash(name);
-    }
-
-    //! Callers need a lifecycle-specific rejection to avoid hiding genuine setup failures during shutdown.
-    //! Wrap only this loop's close check; wrapping addHandler as a whole could relabel a callback failure.
-    //! Regression: HandlerRegistrationClosedExceptionTest.closedLoopRejectsWithoutTakingOwnership
-    //! and callbackFailureIsNotReclassifiedAsRejection.
-    final void throwIfClosedForRegistration() {
-        try {
-            throwExceptionIfClosed();
-        } catch (ClosedIllegalStateException closed) {
-            throw new HandlerRegistrationClosedException(closed);
-        }
-    }
-
-    /**
-     * Registers a caller-owned handler, or reports lifecycle rejection without taking ownership.
-     * A rejected handler receives no lifecycle callbacks from this call. The caller must arrange
-     * its cleanup. Accepted handlers follow the loop's usual lifecycle; admission does not
-     * guarantee that shutdown will leave time for an action to run.
-     *
-     * <p>Configuration and application callback failures retain their unchecked exceptions.
-     * Do not submit a handler that is already owned by a loop. Custom subclasses must override
-     * this operation to support checked admission; their existing {@code addHandler} is unchanged.</p>
-     *
-     * @throws HandlerRegistrationRejectedException if stopping or closure prevents admission
-     * @throws UnsupportedOperationException if a custom loop has not implemented checked admission
-     */
-    //! An additive concrete method keeps existing third-party subclasses source/binary compatible.
-    //! It must not delegate to a legacy method that could silently consume a rejected handler.
-    //! Regression: HandlerAdmissionTest.customLoopMustExplicitlySupportCheckedAdmission.
-    public void addHandlerOrThrow(@NotNull EventHandler handler) throws HandlerRegistrationRejectedException {
-        throw new UnsupportedOperationException("Checked handler registration is not supported by " + getClass().getName());
     }
 
     @Override
@@ -120,11 +98,19 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     @Override
     public final void stop() {
         if (lifecycle.compareAndSet(EventLoopLifecycle.NEW, EventLoopLifecycle.STOPPING)) {
-            performStopFromNew();
-            lifecycle.set(EventLoopLifecycle.STOPPED);
+            try {
+                performStopFromNew();
+            } finally {
+                // A stop callback that throws must not leave the loop in STOPPING, or every later
+                // stop() and close() waits for a transition that never comes.
+                lifecycle.set(EventLoopLifecycle.STOPPED);
+            }
         } else if (lifecycle.compareAndSet(EventLoopLifecycle.STARTED, EventLoopLifecycle.STOPPING)) {
-            performStopFromStarted();
-            lifecycle.set(EventLoopLifecycle.STOPPED);
+            try {
+                performStopFromStarted();
+            } finally {
+                lifecycle.set(EventLoopLifecycle.STOPPED);
+            }
         } else {
             awaitTermination();
         }
@@ -147,18 +133,18 @@ public abstract class AbstractLifecycleEventLoop extends AbstractCloseable imple
     /**
      * Wait for the loop to reach {@link EventLoopLifecycle#STOPPED}.
      *
-     * <p>If the state does not change within
-     * {@link #AWAIT_TERMINATION_TIMEOUT_MS} milliseconds an error is logged and
-     * the method returns. The timeout is primarily to avoid tests hanging
-     * indefinitely.</p>
+     * <p>If the state does not change within the termination timeout, 5
+     * minutes by default, the method logs an error and returns. The timeout is
+     * primarily to avoid tests hanging indefinitely.</p>
      */
     protected final void awaitTermination() {
-        long endTime = System.currentTimeMillis() + AWAIT_TERMINATION_TIMEOUT_MS;
+        long endTime = System.currentTimeMillis() + awaitTerminationTimeoutMs;
         while (!Thread.currentThread().isInterrupted()) {
             if (lifecycle.get() == EventLoopLifecycle.STOPPED)
                 return;
             if (System.currentTimeMillis() > endTime) {
                 Jvm.error().on(getClass(), "awaitTermination() timed out, continuing. This probably represents a bug.");
+                return;
             }
             Jvm.pause(1);
         }
