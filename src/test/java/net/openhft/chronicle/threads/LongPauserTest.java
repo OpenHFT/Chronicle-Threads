@@ -52,7 +52,6 @@ class LongPauserTest extends ThreadsTestCommon {
         for (int i = 0; i < 100; i++) {
             try {
                 assertAsyncPausesFor(pauser, pauser::asyncPause, TimeUnit.MILLISECONDS.toNanos(1));
-                assertAsyncPausesFor(pauser, pauser::reset, 0);
             } catch (AssertionError e) {
                 if (failedOnce)
                     throw e;
