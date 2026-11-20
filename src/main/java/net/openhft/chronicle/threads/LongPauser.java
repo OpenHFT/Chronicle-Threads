@@ -60,7 +60,7 @@ public class LongPauser implements Pauser, TimingPauser {
     @Override
     public void reset() {
         if (yieldStart > 0) {
-            checkYieldTime();
+            recordYieldTime();
             countPaused++;
         }
         pauseTimeNS = minPauseTimeNS;
@@ -148,8 +148,8 @@ public class LongPauser implements Pauser, TimingPauser {
             throw new TimeoutException();
         }
 
-        // Check the yield time to determine whether to continue yielding or to move to the next pause strategy
-        checkYieldTime();
+        // Record time spent in yield phase (including any actions between pauses)
+        recordYieldTime();
 
         // Pause for the current pause duration
         doPause(pauseTimeNS);
@@ -162,7 +162,7 @@ public class LongPauser implements Pauser, TimingPauser {
         pauseTimeNS = Math.min(maxPauseTimeNS, pauseTimeNS + (pauseTimeNS >> 6) + 10_000);
     }
 
-    private void checkYieldTime() {
+    private void recordYieldTime() {
         if (yieldStart > 0) {
             long time = System.nanoTime() - yieldStart;
             timePaused += time;
