@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -149,6 +150,7 @@ public class EventGroup
 
     @SuppressWarnings("deprecation")
     private synchronized VanillaEventLoop getReplication() {
+        rejectIfStopped();
         if (replication == null) {
             final Pauser newReplicationPauser = replicationPauser != null ? replicationPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
             replication = new VanillaEventLoop(this, nameWithSlash() + "replication-event-loop", newReplicationPauser,
@@ -170,6 +172,7 @@ public class EventGroup
 
     @SuppressWarnings("deprecation")
     private synchronized VanillaEventLoop getConcThread(int n) {
+        rejectIfStopped();
         VanillaEventLoop loop = concThreads.get(n);
         if (loop == null) {
             loop = new VanillaEventLoop(this, nameWithSlash() + "conc-event-loop-" + n, concPauserSupplier.get(),
@@ -208,8 +211,9 @@ public class EventGroup
      * {@link IllegalArgumentException}.
      */
     @Override
-    public void addHandler(@NotNull final EventHandler handler) {
+    public synchronized void addHandler(@NotNull final EventHandler handler) {
         throwExceptionIfClosed();
+        rejectIfStopped();
 
         HandlerPriority t1 = handler.priority();
         switch (t1) {
@@ -371,14 +375,27 @@ public class EventGroup
     }
 
     private void performStop() {
+        final VanillaEventLoop replicationToStop;
+        final List<VanillaEventLoop> concurrentToStop;
+        synchronized (this) {
+            // Creation that won admission must finish registration before the stop set is captured.
+            // STOPPING is already visible, so subsequent requests cannot create another child.
+            replicationToStop = replication;
+            concurrentToStop = new ArrayList<>(concThreads);
+        }
         monitor.stop();
         if (privateGroup && core != null && core.isRunningOnThread(Thread.currentThread())) {
             // shutdownNow() on a private core loop interrupts this thread, so stop the other loops before the core loop.
-            EventLoops.stopAll(concThreads, replication, blocking);
+            EventLoops.stopAll(concurrentToStop, replicationToStop, blocking);
             core.stop();
         } else {
-            EventLoops.stopAll(concThreads, replication, core, blocking);
+            EventLoops.stopAll(concurrentToStop, replicationToStop, core, blocking);
         }
+    }
+
+    private void rejectIfStopped() {
+        if (isStopped())
+            throw new RejectedExecutionException(name() + ": cannot admit a handler while stopping or stopped");
     }
 
     /**
