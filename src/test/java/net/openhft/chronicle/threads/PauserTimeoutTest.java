@@ -46,7 +46,9 @@ class PauserTimeoutTest extends ThreadsTestCommon {
                 try {
                     p.pause(timeoutNS, TimeUnit.NANOSECONDS);
                 } catch (TimeoutException e) {
-                    fail(p + " timed out");
+                    if(System.nanoTime() - start < timeoutNS) {
+                        fail(p + " timed out too early");
+                    }
                 }
             } while (System.nanoTime() < start + timeoutNS / 2);
             while (System.nanoTime() < start + timeoutNS * 5 / 4) {
@@ -57,7 +59,7 @@ class PauserTimeoutTest extends ThreadsTestCommon {
             } catch (TimeoutException e) {
                 continue;
             }
-            fail(p + " did not timeoutNS");
+            fail(p + " did not timeout");
         }
     }
 

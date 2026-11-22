@@ -34,7 +34,7 @@ public class YieldingPauser implements TimingPauser {
 
     @Override
     public void reset() {
-        checkYieldTime();
+        recordYieldTime();
         count = 0;
         timeOutStart = Long.MAX_VALUE;
     }
@@ -55,7 +55,7 @@ public class YieldingPauser implements TimingPauser {
             return;
         }
         yield0();
-        checkYieldTime();
+        recordYieldTime();
     }
 
     /**
@@ -81,13 +81,13 @@ public class YieldingPauser implements TimingPauser {
 
         if (System.nanoTime() - timeOutStart > timeUnit.toNanos(timeout))
             throw new TimeoutException();
-        checkYieldTime();
+        recordYieldTime();
     }
 
     /**
      * Records and accumulates the duration of yielding if any, and resets the start time of yielding.
      */
-    void checkYieldTime() {
+    void recordYieldTime() {
         if (yieldStart > 0) {
             long time = System.nanoTime() - yieldStart;
             timePaused += time;
