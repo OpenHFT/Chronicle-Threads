@@ -5,6 +5,8 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -45,74 +47,43 @@ class LongPauserTest extends ThreadsTestCommon {
         assertTrue(timeTakenMs < pauseMillis / 5, "Took " + timeTakenMs + " to stop");
     }
 
-    @Test
-    void testLongAsyncPauser() {
-        final LongPauser pauser = new LongPauser(0, 0, 1, 1, TimeUnit.MILLISECONDS);
-        boolean failedOnce = false;
+    @ParameterizedTest
+    @EnumSource(value = TimeUnit.class, names = {"NANOSECONDS", "MICROSECONDS", "MILLISECONDS", "SECONDS"})
+    void testLongAsyncPauser(TimeUnit unit) {
+        final ControlledLongPauser pauser = new ControlledLongPauser(unit);
+        // The old wall-clock tolerance measured descheduling and accidentally converted
+        // nanoseconds to the requested unit. Check the actual unit conversion and boundary.
         for (int i = 0; i < 100; i++) {
-            try {
-                assertAsyncPausesFor(pauser, pauser::asyncPause, TimeUnit.MILLISECONDS.toNanos(1));
-            } catch (AssertionError e) {
-                if (failedOnce)
-                    throw e;
-                failedOnce = true;
-            }
+            pauser.asyncPause();
+            assertTrue(pauser.asyncPausing());
+            pauser.now += unit.toNanos(1) - 1;
+            assertTrue(pauser.asyncPausing());
+            pauser.now++;
+            assertFalse(pauser.asyncPausing());
+            pauser.reset();
+            assertFalse(pauser.asyncPausing());
         }
     }
 
     @Test
     void asyncPauseIsResetOnReset() {
-        final LongPauser longPauser = new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS);
+        final LongPauser longPauser = new ControlledLongPauser(TimeUnit.SECONDS);
         longPauser.asyncPause();
         assertTrue(longPauser.asyncPausing());
         longPauser.reset();
         assertFalse(longPauser.asyncPausing());
     }
 
-    /**
-     * Runs {@code action} then spins on {@link LongPauser#asyncPausing()} until it clears, asserting the elapsed
-     * time is at least {@code expectedNs} and not much more.
-     *
-     * <p>A stall (GC, safepoint, descheduling) can stretch the elapsed time in two places:
-     * <ul>
-     *   <li>inside {@code action}, before it samples the clock to set the deadline</li>
-     *   <li>between the last check that still saw pausing and the end of the loop</li>
-     * </ul>
-     * Both gaps are measured and added to the fixed tolerance.
-     */
-    private static void assertAsyncPausesFor(LongPauser pauser, Runnable action, long expectedNs) {
-        final long toleranceNs = 1_000;
-        final long timeoutNs = 100_000_000;
+    private static final class ControlledLongPauser extends LongPauser {
+        long now = TimeUnit.SECONDS.toNanos(1);
 
-        // We time the action in case GC etc. makes it unexpectedly slow
-        final long start = System.nanoTime();
-        action.run();
-        final long actionEnd = System.nanoTime();
-        final long actionDurationNs = actionEnd - start;
-
-        // We time the gaps between calls to pauser.asyncPausing() in case the final one is unexpectedly long
-        long lastPausingNs = actionEnd;
-        while(true) {
-            final long beforeCheckNs = System.nanoTime();
-            if (!pauser.asyncPausing())
-                break;
-            lastPausingNs = beforeCheckNs;
-            // Fail if the loop does not exit in a reasonable time
-            if (beforeCheckNs - start - actionDurationNs > expectedNs + timeoutNs)
-                fail("Still pausing after " + (beforeCheckNs - start) / 1_000 + " us, action took " + actionDurationNs / 1_000 + " us");
+        ControlledLongPauser(TimeUnit unit) {
+            super(0, 0, 1, 1, unit);
         }
-        final long end = System.nanoTime();
-        final long finalGapNs = end - lastPausingNs;
-        final long elapsedNs = end - start;
 
-        // The timing uncertainty is the sum of:
-        //   actionDurationNs - because we are not sure exactly when any pause timer was started
-        //   finalGapNs - because the pause may have ended this long ago when we finally detected it had ended
-        //   toleranceNs - accounts for rounding errors, timing jitter etc.
-        final long uncertaintyNs = toleranceNs + actionDurationNs + finalGapNs;
-        final long delta = uncertaintyNs / 2;
-        assertEquals(expectedNs + delta, elapsedNs, delta,
-                () -> "elapsed " + elapsedNs / 1_000 + " us, expected " + expectedNs / 1_000
-                        + " us, setup gap " + actionDurationNs / 1_000 + " us, final gap " + finalGapNs / 1_000 + " us");
+        @Override
+        long nanoTime() {
+            return now;
+        }
     }
 }
