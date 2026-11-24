@@ -265,3 +265,15 @@ Validation::
 Impact & Consequences::
 * Explicitly recorded, bounded repeat runs remain useful for diagnosis.
 * CI must still handle reported failures when `maven.test.failure.ignore` allows later build steps to continue.
+
+[[THR-TEST-007]]
+=== THR-TEST-007 Report stress-worker failures to the test thread
+
+Date:: 2026-11-17
+Decision Statement::
+* The handler-adder fixture signals completion even when its supplier throws an exception or error.
+* Its bounded stop wait reports the original worker failure and preserves interruption.
+Validation::
+* `HandlerAdderFailureTest` exercises supplier exceptions, errors and an interrupted caller.
+Impact & Consequences::
+* Stress tests fail with the worker's cause instead of waiting indefinitely. Event-loop admission behaviour is unchanged.

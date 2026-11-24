@@ -332,6 +332,7 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
                 if (failure != null)
                     throw new AssertionError("Handler registration failed", failure);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             }
         }
