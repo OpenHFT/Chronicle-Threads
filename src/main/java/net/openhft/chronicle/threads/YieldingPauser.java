@@ -17,6 +17,15 @@ import java.util.concurrent.TimeoutException;
  * expected but the thread must remain responsive.</p>
  */
 public class YieldingPauser implements TimingPauser {
+    static final int DEFAULT_MIN_BUSY = 2;
+
+    static TimingPauser forAvailableProcessors(int minBusy) {
+        SleepyWarning.warnSleepy();
+        return Pauser.SLEEPY ? Pauser.sleepy()
+                : Pauser.BALANCED ? Pauser.balanced()
+                : new YieldingPauser(minBusy);
+    }
+
     final int minBusy;
     int count = 0;
     private long timePaused = 0;
@@ -137,7 +146,7 @@ public class YieldingPauser implements TimingPauser {
      */
     @Override
     public String toString() {
-        if (minBusy == 2)
+        if (minBusy == DEFAULT_MIN_BUSY)
             return "PauserMode.yielding";
         return "YieldingPauser{" +
                 "minBusy=" + minBusy +

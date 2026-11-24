@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -30,6 +31,19 @@ class PauserTest extends ThreadsTestCommon {
     @Test
     void balancedUpToMillis1() {
         doTest(Pauser.balancedUpToMillis(1));
+    }
+
+    @Test
+    void zeroMaximumBackOffUsesTheTimedYieldingStrategy() throws TimeoutException {
+        TimingPauser pauser = Pauser.balancedUpToMillis(0);
+        assertEquals(Pauser.yielding().toString(), pauser.toString());
+        assertThrows(TimeoutException.class, () -> {
+            long start = System.nanoTime();
+            while (System.nanoTime() - start < TimeUnit.SECONDS.toNanos(2))
+                pauser.pause(1, TimeUnit.MILLISECONDS);
+        });
+        pauser.reset();
+        pauser.pause(1, TimeUnit.MILLISECONDS);
     }
 
     @Test

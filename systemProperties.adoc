@@ -30,7 +30,7 @@ A property is considered enabled if it is present (for example `-Dflag`) or set 
 | eventloop.accept.mod | 128 | Prevent starvation by inserting new handlers every modulo iteration | _ACCEPT_HANDLER_MOD_COUNT_ (int)
 | eventGroup.conc.threads | processors/4 | Number of concurrent event loop threads (minimum one) | _CONC_THREADS_ (int)
 | eventGroup.wait.to.start.ms | 2_000 ms | Delay before the core event loop begins | _WAIT_TO_START_MS_ (long)
-| replicationEventPauseTime | 20 ms | Pause time used for replication event pausers | _REPLICATION_EVENT_PAUSE_TIME_ (int)
+| replicationEventPauseTime | 20 ms | Maximum back-off for default replication and concurrent loop pausers. Zero requests `Pauser.yielding()` for low latency and can consume a CPU per active loop even while idle. The yielding factory falls back to balanced or sleepy on small machines. Timer handlers use a 1 ms interval at zero. | _REPLICATION_EVENT_PAUSE_TIME_ (int)
 | REPLICATION_MONITOR_INTERVAL_MS | 500 ms | Interval for monitoring replication loops | _REPLICATION_MONITOR_INTERVAL_MS_ (long)
 |===
 

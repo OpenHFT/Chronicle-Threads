@@ -67,10 +67,7 @@ public interface Pauser {
      * @return a pauser tuned for low latency or a fall-back if resources are limited
      */
     static Pauser yielding(int minBusy) {
-        SleepyWarning.warnSleepy();
-        return SLEEPY ? sleepy()
-                : BALANCED ? balanced()
-                : new YieldingPauser(minBusy);
+        return YieldingPauser.forAvailableProcessors(minBusy);
     }
 
     /**
@@ -102,10 +99,15 @@ public interface Pauser {
      * limit. Use this when a service must not sleep for too long whilst still
      * avoiding excessive CPU use.
      *
+     * A zero limit requests the same strategy as {@link #yielding()}, including
+     * its fall-back on machines with few processors.
+     *
      * @param millis maximum back-off period in milliseconds
      * @return a pauser with bounded sleep duration
      */
     static TimingPauser balancedUpToMillis(int millis) {
+        if (millis == 0)
+            return YieldingPauser.forAvailableProcessors(YieldingPauser.DEFAULT_MIN_BUSY);
         return SLEEPY ? sleepy()
                 : new LongPauser(MIN_BUSY, 800, 200, millis * 1000L, TimeUnit.MICROSECONDS);
     }
@@ -142,7 +144,7 @@ public interface Pauser {
      * @return a pauser that initially yields
      */
     static Pauser yielding() {
-        return yielding(2);
+        return yielding(YieldingPauser.DEFAULT_MIN_BUSY);
     }
 
     /**
