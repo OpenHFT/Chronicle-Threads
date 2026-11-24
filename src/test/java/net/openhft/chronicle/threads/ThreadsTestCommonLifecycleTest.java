@@ -117,7 +117,10 @@ class ThreadsTestCommonLifecycleTest {
     }
 
     private static final class ReferenceSentinel extends AbstractReferenceCounted {
-        @Override protected void performRelease() { }
+        @Override
+        protected void performRelease() {
+            // The sentinel participates in reference tracing but owns no underlying resources.
+        }
     }
 
     public static class FixtureTestCase extends ThreadsTestCommon {
@@ -136,6 +139,7 @@ class ThreadsTestCommonLifecycleTest {
         }
 
         @Test void body() {
+            assertEquals(0, state.cleanups, "Cleanup must run after the fixture body");
             if (state.scenario == Scenario.LEAK || state.scenario == Scenario.BODY_AND_LEAK || state.scenario == Scenario.ABORT_AND_LEAK)
                 state.leak = new ReferenceSentinel();
             if (state.scenario == Scenario.BODY_FAILURE || state.scenario == Scenario.BODY_AND_LEAK)
@@ -164,11 +168,9 @@ class ThreadsTestCommonLifecycleTest {
         @org.junit.jupiter.api.Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
         void body() {
             state.leak = new ReferenceSentinel();
-            try {
-                new CountDownLatch(1).await();
-            } catch (InterruptedException interrupted) {
-                Thread.currentThread().interrupt();
-            }
+            CountDownLatch latch = new CountDownLatch(1);
+            assertThrows(InterruptedException.class, () -> latch.await(5, TimeUnit.SECONDS));
+            Thread.currentThread().interrupt();
         }
     }
 }

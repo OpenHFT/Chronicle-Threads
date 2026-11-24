@@ -143,7 +143,7 @@ public class ThreadsTestCommon {
         fail(description);
     }
 
-    public void afterChecks() throws InterruptedException {
+    public void afterChecks() {
         Throwable failure = attempt(null, this::preAfter);
         failure = attempt(failure, ThreadsTestCommon::resetSystemTimeProviderClock);
         failure = attempt(failure, () -> CleaningThread.performCleanup(Thread.currentThread()));
