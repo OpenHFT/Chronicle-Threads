@@ -64,6 +64,8 @@ public class EventGroup
     private static final long REPLICATION_MONITOR_INTERVAL_MS = Jvm.getLong("REPLICATION_MONITOR_INTERVAL_MS", 500L);
     private static final long MONITOR_INTERVAL_MS = Jvm.getLong("MONITOR_INTERVAL_MS", 100L);
     static final Integer REPLICATION_EVENT_PAUSE_TIME = Jvm.getInteger("replicationEventPauseTime", 20);
+    // Requesting a yielding pauser should not dispatch timer handlers on every loop iteration.
+    static final int REPLICATION_TIMER_INTERVAL_MS = REPLICATION_EVENT_PAUSE_TIME == 0 ? 1 : REPLICATION_EVENT_PAUSE_TIME;
     private static final boolean ENABLE_LOOP_BLOCK_MONITOR = !Jvm.getBoolean("disableLoopBlockMonitor");
     private static final long WAIT_TO_START_MS = Jvm.getInteger("eventGroup.wait.to.start.ms", 2_000);
     private final AtomicInteger counter = new AtomicInteger();
@@ -154,7 +156,7 @@ public class EventGroup
         if (replication == null) {
             final Pauser newReplicationPauser = replicationPauser != null ? replicationPauser : Pauser.balancedUpToMillis(REPLICATION_EVENT_PAUSE_TIME);
             replication = new VanillaEventLoop(this, nameWithSlash() + "replication-event-loop", newReplicationPauser,
-                    REPLICATION_EVENT_PAUSE_TIME, daemon, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER));
+                    REPLICATION_TIMER_INTERVAL_MS, daemon, bindingReplication, EnumSet.of(HandlerPriority.REPLICATION, HandlerPriority.REPLICATION_TIMER));
 
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, replication);
             if (isAlive())
@@ -176,7 +178,7 @@ public class EventGroup
         VanillaEventLoop loop = concThreads.get(n);
         if (loop == null) {
             loop = new VanillaEventLoop(this, nameWithSlash() + "conc-event-loop-" + n, concPauserSupplier.get(),
-                    REPLICATION_EVENT_PAUSE_TIME, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT));
+                    REPLICATION_TIMER_INTERVAL_MS, daemon, concBinding, EnumSet.of(HandlerPriority.CONCURRENT));
             concThreads.set(n, loop);
             addThreadMonitoring(REPLICATION_MONITOR_INTERVAL_MS, loop);
             if (isAlive())
