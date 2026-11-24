@@ -1,0 +1,29 @@
+= Pauser deadline controls
+:sectnums:
+:lang: en-GB
+
+The timed `YieldingPauser.pause` starts its deadline on the first call, including
+the busy phase, and checks it after yielding. Expiry uses a strict greater-than
+comparison. `reset` starts a new deadline. The production clock remains
+`System.nanoTime`; a package-local method permits a controlled clock in tests
+without changing the public API or allocating objects on the pause path.
+
+The previous fixture required a 100 ms deadline to be observed within a narrow
+wall-clock range. OS descheduling, GC and exception construction are included in
+that measurement, making it unsuitable for checking the pauser's deadline.
+
+`YieldingPauserTest.pause` checks the exact boundary; `resetStartsAnotherFullDeadline`
+checks independent deadlines; `busyCallsStartTheDeadlineBeforeYielding` checks the
+busy phase; `timeSpentYieldingCountsTowardsDeadline` checks time within yield.
+`productionClockExpires` exercises the real clock and yielding path with an
+already-expired limit. These tests retain the timeout contract without requiring
+the host scheduler to run the test thread within a particular interval.
+
+`LongPauser` likewise exposes a package-local clock method for its asynchronous
+pause only. The production path still uses `System.nanoTime`, and the pause ends
+at its exact deadline. `LongPauserTest.testLongAsyncPauser` checks the instant
+before and at that deadline for nanosecond, microsecond, millisecond and second
+configuration, including repeated resets. `asyncPauseIsResetOnReset` checks
+cancellation before expiry. These replace a timing tolerance and a retry inside
+the test; neither host delays nor a reversed time-unit conversion can conceal a
+wrong deadline. The synchronous `unpauseStopsPausing` control retains a real worker.

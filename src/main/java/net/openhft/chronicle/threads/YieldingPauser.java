@@ -72,16 +72,22 @@ public class YieldingPauser implements TimingPauser {
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
         if (timeOutStart == Long.MAX_VALUE)
-            timeOutStart = System.nanoTime();
+            timeOutStart = nanoTime();
 
         ++count;
         if (count < minBusy)
             return;
         yield0();
 
-        if (System.nanoTime() - timeOutStart > timeUnit.toNanos(timeout))
+        if (nanoTime() - timeOutStart > timeUnit.toNanos(timeout))
             throw new TimeoutException();
         checkYieldTime();
+    }
+
+    // A package-local clock seam lets deadline tests distinguish pauser behaviour from
+    // OS descheduling. The production clock and strict timeout boundary are unchanged.
+    long nanoTime() {
+        return System.nanoTime();
     }
 
     /**

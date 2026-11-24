@@ -3,43 +3,86 @@
  */
 package net.openhft.chronicle.threads;
 
-import net.openhft.chronicle.core.OS;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 class YieldingPauserTest extends ThreadsTestCommon {
 
+    // Elapsed wall time also includes descheduling, GC and exception construction.
+    // A controlled clock checks the 100 ms contract exactly, including its strict boundary.
     @Test
-    void pause() {
-        final int pauseTimeMillis = 100;
-        final YieldingPauser tp = new YieldingPauser(pauseTimeMillis);
-        for (int i = 0; i < 10; i++) {
-            final long start = System.currentTimeMillis();
-            while (true) {
-                try {
-                    tp.pause(pauseTimeMillis, TimeUnit.MILLISECONDS);
-                    if (System.currentTimeMillis() - start > 200)
-                        fail();
-                } catch (TimeoutException e) {
-                    final long time = System.currentTimeMillis() - start;
-                    // delta used to be 5 for Linux but occasionally we see it blow in Continuous Integration
-                    // a delta of 20 was used here, however in some situations in CI that was not sufficient:
-                    // org.opentest4j.AssertionFailedError: expected: <100.0> but was: <126.0>
-                    int delta = 30;
-                    // macOS CI has taken 190 ms to observe the timeout; retain the existing lower bound.
-                    final int maxTimeMillis = OS.isMacOSX() ? 200 : pauseTimeMillis + delta;
-                    assertTrue(time >= pauseTimeMillis - delta && time <= maxTimeMillis,
-                            () -> "Expected " + (pauseTimeMillis - delta) + " to " + maxTimeMillis
-                                    + " ms but was " + time + " ms");
-                    tp.reset();
-                    break;
-                }
-            }
+    void pause() throws TimeoutException {
+        ControlledPauser pauser = new ControlledPauser(0);
+        pauser.pause(100, TimeUnit.MILLISECONDS);
+        pauser.now += TimeUnit.MILLISECONDS.toNanos(100);
+        pauser.pause(100, TimeUnit.MILLISECONDS);
+        pauser.now++;
+        assertThrows(TimeoutException.class, () -> pauser.pause(100, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    void resetStartsAnotherFullDeadline() throws TimeoutException {
+        ControlledPauser pauser = new ControlledPauser(0);
+        pauser.pause(100, TimeUnit.MILLISECONDS);
+        pauser.now += TimeUnit.MILLISECONDS.toNanos(100) + 1;
+        assertThrows(TimeoutException.class, () -> pauser.pause(100, TimeUnit.MILLISECONDS));
+        pauser.reset();
+        pauser.pause(100, TimeUnit.MILLISECONDS);
+        pauser.now += TimeUnit.MILLISECONDS.toNanos(100);
+        pauser.pause(100, TimeUnit.MILLISECONDS);
+        pauser.now++;
+        assertThrows(TimeoutException.class, () -> pauser.pause(100, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    void busyCallsStartTheDeadlineBeforeYielding() throws TimeoutException {
+        ControlledPauser pauser = new ControlledPauser(3);
+        pauser.pause(100, TimeUnit.MILLISECONDS);
+        pauser.now += TimeUnit.MILLISECONDS.toNanos(100) + 1;
+        pauser.pause(100, TimeUnit.MILLISECONDS);
+        assertEquals(0, pauser.yields);
+        assertThrows(TimeoutException.class, () -> pauser.pause(100, TimeUnit.MILLISECONDS));
+        assertEquals(1, pauser.yields);
+    }
+
+    @Test
+    void timeSpentYieldingCountsTowardsDeadline() {
+        ControlledPauser pauser = new ControlledPauser(0);
+        pauser.yieldNanos = TimeUnit.MILLISECONDS.toNanos(100) + 1;
+        assertThrows(TimeoutException.class, () -> pauser.pause(100, TimeUnit.MILLISECONDS));
+        assertEquals(1, pauser.yields);
+    }
+
+    @Test
+    void productionClockExpires() {
+        YieldingPauser pauser = new YieldingPauser(0);
+        // A negative limit must expire on the first yielding call for a monotonic clock.
+        // This covers the production clock implementation without a scheduler deadline.
+        assertThrows(TimeoutException.class, () -> pauser.pause(-1, TimeUnit.NANOSECONDS));
+    }
+
+    private static final class ControlledPauser extends YieldingPauser {
+        private long now = TimeUnit.SECONDS.toNanos(1);
+        private long yieldNanos;
+        private int yields;
+
+        ControlledPauser(int minBusy) {
+            super(minBusy);
+        }
+
+        @Override
+        long nanoTime() {
+            return now;
+        }
+
+        @Override
+        void yield0() {
+            yields++;
+            now += yieldNanos;
         }
     }
 }

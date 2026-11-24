@@ -5,6 +5,8 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -45,42 +47,43 @@ class LongPauserTest extends ThreadsTestCommon {
         assertTrue(timeTakenMs < pauseMillis / 5, "Took " + timeTakenMs + " to stop");
     }
 
-    @Test
-    void testLongAsyncPauser() {
-        final LongPauser pauser = new LongPauser(0, 0, 1, 1, TimeUnit.MILLISECONDS);
-        boolean failedOnce = false;
+    @ParameterizedTest
+    @EnumSource(value = TimeUnit.class, names = {"NANOSECONDS", "MICROSECONDS", "MILLISECONDS", "SECONDS"})
+    void testLongAsyncPauser(TimeUnit unit) {
+        final ControlledLongPauser pauser = new ControlledLongPauser(unit);
+        // The old wall-clock tolerance measured descheduling and accidentally converted
+        // nanoseconds to the requested unit. Check the actual unit conversion and boundary.
         for (int i = 0; i < 100; i++) {
-            try {
-                pauser.asyncPause();
-                testUntilUnpaused(pauser, 1, TimeUnit.MILLISECONDS);
-                pauser.reset();
-                testUntilUnpaused(pauser, 0, TimeUnit.MILLISECONDS);
-            } catch (AssertionError e) {
-                if (failedOnce)
-                    throw e;
-                failedOnce = true;
-            }
+            pauser.asyncPause();
+            assertTrue(pauser.asyncPausing());
+            pauser.now += unit.toNanos(1) - 1;
+            assertTrue(pauser.asyncPausing());
+            pauser.now++;
+            assertFalse(pauser.asyncPausing());
+            pauser.reset();
+            assertFalse(pauser.asyncPausing());
         }
     }
 
     @Test
     void asyncPauseIsResetOnReset() {
-        final LongPauser longPauser = new LongPauser(0, 0, 1, 1, TimeUnit.SECONDS);
+        final LongPauser longPauser = new ControlledLongPauser(TimeUnit.SECONDS);
         longPauser.asyncPause();
         assertTrue(longPauser.asyncPausing());
         longPauser.reset();
         assertFalse(longPauser.asyncPausing());
     }
 
-    private static void testUntilUnpaused(LongPauser pauser, int n, TimeUnit timeUnit) {
-        long timeNS = timeUnit.convert(n, TimeUnit.NANOSECONDS);
-        long start = System.nanoTime();
-        while (pauser.asyncPausing()) {
-            if (System.nanoTime() > start + timeNS + 100_000_000)
-                fail();
+    private static final class ControlledLongPauser extends LongPauser {
+        long now = TimeUnit.SECONDS.toNanos(1);
+
+        ControlledLongPauser(TimeUnit unit) {
+            super(0, 0, 1, 1, unit);
         }
-        long time = System.nanoTime() - start;
-        final int delta = 11_000_000;
-        assertEquals(timeNS + delta, time, delta);
+
+        @Override
+        long nanoTime() {
+            return now;
+        }
     }
 }

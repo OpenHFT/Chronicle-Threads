@@ -91,7 +91,7 @@ public class LongPauser implements Pauser, TimingPauser {
      */
     @Override
     public void asyncPause() {
-        pauseUntilNS = System.nanoTime() + pauseTimeNS;
+        pauseUntilNS = nanoTime() + pauseTimeNS;
         increasePauseTimeNS();
     }
 
@@ -102,7 +102,13 @@ public class LongPauser implements Pauser, TimingPauser {
      */
     @Override
     public boolean asyncPausing() {
-        return pauseUntilNS > System.nanoTime();
+        return pauseUntilNS > nanoTime();
+    }
+
+    // Control async deadlines independently of scheduler delays in LongPauserTest.
+    // The production clock and exclusive end of the pause interval are unchanged.
+    long nanoTime() {
+        return System.nanoTime();
     }
 
     private void showPauses() {
