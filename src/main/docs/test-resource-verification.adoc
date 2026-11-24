@@ -1,0 +1,28 @@
+= Test resource verification
+:sectnums:
+:lang: en-GB
+
+`ThreadsTestCommon` uses Jupiter's inherited `AfterEachCallback` and
+`ExtensionContext.getExecutionException()` to verify resources only after a
+successful setup, test, teardown and resource-extension outcome. No test
+maintains a success flag. The callback also locates enclosing fixtures for
+nested tests.
+
+Cleanup always attempts `preAfter`, clock restoration and cleaning thread
+locals. Even when cleanup fails, exception handlers, reference tracing and
+fixture state are reset. A cleanup failure remains a failure after an abort;
+otherwise it is attached to an existing failure as suppressed evidence.
+
+On success, unexpected operational warnings and missing expected warnings are
+checked before closeable, reference and thread assertions. A passing test
+that leaks still fails. Failure or abort skips verification, without taking
+ownership away from the test's cleanup.
+
+The real-engine contract tests cover success, failures during each lifecycle
+phase, aborts, native-reference leaks, unexpected warnings, missing expected
+warnings, extension cleanup, timeouts and a following clean test. These tests
+release their deliberate reference leaks outside the fixture under test.
+
+This policy implements FIX-292 and preserves the original failure in flaky
+build diagnostics. It does not make failed tests pass or alter production
+resource management.
