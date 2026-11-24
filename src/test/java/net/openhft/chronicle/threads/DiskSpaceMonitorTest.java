@@ -47,9 +47,7 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
         assertEquals(5, DiskSpaceMonitor.INSTANCE.getThresholdPercentage());
         DiskSpaceMonitor.INSTANCE.setThresholdPercentage(100);
         final Map<ExceptionKey, Integer> map = Jvm.recordExceptions();
-        //! Slow disk probes emit PERF diagnostics independently of the scheduled low-space warning.
-        //! Keep this control deterministic under both idle and busy hosts: pollDiskSpace must still
-        //! require the original warning count when extra probe diagnostics are recorded.
+        // Slow probes can log PERF entries alongside the low-disk warnings being counted.
         for (int i = 0; i < 8; i++)
             Jvm.perf().on(DiskSpaceMonitor.class, "Controlled slow disk probe " + i);
         for (int i = 0; i < 51; i++) {
