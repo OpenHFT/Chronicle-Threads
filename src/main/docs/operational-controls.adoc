@@ -30,6 +30,35 @@ Review hot-spots ::
 * BIOS or hypervisor changes that alter NUMA layout.
 * Third-party tooling that repins threads (profilers, debuggers).
 
+=== Check the running loop on Linux
+
+A binding string requests placement. To verify where the operating system allows the handler to run, identify the thread after the handler has started.
+On HotSpot, run `jcmd "$pid" Thread.print` as a user with attach access, in the JVM's PID namespace.
+Find the event group's full Java thread name and match the suffix to the handler priority, for example `conc-event-loop-N` for CONCURRENT or `replication-event-loop` for REPLICATION. A busy stack may show the handler. An idle stack usually shows its pauser. Copy the native thread ID from the `nid=` field verbatim. JDK 17 prints a value such as `0x1a2b`, while JDK 21 and 25 can print decimal `6699`. The adjacent `tid=` field identifies a JVM structure.
+Linux can truncate `comm` to 15 visible bytes, so several event loops can appear to have the same name in `ps`.
+
+In Bash, with `pid` set to the JVM's process ID and `nid` set to the value exactly as printed after `nid=`:
+
+[source,bash]
+----
+tid=$((nid))
+grep '^Cpus_allowed_list:' "/proc/$pid/task/$tid/status"
+cat /sys/devices/system/cpu/isolated
+----
+
+A one-CPU allowed list shows a thread confined to that logical CPU at the time of the observation.
+Compare it with the CPUs reserved by the deployment, including the container cpuset. The sysfs file reports CPUs isolated by the kernel's isolation setting. Sites can reserve CPUs by other means. To assess exclusivity, check other tasks allowed on the logical CPU and its SMT siblings. The task mask establishes eligibility. The first field of the task's `schedstat` file gives cumulative on-CPU nanoseconds when available.
+If attach or procfs access fails, record the binding as unverified. A process-wide mask or a momentary CPU reading cannot establish the individual thread's binding.
+
+== Locate the wait after idle
+
+`withPauser` selects the core loop's pauser. Replication and concurrent handlers can run on different threads, with pausers selected by `withReplicationPauser` and `withConcurrentPauserSupplier`.
+A busy core loop can therefore wait for work produced by a parked concurrent loop. Trace which handler must run next on each side of a hand-off.
+
+For the default replication and concurrent pausers, compare the first request after a fixed quiet period with a shorter positive `-DreplicationEventPauseTime` in a fresh JVM. This property is in milliseconds and defaults to 20. In versions such as 2026.5, a JVM with fewer than `pauser.minProcessors` available CPUs (default 4) selects the sleepy fallback. Check the actual pauser on a constrained host before interpreting the comparison.
+Keep offered rate, handler priorities and bindings fixed. Measure the first completion, steady-state tail and CPU time consumed by each loop during the idle interval.
+If an explicit builder pauser is in use, change that pauser for the comparison. Count the CPU cost across all affected loops and JVMs.
+
 == Loop-Block Monitoring and Alerting
 
 Why ::
