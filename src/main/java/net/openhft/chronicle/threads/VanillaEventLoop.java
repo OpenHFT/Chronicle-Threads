@@ -133,18 +133,30 @@ public class VanillaEventLoop extends MediumEventLoop {
     }
 
     private void runAllHandlers(List<EventHandler> handlers) {
-        for (int i = 0; i < handlers.size(); i++) {
-            EventHandler handler = null;
-            try {
-                handler = handlers.get(i);
-                handler.action();
-            } catch (InvalidEventHandlerException e) {
+        int index = 0;
+        while (index < handlers.size()) {
+            if (!runHandler(handlers, index))
+                index++;
+        }
+    }
+
+    // A removed handler shifts the next entry into the current slot.
+    @SuppressWarnings("java:S1181") // Route every handler failure through the configured loop exception handler.
+    private boolean runHandler(List<EventHandler> handlers, int index) {
+        EventHandler handler = null;
+        try {
+            handler = handlers.get(index);
+            handler.action();
+        } catch (InvalidEventHandlerException e) {
+            removeHandler(handler, handlers);
+            return true;
+        } catch (Throwable e) {
+            if (handle(this, handler, e)) {
                 removeHandler(handler, handlers);
-            } catch (Throwable e) {
-                if (handle(this, handler, e))
-                    removeHandler(handler, handlers);
+                return true;
             }
         }
+        return false;
     }
 
     /**
