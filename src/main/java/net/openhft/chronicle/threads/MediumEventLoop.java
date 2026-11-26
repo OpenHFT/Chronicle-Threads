@@ -166,6 +166,8 @@ public class MediumEventLoop extends AbstractLifecycleEventLoop implements CoreE
         stopEventLoopThread();
     }
 
+    // The empty monitor acquisition is an admission barrier, not an omitted operation.
+    @SuppressWarnings("java:S108")
     private void stopEventLoopThread() {
         synchronized (addHandlerMutex) {
             // Wait for an admission that began before STOPPING. Never hold this lock while joining.
