@@ -182,6 +182,13 @@ During bursts, it processes events with low latency.
 * `thread-security-review.adoc` (Security posture)
 * `thread-safety-guide.adoc` (Confinement practices)
 
+=== THR-FN-037 Handler admission during stop
+
+* `EventGroup` and its medium/vanilla event loops must reject handler registration after `STOPPING` wins admission. Rejection must be observable and leave ownership with the caller.
+* A lazily created replication or concurrent child admitted before stop must be included in that stop, even if construction overlaps the state transition.
+* An accepted handler must retain normal completion and close behaviour. Stopping must not wait for loop termination while holding a monitor needed by that loop's completion.
+* `StopAdmissionTest` must discriminate the unchanged source and the repair without retries. Native platform coverage is recorded separately from local verification.
+
 [[open-issues]]
 == Open Issues / Future Enhancements
 
