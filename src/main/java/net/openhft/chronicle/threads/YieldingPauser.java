@@ -21,9 +21,9 @@ public class YieldingPauser implements TimingPauser {
 
     static TimingPauser forAvailableProcessors(int minBusy) {
         SleepyWarning.warnSleepy();
-        return Pauser.SLEEPY ? Pauser.sleepy()
-                : Pauser.BALANCED ? Pauser.balanced()
-                : new YieldingPauser(minBusy);
+        if (Pauser.SLEEPY)
+            return Pauser.sleepy();
+        return Pauser.BALANCED ? Pauser.balanced() : new YieldingPauser(minBusy);
     }
 
     final int minBusy;

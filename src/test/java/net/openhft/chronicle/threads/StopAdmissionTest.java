@@ -134,7 +134,7 @@ class StopAdmissionTest extends ThreadsTestCommon {
     }
 
     @Test
-    void acceptedHandlerRetainsNormalLifecycle() throws Exception {
+    void acceptedHandlerRetainsNormalLifecycle() {
         OwnedHandler accepted = new OwnedHandler(HandlerPriority.MEDIUM);
         try (MediumEventLoop loop = new MediumEventLoop(null, "accepted", Pauser.balanced(), true, null)) {
             loop.addHandler(accepted);

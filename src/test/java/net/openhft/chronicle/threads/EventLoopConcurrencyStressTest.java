@@ -307,9 +307,10 @@ class EventLoopConcurrencyStressTest extends ThreadsTestCommon {
                     try {
                         eventLoop.addHandler(handler);
                     } catch (RejectedExecutionException rejected) {
-                        Assertions.assertTrue(eventLoop.isStopped() || eventLoop.isClosing(),
-                                "Only owner stop may reject registration: " + rejected);
-                        Assertions.assertFalse(handler.loopStarted, "A rejected handler must remain caller-owned");
+                        if (!eventLoop.isStopped() && !eventLoop.isClosing())
+                            throw new AssertionError("Only owner stop may reject registration", rejected);
+                        if (handler.loopStarted)
+                            throw new AssertionError("A rejected handler must remain caller-owned");
                         handler.close();
                         break;
                     }
