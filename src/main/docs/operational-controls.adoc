@@ -140,3 +140,43 @@ Review hot-spots ::
 * Hot fixes applied directly to production nodes.
 * Divergent configuration between active-active sites.
 * Missing rollback plans for affinity or pauser adjustments.
+
+== Writer-usable disk capacity (CORE-128)
+
+Register once during startup, then read the handle when deciding whether to admit new work.
+This path performs a volatile read and a monotonic-clock check. The operating system resolves
+the path during registration. Background workers obtain the bytes available to this process.
+A filesystem's unallocated blocks can include space reserved for other users.
+
+[source,java]
+----
+long mib = 1L << 20;
+try (DiskSpaceHealth health = DiskSpaceMonitor.INSTANCE.registerWriter(
+        directory, 512 * mib, DiskSpaceHealth.Growth.SPARSE_OR_UNKNOWN)) {
+    DiskSpaceHealth.Reading reading = health.reading();
+    boolean fresh = reading.status() == DiskSpaceHealth.Status.HEALTHY
+            || reading.status() == DiskSpaceHealth.Status.LOW;
+    boolean admit = fresh && reading.usableBytes() >= 256 * mib;
+    // Return a retryable refusal when admit is false. Read again for the next request.
+}
+----
+
+Register during startup before pinning the registering thread to a reserved CPU.
+Retain the registration for the writer's lifetime. The first reading is UNKNOWN until the
+initial probe completes. LOW includes equality with the configured warning threshold. Warning
+transitions also report failures and expired readings. The example reserves its last 256 MiB
+for already accepted work. A fresh reading can reopen admission. Applications handle the
+outcome of a failed or ambiguous append separately.
+
+Sparse and unknown allocation targets a 750 ms interval and expires at one second.
+Use ACCOUNTED only when growth by every writer sharing the filesystem is independently bounded.
+It refreshes at 590 seconds and expires at 600 seconds. Call
+`growth(SPARSE_OR_UNKNOWN)` before allowing unknown growth. Expiry is measured from probe
+start, including time spent inside a blocked read. There is no filesystem-wide reservation
+of capacity. Filesystem probes for different stores run independently.
+
+The JVM accepts up to 16 active stores and 256 active handles. Excess registrations report
+UNAVAILABLE. If the existing path cannot be resolved, registration reports FAILED and can
+be retried. A changed mount permanently marks its old handle REMOUNTED. Close it and register the new mount.
+The monitor disable property produces DISABLED and closing a handle produces CLOSED.
+Existing `pollDiskSpace` users continue to receive their unallocated-space notifications.

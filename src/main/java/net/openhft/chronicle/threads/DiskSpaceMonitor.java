@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  * internal maps. Each subsequent call merely updates the cached entry. This
  * method is typically invoked when opening a queue or a memory-mapped file. A
  * scheduled executor named {@value #DISK_SPACE_CHECKER_NAME} then runs
- * the monitor once a second.</p>
+ * the legacy monitor every ten seconds by default.</p>
  *
  * <p>The monitor may be disabled with the system property
  * {@code chronicle.disk.monitor.disable}. The threshold that triggers a
@@ -52,6 +52,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
     private static final boolean DISABLED = Jvm.getBoolean("chronicle.disk.monitor.disable");
     public static final int TIME_TAKEN_WARN_THRESHOLD_US = Jvm.getInteger("chronicle.disk.monitor.warn.threshold.us", 250);
     private final NotifyDiskLow notifyDiskLow;
+    private final DiskSpaceHealthRegistry writerHealth = new DiskSpaceHealthRegistry();
     final Map<String, FileStore> fileStoreCacheMap = new ConcurrentHashMap<>();
     final Map<FileStore, DiskAttributes> diskAttributesMap = new ConcurrentHashMap<>();
     final ScheduledExecutorService executor;
@@ -127,6 +128,15 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
         }
     }
 
+    /**
+     * Register an existing path when the writer opens. Registration resolves its filesystem.
+     * The first sample runs asynchronously. Admission can begin after a fresh reading arrives.
+     * Close the handle when the writer closes. The warning threshold is in usable bytes.
+     */
+    public DiskSpaceHealth registerWriter(Path path, long warningBytes, DiskSpaceHealth.Growth growth) {
+        return writerHealth.register(path.toAbsolutePath(), warningBytes, growth, DISABLED);
+    }
+
     public int getThresholdPercentage() {
         return thresholdPercentage;
     }
@@ -143,6 +153,7 @@ public enum DiskSpaceMonitor implements Runnable, Closeable {
 
     @Override
     public void close() {
+        writerHealth.close();
         if (executor != null)
             Threads.shutdown(executor);
     }
