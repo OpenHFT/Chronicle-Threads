@@ -53,7 +53,7 @@ public interface DiskSpaceHealth extends Closeable {
             return usableBytes;
         }
 
-        /** Probe start in the System.nanoTime() time base. Defined only when usableBytes() >= 0. */
+        /** Probe start in the System.nanoTime() time base. Defined only when {@code usableBytes() >= 0}. */
         public long sampledAtNanos() {
             return sampledAtNanos;
         }
