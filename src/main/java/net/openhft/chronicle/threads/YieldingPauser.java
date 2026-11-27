@@ -17,6 +17,15 @@ import java.util.concurrent.TimeoutException;
  * expected but the thread must remain responsive.</p>
  */
 public class YieldingPauser implements TimingPauser {
+    static final int DEFAULT_MIN_BUSY = 2;
+
+    static TimingPauser forAvailableProcessors(int minBusy) {
+        SleepyWarning.warnSleepy();
+        if (Pauser.SLEEPY)
+            return Pauser.sleepy();
+        return Pauser.BALANCED ? Pauser.balanced() : new YieldingPauser(minBusy);
+    }
+
     final int minBusy;
     int count = 0;
     private long timePaused = 0;
@@ -72,16 +81,22 @@ public class YieldingPauser implements TimingPauser {
     @Override
     public void pause(long timeout, @NotNull TimeUnit timeUnit) throws TimeoutException {
         if (timeOutStart == Long.MAX_VALUE)
-            timeOutStart = System.nanoTime();
+            timeOutStart = nanoTime();
 
         ++count;
         if (count < minBusy)
             return;
         yield0();
 
-        if (System.nanoTime() - timeOutStart > timeUnit.toNanos(timeout))
+        if (nanoTime() - timeOutStart > timeUnit.toNanos(timeout))
             throw new TimeoutException();
         recordYieldTime();
+    }
+
+    // A package-local clock seam lets deadline tests distinguish pauser behaviour from
+    // OS descheduling. The production clock and strict timeout boundary are unchanged.
+    long nanoTime() {
+        return System.nanoTime();
     }
 
     /**
@@ -137,7 +152,7 @@ public class YieldingPauser implements TimingPauser {
      */
     @Override
     public String toString() {
-        if (minBusy == 2)
+        if (minBusy == DEFAULT_MIN_BUSY)
             return "PauserMode.yielding";
         return "YieldingPauser{" +
                 "minBusy=" + minBusy +

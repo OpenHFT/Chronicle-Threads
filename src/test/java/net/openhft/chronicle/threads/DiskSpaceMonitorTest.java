@@ -5,6 +5,7 @@ package net.openhft.chronicle.threads;
 
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.onoes.ExceptionKey;
+import net.openhft.chronicle.core.onoes.LogLevel;
 import net.openhft.chronicle.core.time.SetTimeProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,9 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
         assertEquals(5, DiskSpaceMonitor.INSTANCE.getThresholdPercentage());
         DiskSpaceMonitor.INSTANCE.setThresholdPercentage(100);
         final Map<ExceptionKey, Integer> map = Jvm.recordExceptions();
+        // Slow probes can log PERF entries alongside the low-disk warnings being counted.
+        for (int i = 0; i < 8; i++)
+            Jvm.perf().on(DiskSpaceMonitor.class, "Controlled slow disk probe " + i);
         for (int i = 0; i < 51; i++) {
             DiskSpaceMonitor.INSTANCE.pollDiskSpace(new File("."));
             Jvm.pause(100);
@@ -55,11 +59,12 @@ class DiskSpaceMonitorTest extends ThreadsTestCommon {
         long count = map.entrySet()
                 .stream()
                 .filter(e -> e.getKey().clazz() == DiskSpaceMonitor.class)
+                .filter(e -> e.getKey().level() == LogLevel.WARN && e.getKey().message().startsWith("your disk "))
                 .mapToInt(Map.Entry::getValue)
                 .sum();
         Jvm.resetExceptionHandlers();
-        System.out.println("Disk space warnings/errors: " + count);
-        // look for 5 disk space checks and some debug messages about slow disk checks.
+        System.out.println("Low disk-space warnings: " + count);
+        // Require the scheduled warnings; probe performance messages are not additional checks.
         assertEquals(5.5, count, 1.5);
     }
 

@@ -171,8 +171,8 @@ public class EventGroupBuilder implements Builder<EventLoop> {
     }
 
     /**
-     * Supplies the pauser for replication loops. When not supplied a balanced
-     * pauser up to {@code REPLICATION_EVENT_PAUSE_TIME} is used.
+     * Supplies the pauser for replication loops. By default a positive
+     * {@code replicationEventPauseTime} selects bounded back-off and zero requests {@link Pauser#yielding()}.
      *
      * @param replicationPauser pauser for replication loops
      * @return this builder
@@ -231,8 +231,8 @@ public class EventGroupBuilder implements Builder<EventLoop> {
     }
 
     /**
-     * Supplies the pauser for concurrent loops. Default is a balanced pauser up
-     * to {@code REPLICATION_EVENT_PAUSE_TIME}.
+     * Supplies the pauser for each concurrent loop. The default follows the same
+     * {@code replicationEventPauseTime} setting as the replication loop.
      *
      * @param concurrentPauserSupplier supplier for concurrent pausers
      * @return this builder

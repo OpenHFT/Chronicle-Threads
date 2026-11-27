@@ -140,11 +140,6 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             Waiters.waitForCondition("Wait for loop started:" + handler.priority, eventGroup::isAlive, 5000);
             Waiters.waitForCondition("Wait for handler close called:" + handler.priority, () -> (handler.closeCalled() > 0), 5000);
 
-            // Exceptions should be thrown.
-            assertExceptionThrown(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
-            assertExceptionThrown(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
-            assertExceptionThrown(HANDLER_CLOSE_EXCEPTION_TXT);
-
             // Methods called once.
             assertEquals(1, handler.loopStartedCalled());
             assertEquals(1, handler.loopFinishedCalled());
@@ -156,6 +151,11 @@ class EventGroupHandlerTest extends ThreadsTestCommon {
             assertFalse(eventGroup.isClosing());
             assertFalse(eventGroup.isClosed());
         }
+
+        // Closing the group joins the worker after it reports the exception from close().
+        assertExceptionThrown(HANDLER_LOOP_STARTED_EXCEPTION_TXT);
+        assertExceptionThrown(HANDLER_LOOP_FINISHED_EXCEPTION_TXT);
+        assertExceptionThrown(HANDLER_CLOSE_EXCEPTION_TXT);
     }
 
     // ExpectException does not like looping through the test case. Using individual test cases.
